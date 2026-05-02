@@ -22,7 +22,8 @@
 - **CSS:** Pico.css
 - **Миграции:** `golang-migrate/migrate` (forward-only, embedded в binary)
 - **Логване:** `log/slog` + `lumberjack` (ротация)
-- **Тестове:** `testing` + `testify`
+- **Тестове (Go):** `testing` + `testify` + `goquery` (HTML парсване за API tests)
+- **Тестове (E2E):** Python 3.13 + `pytest-playwright` (browser-based в `tests/e2e/`)
 - **Build:** Taskfile + `air` (hot reload)
 - **Linter:** `golangci-lint` + `lefthook` (pre-commit)
 
@@ -62,7 +63,8 @@ movie-tracker/
 | `task install` | Инсталира dev инструменти (templ, sqlc, air, golangci-lint, lefthook) |
 | `task generate` | Генерира templ + sqlc код |
 | `task lint` | Стартира `gofmt` + `golangci-lint` |
-| `task test` | Стартира тестове |
+| `task test` | Стартира Go тестове (unit + integration + API) |
+| `task test:e2e` | Стартира browser E2E тестове (Python Playwright) |
 | `task build` | Билдва статичен `.exe` |
 | `task run` | Стартира с hot reload (`air`) |
 | `task migrate-new -- <name>` | Създава нова миграция |
