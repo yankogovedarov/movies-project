@@ -1,0 +1,135 @@
+﻿=== Depth pattern of video files (where in the tree the actual .mkv/.avi files sit) ===
+
+  00 Yanko                            depth=3: 96, depth=4: 1
+  00_Liza                             depth=3: 25
+  01_NewDownloads                     depth=3: 37
+  02_                                 depth=3: 19
+  03_                                 depth=3: 17
+  06_                                 depth=3: 6
+  07_                                 depth=3: 1, depth=4: 1
+  08_                                 depth=3: 2
+  09_                                 depth=3: 3
+  10_                                 depth=3: 9
+  11_                                 depth=3: 22
+  12_                                 depth=3: 10
+  13_                                 depth=3: 18
+  14_                                 depth=3: 4
+  15_                                 depth=3: 5
+  16_                                 depth=3: 1
+  17_                                 depth=3: 1
+  99 Serials                          depth=4: 26
+  99 Гледани                          depth=3: 10
+  DoNotDelete                         depth=3: 7, depth=4: 152, depth=5: 31, depth=6: 2
+  Games                               depth=8: 17
+  Install                             depth=6: 6
+  zzz                                 depth=2: 4, depth=3: 3, depth=4: 2
+
+=== DoNotDelete subfolders (depth 2) ===
+  80_Espanol                            30 videos
+  Animation                              2 videos
+  BestMovies                            11 videos
+  Commedy                                7 videos
+  Criminale                             14 videos
+  Joker.Folie.a.Deux.2024.576p.WEBRip.x265.AC3-TuKCo    2 videos
+  New1                                   8 videos
+  OldMovies                             14 videos
+  Oscar                                 29 videos
+  Other                                 10 videos
+  Poor.Things.2023.576p.WEBRip.x265.AC3-TuKCo    2 videos
+  SciFi                                 60 videos
+  Slava.2016.HDTV.XviD-SiSO              2 videos
+  The.Wonderful.Story.Of.Henry.Sugar.And.Three.More.2024.WEB.H264-RBB    1 videos
+
+=== Sample video files in non-movie folders (should be excluded) ===
+
+  --- Games ---
+    Games\Riot Games\Riot Client\RiotClientElectron\resources\assets\splash-screens\arcane-splash.webm  (10,52 MB)
+    Games\Riot Games\Riot Client\RiotClientElectron\resources\assets\splash-screens\default-splash.webm  (0,99 MB)
+    Games\Riot Games\Riot Client\RiotClientElectron\resources\assets\splash-screens\lion-splash-ekko.webm  (2,18 MB)
+    Games\Riot Games\Riot Client\RiotClientElectron\resources\assets\splash-screens\lion-splash-jinx.webm  (3,27 MB)
+    Games\Riot Games\Riot Client\RiotClientElectron\resources\assets\splash-screens\lion-splash-vi.webm  (2,92 MB)
+
+  --- Install ---
+    Install\2022_01_\mb_driver_vga_intel_100.6518\win64\Graphics\ColorImageEnhancement.wmv  (0,36 MB)
+    Install\2022_01_\mb_driver_vga_intel_100.6518\win64\Graphics\FilmModeDetection.wmv  (0,61 MB)
+    Install\2022_01_\mb_driver_vga_intel_100.6518\win64\Graphics\ImageStabilization.wmv  (0,38 MB)
+    Install\2022_01_\mb_driver_vga_intel_64_100series\VGA_64\Graphics\ColorImageEnhancement.wmv  (0,36 MB)
+    Install\2022_01_\mb_driver_vga_intel_64_100series\VGA_64\Graphics\FilmModeDetection.wmv  (0,61 MB)
+
+  --- zzz ---
+    zzz\horny-housewife-hookers-scene2.mp4  (554,73 MB)
+    zzz\[MomPov] Baley - Hot blonde MILF all natural (08.11.2019) rq.mp4  (956,69 MB)
+    zzz\[MyDirtyMaid] Alexis Zara - Slutty Maid Likes it Rough (17.12.2019) rq.mp4  (594,53 MB)
+    zzz\[RKPrime] Anal Creampie For Liya Silver (17.12.2019) rq.mp4  (484,96 MB)
+    zzz\2\foxi_flower_big.mp4  (452,09 MB)
+
+=== 99 Гледани structure (sample) ===
+    [D] Careful.What.You.Wish.For.2015.BDRip.x264.AC3.BGAUDiO-SiSO
+    [D] Civil.War.2024.576p.WEBRip.x265.AC3-TuKCo
+    [D] Conclave.2024.576p.WEBRip.x265.AC3-TuKCo
+    [D] Darkland.The.Return.2023.WEBRip.x264.AAC-TuKCo
+    [D] Elvis.2022.BDRip.x265.AC3.BGAUDiO-SiSO
+      [F] Careful.What.You.Wish.For.2015.BDRip.x264.AC3.BGAUDiO-SiSO.mkv
+      [F] Careful.What.You.Wish.For.2015.BDRip.x264.AC3.BGAUDiO-SiSO.nfo
+      [F] sample.mkv
+      [F] - README - subs.sab.bz - Brought to you by  xen.headoff.com -.html
+      [F] civil.war.2024.1080p.amzn.web-dl.ddp5.1.atmos.h.264-flux-hi(subsunacs.net).rar
+      [F] Civil.War.2024.576p.WEBRip.x265.AC3-TuKCo.mkv
+      [F] Civil.War.2024.576p.WEBRip.x265.AC3-TuKCo.nfo
+      [F] Civil.War.2024.576p.WEBRip.x265.AC3-TuKCo.srt
+      [F] Civil.War.2024.WEB.h264_RAW.(subs.sab.bz).ZIP
+      [F] Sample.mkv
+
+=== 02_ structure sample ===
+    [D] 211.2018.576p.BDRip.x265.AC3-TuKCo
+    [D] A.Man.of.Reason.2022.576p.BDRip.x265.AC3-TuKCo
+    [D] Daddio.2024.576p.WEBRip.x265.AC3-TuKCo
+    [D] Hunt.2022.576p.BDRip.x265.AC3-TuKCo
+    [D] Kill.2024.576p.WEBRip.x265.AC3-TuKCo
+    [D] Le.Consentement.2023.576p.WEBRip.x265.AC3-TuKCo
+    [D] Lighting.Up.The.Stars
+    [D] Race.to.Freedom.Um.Bok.Dong.2019.1080p.NF.WEB-DL.DDP5.1.x264-Imagine
+    [D] Spaceman.2024.576p.WEBRip.x265.AC3-TuKCo
+    [D] subtitle2
+    [D] subtitle_1
+    [D] The.Goldfinger.2023.576p.BDRip.x265.AC3-TuKCo
+    [D] The.Roundup.Punishment
+      [F] 211.2018.1080p.BluRay.x264-[YTS.AM].srt
+      [F] 211.2018.1080p.ROKU.WEB-DL.HE-AAC.H.264-PiRaTeS[TGx].srt
+
+=== Tatko and Download folders ===
+  Tatko: 0 items total
+  Download: 0 items total
+
+=== Folders with multiple video files (potential issue: which one is THE movie?) ===
+  Total folders with >1 video: 141
+  00 Yanko\Acide.2023.576p.BDRip.x265.AC3-TuKCo  (2 videos)
+    - Acide.2023.576p.BDRip.x265.AC3-TuKCo.mkv (975,56 MB)
+    - Sample.mkv (7,82 MB)
+  00 Yanko\American.Star.2024.576p.WEBRip.x265.AC3-TuKCo  (2 videos)
+    - American.Star.2024.576p.WEBRip.x265.AC3-TuKCo.mkv (1045,47 MB)
+    - Sample.mkv (7,96 MB)
+  00 Yanko\Babygirl.2024.576p.BDRip.x265.DD5.1-TuKCo  (2 videos)
+    - Babygirl.2024.576p.BDRip.x265.DD5.1-TuKCo.mkv (1118,74 MB)
+    - Sample.mkv (8,46 MB)
+  00 Yanko\Beckman.2020.576p.BDRip.x265.AC3-TuKCo  (2 videos)
+    - Beckman.2020.576p.BDRip.x265.AC3-TuKCo.mkv (956,89 MB)
+    - Sample.mkv (6,81 MB)
+  00 Yanko\Blazheniyat.2020.HDTV.x264.AC3-SiSO  (2 videos)
+    - Blazheniyat.2020.HDTV.x264.AC3-SiSO.mkv (1009,83 MB)
+    - sample.mkv (4,23 MB)
+  00 Yanko\Challengers.2024.576p.WEBRip.x265.AC3-TuKCo  (2 videos)
+    - Challengers.2024.576p.WEBRip.x265.AC3-TuKCo.mkv (1301,3 MB)
+    - Sample.mkv (8,59 MB)
+  00 Yanko\Crimes.of.the.Future.2022.576p.BDRip.x265.AC3-TuKCo  (2 videos)
+    - Crimes.of.the.Future.2022.576p.BDRip.x265.AC3-TuKCo.mkv (1072,43 MB)
+    - Sample.mkv (6,21 MB)
+  00 Yanko\Dark.Figure.of.Crime.2018.576p.BDRip.x265.AC3-TuKCo  (2 videos)
+    - Dark.Figure.of.Crime.2018.576p.BDRip.x265.AC3-TuKCo.mkv (1087,41 MB)
+    - Sample.mkv (7,01 MB)
+  00 Yanko\Die.Glasblaserin.2016.BRRip.x264.AC3.BGAUDiO-SiSO  (2 videos)
+    - Die.Glasblaserin.2016.BRRip.x264.AC3.BGAUDiO-SiSO.mkv (883,28 MB)
+    - sample.mkv (12,12 MB)
+  00 Yanko\Endings.Beginnings.2020.HDRip.x264.AC3-EVO  (2 videos)
+    - Endings.Beginnings.2020.HDRip.x264.AC3-EVO.mkv (1369,82 MB)
+    - Sample.mkv (11,64 MB)
