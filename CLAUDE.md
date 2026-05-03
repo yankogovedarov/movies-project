@@ -87,3 +87,39 @@ movie-tracker/
 - При промени в [docs/Проект филми.md](docs/Проект%20филми.md), [docs/Архитектура.md](docs/Архитектура.md) или [docs/Гранични случаи.md](docs/Гранични%20случаи.md) — обнови и [README.md](README.md) в същия commit.
 - Не дублирай решения между файловете. Ако трябва да се направи промяна, прави я **на едно място** и реферирай.
 - При нови решения — добавяй обосновки в "Лог на решенията" в [docs/Архитектура.md](docs/Архитектура.md).
+
+## Environment & Tooling
+
+### Shell & Build
+- **Windows platform**: Always use PowerShell for all shell commands (`command` in Bash tool), NEVER Bash. Go commands, git operations, and task runners all run via PowerShell.
+- **Go dependency management**: Before any `go` command (test, build, run), check `go.mod` for recent dependency changes and run `go mod tidy` if needed to keep `go.sum` in sync.
+
+### Source Control & Files
+
+**Dangerous files (pre-commit check):**
+- Any file matching `*.csv`, `*.parquet`, or larger than 10 MB must be added to `.gitignore` **before staging**. Never stage large data files or binary dumps.
+- Verify `.gitignore` is updated before running `git add` or pushing.
+
+**Commit discipline:**
+- Always use conventional commit format: `docs:`, `feat:`, `test:`, `chore:`, `fix:` prefixes
+- Group logically related changes into a single commit (don't scatter one feature across multiple commits)
+- Write clear, present-tense commit messages in Bulgarian for this project
+- Example: `feat: добавяне на media list HTML рендиране` or `test: TDD tests за IndexHandler`
+
+### Iteration Workflow
+- **Plan first**: Write plan document locally in `docs/Итерации/Итерация NN - <name>.md` **before** starting implementation
+- **TDD-strict**: Failing tests first (red), then minimal implementation (green), then refactor if needed
+- **One atomic commit per iteration**: Commit plan document + all implementation files together after verification
+- Never push intermediate states or partial work — each commit should be a complete, working vertical slice
+
+## Git Janitor Agent
+
+Invoke with `/git-janitor` to automatically:
+1. Run `git status` to see all unstaged/untracked changes
+2. Stage files by conventional commit type (docs, feat, test, chore, fix)
+3. Verify no dangerous files (*.csv, *.parquet, >10MB) are being staged
+4. Generate conventional commit messages grouped by type
+5. Commit and push to current branch
+6. Report push status and confirm success
+
+The janitor runs **without user confirmation** for the staging/commit/push cycle — it only asks for help if merge conflicts arise or dangerous files are detected.
