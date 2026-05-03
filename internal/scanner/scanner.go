@@ -14,9 +14,13 @@ type VideoFile struct {
 	FolderRelativePath  string
 }
 
-func Scan(root string) ([]VideoFile, error) {
+func Scan(root string, excludeDirs []string) ([]VideoFile, error) {
 	var files []VideoFile
 	videoExts := map[string]bool{".mkv": true, ".avi": true, ".mp4": true}
+	excludeMap := make(map[string]bool)
+	for _, dir := range excludeDirs {
+		excludeMap[dir] = true
+	}
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -28,6 +32,9 @@ func Scan(root string) ([]VideoFile, error) {
 			return err
 		}
 		if d.IsDir() {
+			if excludeMap[d.Name()] {
+				return fs.SkipDir
+			}
 			return nil
 		}
 

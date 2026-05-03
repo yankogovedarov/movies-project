@@ -18,7 +18,22 @@ func main() {
 	log.Printf("AppFolder: %s", paths.AppFolder)
 	log.Printf("DiskRoot:  %s", paths.DiskRoot)
 
-	files, err := scanner.Scan(paths.DiskRoot)
+	excludedDirs := []string{
+		"$RECYCLE.BIN",
+		"System Volume Information",
+		"found.000",
+		"Books",
+		"Download",
+		"Games",
+		"Install",
+		"LizaWork",
+		"Music",
+		"Sub",
+		"Tatko",
+		"Temp",
+		"zzz",
+	}
+	files, err := scanner.Scan(paths.DiskRoot, excludedDirs)
 	if err != nil {
 		log.Fatalf("disk scan failed: %v", err)
 	}

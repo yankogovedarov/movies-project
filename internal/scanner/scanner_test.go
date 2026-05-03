@@ -20,7 +20,7 @@ func TestScan(t *testing.T) {
 	os.WriteFile(filepath.Join(moviesDir, "film.avi"), []byte("fake avi"), 0644)
 	os.WriteFile(filepath.Join(root, "other.txt"), []byte("not video"), 0644)
 
-	files, err := scanner.Scan(root)
+	files, err := scanner.Scan(root, []string{})
 	assert.NoError(t, err)
 	assert.Len(t, files, 2)
 
@@ -31,4 +31,16 @@ func TestScan(t *testing.T) {
 	assert.True(t, filenames["film.mkv"])
 	assert.True(t, filenames["film.avi"])
 	assert.False(t, filenames["other.txt"])
+}
+
+func TestScan_ExcludesFolder(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "Games"), 0755)
+	os.WriteFile(filepath.Join(root, "Games", "game.mkv"), []byte("fake"), 0644)
+	os.WriteFile(filepath.Join(root, "movie.mkv"), []byte("fake"), 0644)
+
+	files, err := scanner.Scan(root, []string{"Games"})
+	assert.NoError(t, err)
+	assert.Len(t, files, 1)
+	assert.Equal(t, "movie.mkv", files[0].Filename)
 }
