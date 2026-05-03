@@ -17,8 +17,8 @@ func openTestDB(t *testing.T) *sql.DB {
 	tmpDir := t.TempDir()
 	d, err := db.Open(filepath.Join(tmpDir, "test.db"))
 	require.NoError(t, err)
-	t.Cleanup(func() { d.Close() })
 	require.NoError(t, db.Migrate(d))
+	t.Cleanup(func() { d.Close() })
 	return d
 }
 
