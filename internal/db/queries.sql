@@ -11,3 +11,9 @@ UPDATE media SET on_disk = 0;
 
 -- name: CountOnDisk :one
 SELECT COUNT(*) FROM media WHERE on_disk = 1;
+
+-- name: ListOnDiskMedia :many
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+FROM media
+WHERE on_disk = 1
+ORDER BY folder_relative_path, filename;

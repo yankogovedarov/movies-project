@@ -13,6 +13,7 @@ tasks:
   generate:
     desc: Generate templ and sqlc code
     cmds:
+      - templ generate
       - sqlc generate
 
   lint:

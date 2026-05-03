@@ -1,0 +1,51 @@
+package templates
+
+import "github.com/yankogovedarov/movie-tracker/internal/db"
+
+templ ListPage(media []db.Medium) {
+	<!DOCTYPE html>
+	<html lang="bg">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>Movie Tracker</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<style>
+				.status-new { color: var(--pico-muted-color); }
+				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
+				.status-completed { color: var(--pico-color-green-500, #22c55e); }
+			</style>
+		</head>
+		<body>
+			<main class="container">
+				<h1>Movie Tracker</h1>
+				if len(media) == 0 {
+					<p>Няма намерени медии на диска.</p>
+				} else {
+					<figure>
+						<table>
+							<thead>
+								<tr>
+									<th>Файл</th>
+									<th>Папка</th>
+									<th>Размер</th>
+									<th>Статус</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, m := range media {
+									<tr>
+										<td>{ m.Filename }</td>
+										<td>{ m.FolderRelativePath }</td>
+										<td>{ formatSize(m.FileSizeBytes) }</td>
+										<td><span class={ "status-" + statusClass(m.CurrentStatus) }>{ m.CurrentStatus }</span></td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</figure>
+				}
+			</main>
+		</body>
+	</html>
+}

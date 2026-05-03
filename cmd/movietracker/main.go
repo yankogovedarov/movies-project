@@ -58,6 +58,6 @@ func main() {
 	log.Printf("Synced %d video files to database", len(files))
 
 	r := gin.Default()
-	r.GET("/", web.IndexHandler)
+	r.GET("/", web.IndexHandler(d))
 	r.Run(":8080")
 }

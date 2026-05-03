@@ -20,6 +20,44 @@ func (q *Queries) CountOnDisk(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const listOnDiskMedia = `-- name: ListOnDiskMedia :many
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+FROM media
+WHERE on_disk = 1
+ORDER BY folder_relative_path, filename
+`
+
+func (q *Queries) ListOnDiskMedia(ctx context.Context) ([]Medium, error) {
+	rows, err := q.db.QueryContext(ctx, listOnDiskMedia)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Medium
+	for rows.Next() {
+		var i Medium
+		if err := rows.Scan(
+			&i.ID,
+			&i.Filename,
+			&i.FolderRelativePath,
+			&i.FileSizeBytes,
+			&i.CurrentStatus,
+			&i.OnDisk,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAllOffDisk = `-- name: MarkAllOffDisk :exec
 UPDATE media SET on_disk = 0
 `
