@@ -1,0 +1,42 @@
+version: '3'
+
+tasks:
+  install:
+    desc: Install dev tools
+    cmds:
+      - go install github.com/a-h/templ/cmd/templ@latest
+      - go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+      - go install github.com/air-verse/air@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install github.com/evilmartians/lefthook@latest
+
+  generate:
+    desc: Generate templ and sqlc code
+    cmds:
+      - echo "generate placeholder (no templ/sqlc yet)"
+
+  lint:
+    desc: Run gofmt and golangci-lint
+    cmds:
+      - gofmt -l .
+      - golangci-lint run
+
+  test:
+    desc: Run Go tests
+    cmds:
+      - go test ./...
+
+  build:
+    desc: Build static executable
+    cmds:
+      - go build -o movietracker.exe ./cmd/movietracker
+
+  run:
+    desc: Start with hot reload (air)
+    cmds:
+      - air
+
+  migrate-new:
+    desc: Create a new migration file
+    cmds:
+      - migrate create -ext sql -dir migrations -seq {{.CLI_ARGS}}

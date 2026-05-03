@@ -1,1 +1,5 @@
 disk_scan.csv
+*.exe
+tmp/
+*.db
+
