@@ -52,6 +52,11 @@ func main() {
 	}
 	log.Printf("Found %d video files", len(files))
 
+	if err := db.SyncScanResults(d, files); err != nil {
+		log.Fatalf("sync scan results failed: %v", err)
+	}
+	log.Printf("Synced %d video files to database", len(files))
+
 	r := gin.Default()
 	r.GET("/", web.IndexHandler)
 	r.Run(":8080")

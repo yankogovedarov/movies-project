@@ -13,7 +13,7 @@ tasks:
   generate:
     desc: Generate templ and sqlc code
     cmds:
-      - echo "generate placeholder (no templ/sqlc yet)"
+      - sqlc generate
 
   lint:
     desc: Run gofmt and golangci-lint
