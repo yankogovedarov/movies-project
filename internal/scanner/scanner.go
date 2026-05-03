@@ -59,5 +59,5 @@ func Scan(root string) ([]VideoFile, error) {
 		return nil
 	})
 
-	return files, err
+	return FilterSamples(files), err
 }
