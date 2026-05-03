@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yankogovedarov/movie-tracker/internal/config"
 	"github.com/yankogovedarov/movie-tracker/internal/db"
 	"github.com/yankogovedarov/movie-tracker/internal/disk"
 	"github.com/yankogovedarov/movie-tracker/internal/scanner"
+	"github.com/yankogovedarov/movie-tracker/internal/vlc"
 	"github.com/yankogovedarov/movie-tracker/internal/web"
 )
 
@@ -19,6 +21,17 @@ func main() {
 	}
 	log.Printf("AppFolder: %s", paths.AppFolder)
 	log.Printf("DiskRoot:  %s", paths.DiskRoot)
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config load failed: %v", err)
+	}
+	vlcPath, err := vlc.DetectDefault(cfg.VLCPath)
+	if err != nil {
+		log.Printf("warning: %v", err)
+	} else {
+		log.Printf("VLC found: %s", vlcPath)
+	}
 
 	dbPath := filepath.Join(paths.AppFolder, "movietracker.db")
 	d, err := db.Open(dbPath)
