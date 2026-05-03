@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS tree_state;
+DROP TABLE IF EXISTS status_changes;
+DROP TABLE IF EXISTS start_events;
+DROP TABLE IF EXISTS media;
