@@ -1,5 +1,14 @@
-disk_scan.csv
+# Build artifacts
 *.exe
 tmp/
+
+# Database
 *.db
+
+# Claude Code local config
+.claude/
+
+# DataScan tool output
+disk_scan.csv
+
 
