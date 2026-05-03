@@ -17,3 +17,16 @@ SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_d
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename;
+
+-- name: GetMediaByID :one
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+FROM media WHERE id = ?;
+
+-- name: InsertStartEvent :exec
+INSERT INTO start_events (media_id) VALUES (?);
+
+-- name: UpdateMediaStatus :exec
+UPDATE media SET current_status = ? WHERE id = ?;
+
+-- name: InsertStatusChange :exec
+INSERT INTO status_changes (media_id, from_status, to_status) VALUES (?, ?, ?);

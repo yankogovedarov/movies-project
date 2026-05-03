@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const countOnDisk = `-- name: CountOnDisk :one
@@ -18,6 +19,50 @@ func (q *Queries) CountOnDisk(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const getMediaByID = `-- name: GetMediaByID :one
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+FROM media WHERE id = ?
+`
+
+func (q *Queries) GetMediaByID(ctx context.Context, id int64) (Medium, error) {
+	row := q.db.QueryRowContext(ctx, getMediaByID, id)
+	var i Medium
+	err := row.Scan(
+		&i.ID,
+		&i.Filename,
+		&i.FolderRelativePath,
+		&i.FileSizeBytes,
+		&i.CurrentStatus,
+		&i.OnDisk,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertStartEvent = `-- name: InsertStartEvent :exec
+INSERT INTO start_events (media_id) VALUES (?)
+`
+
+func (q *Queries) InsertStartEvent(ctx context.Context, mediaID int64) error {
+	_, err := q.db.ExecContext(ctx, insertStartEvent, mediaID)
+	return err
+}
+
+const insertStatusChange = `-- name: InsertStatusChange :exec
+INSERT INTO status_changes (media_id, from_status, to_status) VALUES (?, ?, ?)
+`
+
+type InsertStatusChangeParams struct {
+	MediaID    int64
+	FromStatus sql.NullString
+	ToStatus   string
+}
+
+func (q *Queries) InsertStatusChange(ctx context.Context, arg InsertStatusChangeParams) error {
+	_, err := q.db.ExecContext(ctx, insertStatusChange, arg.MediaID, arg.FromStatus, arg.ToStatus)
+	return err
 }
 
 const listOnDiskMedia = `-- name: ListOnDiskMedia :many
@@ -64,6 +109,20 @@ UPDATE media SET on_disk = 0
 
 func (q *Queries) MarkAllOffDisk(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, markAllOffDisk)
+	return err
+}
+
+const updateMediaStatus = `-- name: UpdateMediaStatus :exec
+UPDATE media SET current_status = ? WHERE id = ?
+`
+
+type UpdateMediaStatusParams struct {
+	CurrentStatus string
+	ID            int64
+}
+
+func (q *Queries) UpdateMediaStatus(ctx context.Context, arg UpdateMediaStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updateMediaStatus, arg.CurrentStatus, arg.ID)
 	return err
 }
 

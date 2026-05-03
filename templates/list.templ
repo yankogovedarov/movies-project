@@ -1,6 +1,10 @@
 package templates
 
-import "github.com/yankogovedarov/movie-tracker/internal/db"
+import (
+	"strconv"
+
+	"github.com/yankogovedarov/movie-tracker/internal/db"
+)
 
 templ ListPage(media []db.Medium) {
 	<!DOCTYPE html>
@@ -14,6 +18,7 @@ templ ListPage(media []db.Medium) {
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
 				.status-completed { color: var(--pico-color-green-500, #22c55e); }
+				button[type=submit] { padding: 0.25rem 0.75rem; margin: 0; }
 			</style>
 		</head>
 		<body>
@@ -30,6 +35,7 @@ templ ListPage(media []db.Medium) {
 									<th>Папка</th>
 									<th>Размер</th>
 									<th>Статус</th>
+									<th></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -39,6 +45,11 @@ templ ListPage(media []db.Medium) {
 										<td>{ m.FolderRelativePath }</td>
 										<td>{ formatSize(m.FileSizeBytes) }</td>
 										<td><span class={ "status-" + statusClass(m.CurrentStatus) }>{ m.CurrentStatus }</span></td>
+										<td>
+											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }>
+												<button type="submit">Пусни</button>
+											</form>
+										</td>
 									</tr>
 								}
 							</tbody>

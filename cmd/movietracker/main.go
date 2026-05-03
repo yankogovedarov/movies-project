@@ -70,7 +70,9 @@ func main() {
 	}
 	log.Printf("Synced %d video files to database", len(files))
 
+	h := &web.Handlers{DB: d, DiskRoot: paths.DiskRoot, VLCPath: vlcPath}
 	r := gin.Default()
-	r.GET("/", web.IndexHandler(d))
+	r.GET("/", h.Index)
+	r.POST("/media/:id/start", h.StartMedia)
 	r.Run(":8080")
 }
