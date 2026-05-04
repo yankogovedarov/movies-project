@@ -242,3 +242,23 @@ func TestIndex_ShowsStatusDropdown(t *testing.T) {
 	assert.Contains(t, body, `<select name="status"`)
 	assert.Contains(t, body, `value="completed_both"`)
 }
+
+func TestIndex_HasResponsiveTableClasses(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "VeryLongMovieTitle.mkv", FolderRelativePath: "Films/Action", SizeBytes: 2_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, `class="filename"`)
+	assert.Contains(t, body, `class="folder"`)
+	assert.Contains(t, body, `class="size"`)
+	assert.Contains(t, body, `class="status"`)
+	assert.Contains(t, body, `class="actions"`)
+	assert.Contains(t, body, `title="VeryLongMovieTitle.mkv"`)
+	assert.Contains(t, body, `title="Films/Action"`)
+}
