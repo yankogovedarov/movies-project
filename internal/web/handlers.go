@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yankogovedarov/movie-tracker/internal/db"
+	"github.com/yankogovedarov/movie-tracker/internal/scanner"
 	"github.com/yankogovedarov/movie-tracker/templates"
 )
 
@@ -108,6 +109,35 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 			ID:            id,
 		})
 	}
+
+	c.Redirect(http.StatusSeeOther, "/")
+}
+
+func (h *Handlers) Scan(c *gin.Context) {
+	excludedDirs := []string{
+		"$RECYCLE.BIN",
+		"System Volume Information",
+		"found.000",
+		"Books",
+		"Download",
+		"Games",
+		"Install",
+		"LizaWork",
+		"Music",
+		"Sub",
+		"Tatko",
+		"Temp",
+		"zzz",
+	}
+
+	go func() {
+		files, err := scanner.Scan(h.DiskRoot, excludedDirs)
+		if err != nil {
+			_ = err
+			return
+		}
+		_ = db.SyncScanResults(h.DB, files)
+	}()
 
 	c.Redirect(http.StatusSeeOther, "/")
 }

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,7 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r.GET("/", h.Index)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
+	r.POST("/scan", h.Scan)
 	return r
 }
 
@@ -261,4 +263,42 @@ func TestIndex_HasResponsiveTableClasses(t *testing.T) {
 	assert.Contains(t, body, `class="actions"`)
 	assert.Contains(t, body, `title="VeryLongMovieTitle.mkv"`)
 	assert.Contains(t, body, `title="Films/Action"`)
+}
+
+func TestScan_ReturnsRedirect(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/scan", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/", w.Header().Get("Location"))
+}
+
+func TestScan_DoesNotBlockRequest(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/scan", nil)
+
+	start := time.Now()
+	newRouter(t, d).ServeHTTP(w, req)
+	duration := time.Since(start)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Less(t, duration, 100*time.Millisecond, "scan handler should return quickly")
+}
+
+func TestIndex_ShowsScanButton(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, `action="/scan"`)
+	assert.Contains(t, body, "Преканирай")
 }

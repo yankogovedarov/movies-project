@@ -75,5 +75,6 @@ func main() {
 	r.GET("/", h.Index)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
+	r.POST("/scan", h.Scan)
 	r.Run(":8080")
 }
