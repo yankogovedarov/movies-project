@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -34,6 +36,7 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r := gin.New()
 	r.GET("/", h.Index)
 	r.POST("/media/:id/start", h.StartMedia)
+	r.POST("/media/:id/status", h.ChangeStatus)
 	return r
 }
 
@@ -155,4 +158,87 @@ func TestStartMedia_Returns404_ForUnknownID(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestChangeStatus_UpdatesAndRecordsChange(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	body := "status=completed_both"
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), nil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Body = io.NopCloser(strings.NewReader(body))
+
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+
+	updated, err := q.GetMediaByID(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, "completed_both", updated.CurrentStatus)
+
+	var changeCount int
+	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM status_changes WHERE media_id = ?", id).Scan(&changeCount))
+	assert.Equal(t, 1, changeCount)
+}
+
+func TestChangeStatus_Returns404_ForUnknownID(t *testing.T) {
+	d := openTestDB(t)
+	body := "status=completed_both"
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/999999/status", nil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Body = io.NopCloser(strings.NewReader(body))
+
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestChangeStatus_NoOp_WhenSameStatus(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+	currentStatus := media[0].CurrentStatus
+
+	body := fmt.Sprintf("status=%s", currentStatus)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), nil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Body = io.NopCloser(strings.NewReader(body))
+
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+
+	var changeCount int
+	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM status_changes WHERE media_id = ?", id).Scan(&changeCount))
+	assert.Equal(t, 0, changeCount)
+}
+
+func TestIndex_ShowsStatusDropdown(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, `<select name="status"`)
+	assert.Contains(t, body, `value="completed_both"`)
 }

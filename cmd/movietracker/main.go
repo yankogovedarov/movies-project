@@ -74,5 +74,6 @@ func main() {
 	r := gin.Default()
 	r.GET("/", h.Index)
 	r.POST("/media/:id/start", h.StartMedia)
+	r.POST("/media/:id/status", h.ChangeStatus)
 	r.Run(":8080")
 }

@@ -70,3 +70,44 @@ func (h *Handlers) StartMedia(c *gin.Context) {
 
 	c.Redirect(http.StatusSeeOther, "/")
 }
+
+func (h *Handlers) ChangeStatus(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	newStatus := c.PostForm("status")
+	if newStatus == "" {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	ctx := c.Request.Context()
+	q := db.New(h.DB)
+
+	media, err := q.GetMediaByID(ctx, id)
+	if err == sql.ErrNoRows {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		c.String(http.StatusInternalServerError, "db error: %v", err)
+		return
+	}
+
+	if media.CurrentStatus != newStatus {
+		_ = q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
+			MediaID:    id,
+			FromStatus: sql.NullString{String: media.CurrentStatus, Valid: true},
+			ToStatus:   newStatus,
+		})
+		_ = q.UpdateMediaStatus(ctx, db.UpdateMediaStatusParams{
+			CurrentStatus: newStatus,
+			ID:            id,
+		})
+	}
+
+	c.Redirect(http.StatusSeeOther, "/")
+}

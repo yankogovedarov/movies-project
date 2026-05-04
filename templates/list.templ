@@ -19,6 +19,7 @@ templ ListPage(media []db.Medium) {
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
 				.status-completed { color: var(--pico-color-green-500, #22c55e); }
 				button[type=submit] { padding: 0.25rem 0.75rem; margin: 0; }
+				select { margin: 0; padding: 0.25rem; }
 			</style>
 		</head>
 		<body>
@@ -36,6 +37,7 @@ templ ListPage(media []db.Medium) {
 									<th>Размер</th>
 									<th>Статус</th>
 									<th></th>
+									<th></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -48,6 +50,18 @@ templ ListPage(media []db.Medium) {
 										<td>
 											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }>
 												<button type="submit">Пусни</button>
+											</form>
+										</td>
+										<td>
+											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }>
+												<select name="status">
+													<option value="new">Нова</option>
+													<option value="started">Стартирана</option>
+													<option value="completed_both">Завършена (двамата)</option>
+													<option value="completed_yanko">Завършена (Янко)</option>
+													<option value="completed_liza">Завършена (Лиза)</option>
+												</select>
+												<button type="submit">Смени</button>
 											</form>
 										</td>
 									</tr>
