@@ -8,6 +8,16 @@ tmp/
 # Logs
 logs/
 
+# E2E test binary
+movietracker_e2e.exe
+
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+tests/e2e/build/
+tests/e2e/*.egg-info/
+
 # Claude Code local config
 .claude/
 

@@ -37,6 +37,14 @@ tasks:
     cmds:
       - air
 
+  test:e2e:
+    desc: Run E2E browser tests (requires playwright browsers installed)
+    dir: tests/e2e
+    cmds:
+      - pip install . --quiet
+      - playwright install chromium --quiet
+      - pytest --browser chromium -v
+
   migrate-new:
     desc: Create a new migration file
     cmds:
