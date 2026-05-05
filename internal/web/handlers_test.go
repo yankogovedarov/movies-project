@@ -302,3 +302,39 @@ func TestIndex_ShowsScanButton(t *testing.T) {
 	assert.Contains(t, body, `action="/scan"`)
 	assert.Contains(t, body, "Сканирай")
 }
+
+func TestHandlers_WorkWithNilLogger(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	router := newRouter(t, d)
+
+	// Index
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// StartMedia
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil))
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+
+	// ChangeStatus
+	body := fmt.Sprintf("status=completed_both")
+	w = httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+
+	// Scan
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/scan", nil))
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+}

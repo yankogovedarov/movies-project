@@ -1,8 +1,10 @@
 package main
 
 import (
-	"log"
+	"io"
+	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
@@ -12,36 +14,59 @@ import (
 	"github.com/yankogovedarov/movie-tracker/internal/scanner"
 	"github.com/yankogovedarov/movie-tracker/internal/vlc"
 	"github.com/yankogovedarov/movie-tracker/internal/web"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
 	paths, err := disk.Discover(os.Executable)
 	if err != nil {
-		log.Fatalf("disk discovery failed: %v", err)
+		slog.Error("disk discovery failed", "err", err)
+		os.Exit(1)
 	}
-	log.Printf("AppFolder: %s", paths.AppFolder)
-	log.Printf("DiskRoot:  %s", paths.DiskRoot)
+
+	if err := os.MkdirAll(filepath.Join(paths.AppFolder, "logs"), 0755); err != nil {
+		slog.Error("failed to create logs dir", "err", err)
+		os.Exit(1)
+	}
+
+	logFile := &lumberjack.Logger{
+		Filename:   filepath.Join(paths.AppFolder, "logs", "app.log"),
+		MaxSize:    10,
+		MaxBackups: 3,
+		MaxAge:     90,
+		Compress:   true,
+	}
+	logger := slog.New(slog.NewTextHandler(
+		io.MultiWriter(os.Stdout, logFile),
+		&slog.HandlerOptions{Level: slog.LevelInfo},
+	))
+	slog.SetDefault(logger)
+
+	slog.Info("starting", "appFolder", paths.AppFolder, "diskRoot", paths.DiskRoot)
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("config load failed: %v", err)
+		slog.Error("config load failed", "err", err)
+		os.Exit(1)
 	}
 	vlcPath, err := vlc.DetectDefault(cfg.VLCPath)
 	if err != nil {
-		log.Printf("warning: %v", err)
+		slog.Warn("VLC not found", "err", err)
 	} else {
-		log.Printf("VLC found: %s", vlcPath)
+		slog.Info("VLC found", "path", vlcPath)
 	}
 
 	dbPath := filepath.Join(paths.AppFolder, "movietracker.db")
 	d, err := db.Open(dbPath)
 	if err != nil {
-		log.Fatalf("database open failed: %v", err)
+		slog.Error("database open failed", "err", err)
+		os.Exit(1)
 	}
 	defer d.Close()
 
 	if err := db.Migrate(d); err != nil {
-		log.Fatalf("database migrate failed: %v", err)
+		slog.Error("database migrate failed", "err", err)
+		os.Exit(1)
 	}
 
 	excludedDirs := []string{
@@ -61,20 +86,28 @@ func main() {
 	}
 	files, err := scanner.Scan(paths.DiskRoot, excludedDirs)
 	if err != nil {
-		log.Fatalf("disk scan failed: %v", err)
+		slog.Error("disk scan failed", "err", err)
+		os.Exit(1)
 	}
-	log.Printf("Found %d video files", len(files))
+	slog.Info("scan complete", "files", len(files))
 
 	if err := db.SyncScanResults(d, files); err != nil {
-		log.Fatalf("sync scan results failed: %v", err)
+		slog.Error("sync scan results failed", "err", err)
+		os.Exit(1)
 	}
-	log.Printf("Synced %d video files to database", len(files))
+	slog.Info("db synced", "files", len(files))
 
-	h := &web.Handlers{DB: d, DiskRoot: paths.DiskRoot, VLCPath: vlcPath}
+	h := &web.Handlers{DB: d, DiskRoot: paths.DiskRoot, VLCPath: vlcPath, Log: logger}
 	r := gin.Default()
 	r.GET("/", h.Index)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/scan", h.Scan)
+
+	go openBrowser("http://localhost:8080")
 	r.Run(":8080")
+}
+
+func openBrowser(url string) {
+	_ = exec.Command("cmd", "/c", "start", url).Start()
 }

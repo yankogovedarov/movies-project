@@ -2,6 +2,7 @@ package web
 
 import (
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"os/exec"
 	"path/filepath"
@@ -17,12 +18,21 @@ type Handlers struct {
 	DB       *sql.DB
 	DiskRoot string
 	VLCPath  string
+	Log      *slog.Logger
+}
+
+func (h *Handlers) log() *slog.Logger {
+	if h.Log != nil {
+		return h.Log
+	}
+	return slog.Default()
 }
 
 func (h *Handlers) Index(c *gin.Context) {
 	q := db.New(h.DB)
 	media, err := q.ListOnDiskMedia(c.Request.Context())
 	if err != nil {
+		h.log().Error("list media failed", "err", err)
 		c.String(http.StatusInternalServerError, "db error: %v", err)
 		return
 	}
@@ -46,6 +56,7 @@ func (h *Handlers) StartMedia(c *gin.Context) {
 		return
 	}
 	if err != nil {
+		h.log().Error("get media failed", "id", id, "err", err)
 		c.String(http.StatusInternalServerError, "db error: %v", err)
 		return
 	}
@@ -63,6 +74,8 @@ func (h *Handlers) StartMedia(c *gin.Context) {
 			ID:            id,
 		})
 	}
+
+	h.log().Info("start media", "id", id, "file", media.Filename)
 
 	if h.VLCPath != "" {
 		fullPath := filepath.Join(h.DiskRoot, media.FolderRelativePath, media.Filename)
@@ -94,6 +107,7 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 		return
 	}
 	if err != nil {
+		h.log().Error("get media failed", "id", id, "err", err)
 		c.String(http.StatusInternalServerError, "db error: %v", err)
 		return
 	}
@@ -108,6 +122,7 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 			CurrentStatus: newStatus,
 			ID:            id,
 		})
+		h.log().Info("status change", "id", id, "from", media.CurrentStatus, "to", newStatus)
 	}
 
 	c.Redirect(http.StatusSeeOther, "/")
@@ -133,10 +148,14 @@ func (h *Handlers) Scan(c *gin.Context) {
 	go func() {
 		files, err := scanner.Scan(h.DiskRoot, excludedDirs)
 		if err != nil {
-			_ = err
+			h.log().Error("scan failed", "err", err)
 			return
 		}
-		_ = db.SyncScanResults(h.DB, files)
+		if err := db.SyncScanResults(h.DB, files); err != nil {
+			h.log().Error("sync scan results failed", "err", err)
+			return
+		}
+		h.log().Info("scan complete", "files", len(files))
 	}()
 
 	c.Redirect(http.StatusSeeOther, "/")
