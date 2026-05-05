@@ -18,22 +18,41 @@ templ ListPage(media []db.Medium) {
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
 				.status-completed { color: var(--pico-color-green-500, #22c55e); }
-				button[type=submit] { padding: 0.25rem 0.75rem; margin: 0; }
-				select { margin: 0; padding: 0.25rem; }
-				table { width: 100%; table-layout: auto; }
-				td, th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-				td.filename, th.filename { max-width: 250px; white-space: normal; }
-				td.folder, th.folder { display: none; }
-				td.actions { white-space: normal; overflow: visible; }
+				table { width: 100%; table-layout: fixed; }
+				td, th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.4rem 0.5rem; }
+				th.filename, td.filename { width: 32%; }
+				th.folder,   td.folder   { width: 22%; }
+				th.size,     td.size     { width: 8%; }
+				th.status,   td.status   { width: 14%; }
+				th.actions,  td.actions  { width: 24%; white-space: normal; overflow: visible; }
 				form { display: inline; margin: 0; }
-				select { min-width: 150px; }
+				select { margin: 0; padding: 0.2rem 0.3rem; width: calc(100% - 2.5rem); }
+				button.submit-compact { padding: 0.2rem 0.5rem; margin: 0 0 0 0.2rem; }
+				button.filename-link {
+					background: none;
+					border: none;
+					padding: 0;
+					color: var(--pico-primary);
+					cursor: pointer;
+					text-decoration: underline;
+					font: inherit;
+					display: block;
+					width: 100%;
+					text-align: left;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
 				@media (max-width: 1200px) {
-					td.size, th.size { display: none; }
-					td.filename { max-width: 200px; }
+					th.size, td.size { display: none; }
+					th.filename, td.filename { width: 38%; }
+					th.folder,   td.folder   { width: 26%; }
+					th.actions,  td.actions  { width: 22%; }
 				}
 				@media (max-width: 768px) {
-					td.status, th.status { font-size: 0.9rem; }
-					td.filename { max-width: 150px; }
+					th.folder, td.folder { display: none; }
+					th.filename, td.filename { width: 55%; }
+					th.actions,  td.actions  { width: 30%; }
 				}
 			</style>
 		</head>
@@ -54,22 +73,20 @@ templ ListPage(media []db.Medium) {
 									<th class="folder">Папка</th>
 									<th class="size">Размер</th>
 									<th class="status">Статус</th>
-									<th class="actions"></th>
-									<th class="actions"></th>
+									<th class="actions">Смени статус</th>
 								</tr>
 							</thead>
 							<tbody>
 								for _, m := range media {
 									<tr>
-										<td class="filename" title={ m.Filename }>{ m.Filename }</td>
+										<td class="filename" title={ m.Filename }>
+											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }>
+												<button type="submit" class="filename-link">{ m.Filename }</button>
+											</form>
+										</td>
 										<td class="folder" title={ m.FolderRelativePath }>{ m.FolderRelativePath }</td>
 										<td class="size">{ formatSize(m.FileSizeBytes) }</td>
 										<td class="status"><span class={ "status-" + statusClass(m.CurrentStatus) }>{ m.CurrentStatus }</span></td>
-										<td class="actions">
-											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }>
-												<button type="submit">Пусни</button>
-											</form>
-										</td>
 										<td class="actions">
 											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }>
 												<select name="status">
@@ -79,7 +96,7 @@ templ ListPage(media []db.Medium) {
 													<option value="completed_yanko">Завършена (Янко)</option>
 													<option value="completed_liza">Завършена (Лиза)</option>
 												</select>
-												<button type="submit">Смени</button>
+												<button type="submit" class="submit-compact">...</button>
 											</form>
 										</td>
 									</tr>

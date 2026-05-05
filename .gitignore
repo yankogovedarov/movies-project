@@ -5,6 +5,9 @@ tmp/
 # Database
 *.db
 
+# Logs
+logs/
+
 # Claude Code local config
 .claude/
 
