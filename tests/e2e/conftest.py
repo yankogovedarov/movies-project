@@ -23,7 +23,7 @@ def _kill_port_8080():
     time.sleep(0.5)
 
 
-def _wait_for_server(timeout: int = 60) -> bool:
+def _wait_for_server(timeout: int = 10) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -53,9 +53,9 @@ def live_server():
         stderr=subprocess.DEVNULL,
     )
 
-    if not _wait_for_server(timeout=60):
+    if not _wait_for_server(timeout=10):
         proc.kill()
-        raise RuntimeError("Server did not become ready within 60 seconds")
+        raise RuntimeError("Server did not become ready within 10 seconds")
 
     yield BASE_URL
 
