@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yankogovedarov/movie-tracker/internal/db"
 	"github.com/yankogovedarov/movie-tracker/internal/scanner"
+	"github.com/yankogovedarov/movie-tracker/internal/tree"
 	"github.com/yankogovedarov/movie-tracker/templates"
 )
 
@@ -126,6 +127,18 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusSeeOther, "/")
+}
+
+func (h *Handlers) Tree(c *gin.Context) {
+	q := db.New(h.DB)
+	media, err := q.ListOnDiskMedia(c.Request.Context())
+	if err != nil {
+		h.log().Error("list media for tree failed", "err", err)
+		c.String(http.StatusInternalServerError, "db error: %v", err)
+		return
+	}
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	templates.TreePage(tree.Build(media)).Render(c.Request.Context(), c.Writer)
 }
 
 func (h *Handlers) Scan(c *gin.Context) {

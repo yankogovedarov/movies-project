@@ -35,7 +35,7 @@ func ListPage(media []db.Medium) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><style>\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\t.status-completed { color: var(--pico-color-green-500, #22c55e); }\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\n\t\t\t\ttd, th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.4rem 0.5rem; }\n\t\t\t\tth.filename, td.filename { width: 32%; }\n\t\t\t\tth.folder,   td.folder   { width: 22%; }\n\t\t\t\tth.size,     td.size     { width: 8%; }\n\t\t\t\tth.status,   td.status   { width: 14%; }\n\t\t\t\tth.actions,  td.actions  { width: 24%; white-space: normal; overflow: visible; }\n\t\t\t\tform { display: inline; margin: 0; }\n\t\t\t\tselect { margin: 0; padding: 0.2rem 0.3rem; width: calc(100% - 2.5rem); }\n\t\t\t\tbutton.submit-compact { padding: 0.2rem 0.5rem; margin: 0 0 0 0.2rem; }\n\t\t\t\tbutton.filename-link {\n\t\t\t\t\tbackground: none;\n\t\t\t\t\tborder: none;\n\t\t\t\t\tpadding: 0;\n\t\t\t\t\tcolor: var(--pico-primary);\n\t\t\t\t\tcursor: pointer;\n\t\t\t\t\ttext-decoration: underline;\n\t\t\t\t\tfont: inherit;\n\t\t\t\t\tdisplay: block;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t\ttext-align: left;\n\t\t\t\t\toverflow: hidden;\n\t\t\t\t\ttext-overflow: ellipsis;\n\t\t\t\t\twhite-space: nowrap;\n\t\t\t\t}\n\t\t\t\t@media (max-width: 1200px) {\n\t\t\t\t\tth.size, td.size { display: none; }\n\t\t\t\t\tth.filename, td.filename { width: 38%; }\n\t\t\t\t\tth.folder,   td.folder   { width: 26%; }\n\t\t\t\t\tth.actions,  td.actions  { width: 22%; }\n\t\t\t\t}\n\t\t\t\t@media (max-width: 768px) {\n\t\t\t\t\tth.folder, td.folder { display: none; }\n\t\t\t\t\tth.filename, td.filename { width: 55%; }\n\t\t\t\t\tth.actions,  td.actions  { width: 30%; }\n\t\t\t\t}\n\t\t\t</style></head><body><main class=\"container\"><h1>Movie Tracker</h1><form method=\"POST\" action=\"/scan\" style=\"margin-bottom: 1rem;\"><button type=\"submit\">Сканирай</button></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><style>\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\t.status-completed { color: var(--pico-color-green-500, #22c55e); }\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\n\t\t\t\ttd, th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.4rem 0.5rem; }\n\t\t\t\tth.filename, td.filename { width: 32%; }\n\t\t\t\tth.folder,   td.folder   { width: 22%; }\n\t\t\t\tth.size,     td.size     { width: 8%; }\n\t\t\t\tth.status,   td.status   { width: 14%; }\n\t\t\t\tth.actions,  td.actions  { width: 24%; white-space: normal; overflow: visible; }\n\t\t\t\tform { display: inline; margin: 0; }\n\t\t\t\tselect { margin: 0; padding: 0.2rem 0.3rem; width: calc(100% - 2.5rem); }\n\t\t\t\tbutton.submit-compact { padding: 0.2rem 0.5rem; margin: 0 0 0 0.2rem; }\n\t\t\t\tbutton.filename-link {\n\t\t\t\t\tbackground: none;\n\t\t\t\t\tborder: none;\n\t\t\t\t\tpadding: 0;\n\t\t\t\t\tcolor: var(--pico-primary);\n\t\t\t\t\tcursor: pointer;\n\t\t\t\t\ttext-decoration: underline;\n\t\t\t\t\tfont: inherit;\n\t\t\t\t\tdisplay: block;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t\ttext-align: left;\n\t\t\t\t\toverflow: hidden;\n\t\t\t\t\ttext-overflow: ellipsis;\n\t\t\t\t\twhite-space: nowrap;\n\t\t\t\t}\n\t\t\t\t@media (max-width: 1200px) {\n\t\t\t\t\tth.size, td.size { display: none; }\n\t\t\t\t\tth.filename, td.filename { width: 38%; }\n\t\t\t\t\tth.folder,   td.folder   { width: 26%; }\n\t\t\t\t\tth.actions,  td.actions  { width: 22%; }\n\t\t\t\t}\n\t\t\t\t@media (max-width: 768px) {\n\t\t\t\t\tth.folder, td.folder { display: none; }\n\t\t\t\t\tth.filename, td.filename { width: 55%; }\n\t\t\t\t\tth.actions,  td.actions  { width: 30%; }\n\t\t\t\t}\n\t\t\t</style></head><body><main class=\"container\"><h1>Movie Tracker</h1><nav style=\"margin-bottom: 1rem;\"><strong>Списък</strong> <a href=\"/tree\" style=\"margin-left: 1rem;\">Дърво</a></nav><form method=\"POST\" action=\"/scan\" style=\"margin-bottom: 1rem;\"><button type=\"submit\">Сканирай</button></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -57,7 +57,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(m.Filename)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 82, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 86, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -70,7 +70,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var3 templ.SafeURL
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 83, Col: 105}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 87, Col: 105}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -83,7 +83,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(m.Filename)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 84, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 88, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -96,7 +96,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(m.FolderRelativePath)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 87, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 91, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -109,7 +109,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(m.FolderRelativePath)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 87, Col: 82}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 91, Col: 82}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -122,7 +122,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(formatSize(m.FileSizeBytes))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 88, Col: 56}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 92, Col: 56}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -157,7 +157,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(m.CurrentStatus)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 89, Col: 103}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 93, Col: 103}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -170,7 +170,7 @@ func ListPage(media []db.Medium) templ.Component {
 				var templ_7745c5c3_Var11 templ.SafeURL
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 91, Col: 106}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 95, Col: 106}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {

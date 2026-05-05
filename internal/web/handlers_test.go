@@ -36,6 +36,7 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	h := &web.Handlers{DB: d, DiskRoot: t.TempDir(), VLCPath: ""}
 	r := gin.New()
 	r.GET("/", h.Index)
+	r.GET("/tree", h.Tree)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/scan", h.Scan)
@@ -337,4 +338,30 @@ func TestHandlers_WorkWithNilLogger(t *testing.T) {
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/scan", nil))
 	assert.Equal(t, http.StatusSeeOther, w.Code)
+}
+
+func TestTreeHandler_ReturnsHTML(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/tree", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+}
+
+func TestTreeHandler_ShowsFolderNames(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "A.mkv", FolderRelativePath: "Action", SizeBytes: 1_000_000_000},
+		{Filename: "B.mkv", FolderRelativePath: "Drama", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/tree", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Action")
+	assert.Contains(t, body, "Drama")
 }

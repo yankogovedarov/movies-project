@@ -59,6 +59,10 @@ templ ListPage(media []db.Medium) {
 		<body>
 			<main class="container">
 				<h1>Movie Tracker</h1>
+				<nav style="margin-bottom: 1rem;">
+					<strong>Списък</strong>
+					<a href="/tree" style="margin-left: 1rem;">Дърво</a>
+				</nav>
 				<form method="POST" action="/scan" style="margin-bottom: 1rem;">
 					<button type="submit">Сканирай</button>
 				</form>

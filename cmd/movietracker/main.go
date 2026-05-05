@@ -100,6 +100,7 @@ func main() {
 	h := &web.Handlers{DB: d, DiskRoot: paths.DiskRoot, VLCPath: vlcPath, Log: logger}
 	r := gin.Default()
 	r.GET("/", h.Index)
+	r.GET("/tree", h.Tree)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/scan", h.Scan)
