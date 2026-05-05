@@ -41,7 +41,7 @@ templ ListPage(media []db.Medium) {
 			<main class="container">
 				<h1>Movie Tracker</h1>
 				<form method="POST" action="/scan" style="margin-bottom: 1rem;">
-					<button type="submit">Преканирай</button>
+					<button type="submit">Сканирай</button>
 				</form>
 				if len(media) == 0 {
 					<p>Няма намерени медии на диска.</p>

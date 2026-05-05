@@ -300,5 +300,5 @@ func TestIndex_ShowsScanButton(t *testing.T) {
 
 	body := w.Body.String()
 	assert.Contains(t, body, `action="/scan"`)
-	assert.Contains(t, body, "Преканирай")
+	assert.Contains(t, body, "Сканирай")
 }
