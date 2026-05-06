@@ -84,9 +84,7 @@ templ ListPage(media []db.Medium) {
 								for _, m := range media {
 									<tr>
 										<td class="filename" title={ m.Filename }>
-											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }>
-												<button type="submit" class="filename-link">{ m.Filename }</button>
-											</form>
+											<a href={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10)) } class="filename-link">{ m.Filename }</a>
 										</td>
 										<td class="folder" title={ m.FolderRelativePath }>{ m.FolderRelativePath }</td>
 										<td class="size">{ formatSize(m.FileSizeBytes) }</td>

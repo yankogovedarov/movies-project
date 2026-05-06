@@ -129,6 +129,25 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/")
 }
 
+func (h *Handlers) MediaDetail(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	ctx := c.Request.Context()
+	q := db.New(h.DB)
+	medium, err := q.GetMediaByID(ctx, id)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	starts, _ := q.GetStartEvents(ctx, id)
+	changes, _ := q.GetStatusChanges(ctx, id)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	templates.DetailPage(medium, starts, changes).Render(ctx, c.Writer)
+}
+
 func (h *Handlers) Tree(c *gin.Context) {
 	q := db.New(h.DB)
 	media, err := q.ListOnDiskMedia(c.Request.Context())

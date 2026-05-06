@@ -37,6 +37,7 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r := gin.New()
 	r.GET("/", h.Index)
 	r.GET("/tree", h.Tree)
+	r.GET("/media/:id", h.MediaDetail)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/scan", h.Scan)
@@ -85,7 +86,7 @@ func TestIndexHandler_EmptyDB_ShowsNoMediaMessage(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Няма намерени медии")
 }
 
-func TestIndex_ShowsStartButton(t *testing.T) {
+func TestIndex_ShowsFilenameLink(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -95,7 +96,7 @@ func TestIndex_ShowsStartButton(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
-	assert.Contains(t, w.Body.String(), "/start")
+	assert.Contains(t, w.Body.String(), "/media/")
 }
 
 func TestStartMedia_RecordsEventAndSetsStarted(t *testing.T) {
@@ -338,6 +339,50 @@ func TestHandlers_WorkWithNilLogger(t *testing.T) {
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/scan", nil))
 	assert.Equal(t, http.StatusSeeOther, w.Code)
+}
+
+func TestMediaDetail_Returns200(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Inception.mkv", FolderRelativePath: "SciFi", SizeBytes: 1_500_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d", id), nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+}
+
+func TestMediaDetail_NotFound(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/media/999999", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestMediaDetail_ShowsFilename(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Dune.Part.Two.mkv", FolderRelativePath: "SciFi", SizeBytes: 2_400_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d", id), nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Contains(t, w.Body.String(), "Dune.Part.Two.mkv")
 }
 
 func TestTreeHandler_ReturnsHTML(t *testing.T) {

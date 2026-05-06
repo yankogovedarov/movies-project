@@ -41,6 +41,72 @@ func (q *Queries) GetMediaByID(ctx context.Context, id int64) (Medium, error) {
 	return i, err
 }
 
+const getStartEvents = `-- name: GetStartEvents :many
+SELECT id, media_id, started_at
+FROM start_events
+WHERE media_id = ?
+ORDER BY started_at DESC
+`
+
+func (q *Queries) GetStartEvents(ctx context.Context, mediaID int64) ([]StartEvent, error) {
+	rows, err := q.db.QueryContext(ctx, getStartEvents, mediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StartEvent
+	for rows.Next() {
+		var i StartEvent
+		if err := rows.Scan(&i.ID, &i.MediaID, &i.StartedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getStatusChanges = `-- name: GetStatusChanges :many
+SELECT id, media_id, from_status, to_status, changed_at
+FROM status_changes
+WHERE media_id = ?
+ORDER BY changed_at DESC
+`
+
+func (q *Queries) GetStatusChanges(ctx context.Context, mediaID int64) ([]StatusChange, error) {
+	rows, err := q.db.QueryContext(ctx, getStatusChanges, mediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StatusChange
+	for rows.Next() {
+		var i StatusChange
+		if err := rows.Scan(
+			&i.ID,
+			&i.MediaID,
+			&i.FromStatus,
+			&i.ToStatus,
+			&i.ChangedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertStartEvent = `-- name: InsertStartEvent :exec
 INSERT INTO start_events (media_id) VALUES (?)
 `

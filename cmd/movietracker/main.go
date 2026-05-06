@@ -101,6 +101,7 @@ func main() {
 	r := gin.Default()
 	r.GET("/", h.Index)
 	r.GET("/tree", h.Tree)
+	r.GET("/media/:id", h.MediaDetail)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/scan", h.Scan)

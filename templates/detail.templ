@@ -1,0 +1,113 @@
+package templates
+
+import (
+	"strconv"
+
+	"github.com/yankogovedarov/movie-tracker/internal/db"
+)
+
+templ DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusChange) {
+	<!DOCTYPE html>
+	<html lang="bg">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ medium.Filename } — Movie Tracker</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<style>
+				.status-new { color: var(--pico-muted-color); }
+				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
+				.status-completed { color: var(--pico-color-green-500, #22c55e); }
+				.badge-offline { color: var(--pico-del-color, #e53e3e); font-weight: bold; }
+				form { display: inline; margin: 0; }
+				select { margin: 0 0.3rem 0 0; padding: 0.2rem 0.3rem; }
+				.actions-row { margin: 1rem 0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+			</style>
+		</head>
+		<body>
+			<main class="container">
+				<nav style="margin-bottom: 1rem;">
+					<a href="/">Списък</a>
+					<span style="margin: 0 0.5rem;">|</span>
+					<a href="/tree">Дърво</a>
+				</nav>
+				<h1>{ medium.Filename }</h1>
+				<table style="width: auto;">
+					<tbody>
+						<tr>
+							<th>Папка</th>
+							<td>{ medium.FolderRelativePath }</td>
+						</tr>
+						<tr>
+							<th>Размер</th>
+							<td>{ formatSize(medium.FileSizeBytes) }</td>
+						</tr>
+						<tr>
+							<th>Статус</th>
+							<td><span class={ "status-" + statusClass(medium.CurrentStatus) }>{ medium.CurrentStatus }</span></td>
+						</tr>
+						if medium.OnDisk == 0 {
+							<tr>
+								<th>Наличност</th>
+								<td class="badge-offline">Не е на диска</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+				<div class="actions-row">
+					<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(medium.ID, 10) + "/start") }>
+						<button type="submit" if medium.OnDisk == 0 { disabled }>Стартирай</button>
+					</form>
+					<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(medium.ID, 10) + "/status") }>
+						<select name="status" if medium.OnDisk == 0 { disabled }>
+							<option value="new">Нова</option>
+							<option value="started">Стартирана</option>
+							<option value="completed_both">Завършена (двамата)</option>
+							<option value="completed_yanko">Завършена (Янко)</option>
+							<option value="completed_liza">Завършена (Лиза)</option>
+						</select>
+						<button type="submit" if medium.OnDisk == 0 { disabled }>Смени</button>
+					</form>
+				</div>
+				<h2>История на стартиранията</h2>
+				if len(starts) == 0 {
+					<p>Няма стартирания.</p>
+				} else {
+					<figure>
+						<table>
+							<thead>
+								<tr><th>Дата/час</th></tr>
+							</thead>
+							<tbody>
+								for _, s := range starts {
+									<tr><td>{ s.StartedAt.Format("2006-01-02 15:04:05") }</td></tr>
+								}
+							</tbody>
+						</table>
+					</figure>
+				}
+				<h2>История на статусите</h2>
+				if len(changes) == 0 {
+					<p>Няма промени.</p>
+				} else {
+					<figure>
+						<table>
+							<thead>
+								<tr><th>От</th><th>До</th><th>Дата/час</th></tr>
+							</thead>
+							<tbody>
+								for _, ch := range changes {
+									<tr>
+										<td>{ ch.FromStatus.String }</td>
+										<td>{ ch.ToStatus }</td>
+										<td>{ ch.ChangedAt.Format("2006-01-02 15:04:05") }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</figure>
+				}
+			</main>
+		</body>
+	</html>
+}

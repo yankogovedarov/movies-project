@@ -30,3 +30,15 @@ UPDATE media SET current_status = ? WHERE id = ?;
 
 -- name: InsertStatusChange :exec
 INSERT INTO status_changes (media_id, from_status, to_status) VALUES (?, ?, ?);
+
+-- name: GetStartEvents :many
+SELECT id, media_id, started_at
+FROM start_events
+WHERE media_id = ?
+ORDER BY started_at DESC;
+
+-- name: GetStatusChanges :many
+SELECT id, media_id, from_status, to_status, changed_at
+FROM status_changes
+WHERE media_id = ?
+ORDER BY changed_at DESC;
