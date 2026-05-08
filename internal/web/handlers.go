@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -36,16 +37,17 @@ func isHTMX(c *gin.Context) bool {
 func (h *Handlers) Index(c *gin.Context) {
 	statusFilter := c.DefaultQuery("status", "all")
 	diskFilter := c.DefaultQuery("disk", "on")
+	sortFilter := c.DefaultQuery("sort", "name")
 
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
 
-	var media []db.Medium
+	var raw []db.Medium
 	var err error
 	if diskFilter == "all" {
-		media, err = q.ListAllMedia(ctx)
+		raw, err = q.ListAllMedia(ctx)
 	} else {
-		media, err = q.ListOnDiskMedia(ctx)
+		raw, err = q.ListOnDiskMedia(ctx)
 	}
 	if err != nil {
 		h.log().Error("list media failed", "err", err)
@@ -54,17 +56,67 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	if statusFilter != "all" {
-		filtered := make([]db.Medium, 0, len(media))
-		for _, m := range media {
+		filtered := make([]db.Medium, 0, len(raw))
+		for _, m := range raw {
 			if m.CurrentStatus == statusFilter {
 				filtered = append(filtered, m)
 			}
 		}
-		media = filtered
+		raw = filtered
+	}
+
+	stats, err := db.FetchMediaStats(ctx, h.DB)
+	if err != nil {
+		h.log().Error("fetch media stats failed", "err", err)
+		stats = make(map[int64]db.MediaStats)
+	}
+
+	media := make([]db.MediaWithStats, len(raw))
+	for i, m := range raw {
+		media[i] = db.MediaWithStats{Medium: m, MediaStats: stats[m.ID]}
+	}
+
+	switch sortFilter {
+	case "last_started":
+		sort.Slice(media, func(i, j int) bool {
+			vi, vj := media[i].LastStartedAt, media[j].LastStartedAt
+			if !vi.Valid && !vj.Valid {
+				return media[i].Filename < media[j].Filename
+			}
+			if !vi.Valid {
+				return false
+			}
+			if !vj.Valid {
+				return true
+			}
+			return vi.Time.After(vj.Time)
+		})
+	case "added":
+		sort.Slice(media, func(i, j int) bool {
+			return media[i].CreatedAt.After(media[j].CreatedAt)
+		})
+	case "marked":
+		sort.Slice(media, func(i, j int) bool {
+			vi, vj := media[i].MarkedAt, media[j].MarkedAt
+			if !vi.Valid && !vj.Valid {
+				return media[i].Filename < media[j].Filename
+			}
+			if !vi.Valid {
+				return false
+			}
+			if !vj.Valid {
+				return true
+			}
+			return vi.Time.After(vj.Time)
+		})
+	default:
+		sort.Slice(media, func(i, j int) bool {
+			return media[i].Filename < media[j].Filename
+		})
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.ListPage(media, statusFilter, diskFilter).Render(ctx, c.Writer)
+	templates.ListPage(media, statusFilter, diskFilter, sortFilter).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) StartMedia(c *gin.Context) {
@@ -114,8 +166,9 @@ func (h *Handlers) StartMedia(c *gin.Context) {
 		if err != nil {
 			updated = media
 		}
+		s, _ := db.FetchSingleMediaStats(ctx, h.DB, id)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		templates.MediaRow(updated).Render(ctx, c.Writer)
+		templates.MediaRow(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")
@@ -167,8 +220,9 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 			updated = media
 			updated.CurrentStatus = newStatus
 		}
+		s, _ := db.FetchSingleMediaStats(ctx, h.DB, id)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		templates.MediaRow(updated).Render(ctx, c.Writer)
+		templates.MediaRow(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")

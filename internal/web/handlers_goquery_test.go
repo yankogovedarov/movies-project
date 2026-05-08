@@ -221,6 +221,79 @@ func TestIndex_FilterButtons_Present(t *testing.T) {
 	assert.Equal(t, 7, btns.Length(), "expected 7 filter buttons (6 status + 1 disk toggle)")
 }
 
+func TestIndex_SortButtons_Present(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	btns := doc.Find("a.sort-btn")
+	assert.Equal(t, 4, btns.Length(), "expected 4 sort buttons (name, last_started, added, marked)")
+}
+
+func TestIndex_SortButton_NameIsActiveByDefault(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	active := doc.Find("a.sort-btn.filter-active")
+	require.Equal(t, 1, active.Length(), "expected exactly 1 active sort button by default")
+	href, _ := active.First().Attr("href")
+	assert.Contains(t, href, "sort=name", "default active sort button href should contain sort=name")
+}
+
+func TestIndex_SortButton_LastStartedIsActive_WhenParam(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?sort=last_started", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	active := doc.Find("a.sort-btn.filter-active")
+	require.Equal(t, 1, active.Length(), "expected exactly 1 active sort button")
+	href, _ := active.First().Attr("href")
+	assert.Contains(t, href, "sort=last_started", "active sort button href should contain sort=last_started")
+}
+
+func TestIndex_Row_ShowsStartCount_WhenStarted(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Watched.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+	require.NoError(t, q.InsertStartEvent(context.Background(), id))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	startInfo := doc.Find(".start-info")
+	require.Equal(t, 1, startInfo.Length(), "expected .start-info element for started media")
+	assert.Contains(t, startInfo.Text(), "1")
+}
+
+func TestIndex_Row_NoStartInfo_WhenNeverStarted(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Fresh.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	startInfo := doc.Find(".start-info")
+	assert.Equal(t, 0, startInfo.Length(), "expected no .start-info for never-started media")
+}
+
 func TestIndex_FilterButtons_ReflectsActiveParam(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{

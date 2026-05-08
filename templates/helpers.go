@@ -1,6 +1,18 @@
 package templates
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
+
+func formatDate(t time.Time) string {
+	return t.Format("02.01.2006")
+}
+
+func formatInt(n int64) string {
+	return strconv.FormatInt(n, 10)
+}
 
 func formatSize(bytes int64) string {
 	gb := float64(bytes) / 1_073_741_824

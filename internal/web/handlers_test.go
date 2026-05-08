@@ -555,3 +555,81 @@ func TestIndex_DefaultFilter_ExcludesOffDisk(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "OnDisk.mkv")
 	assert.NotContains(t, w.Body.String(), "OffDisk.mkv")
 }
+
+func TestIndex_SortDefault_AlphabeticalByFilename(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Zebra.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Alpha.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	alphaIdx := strings.Index(body, "Alpha.mkv")
+	zebraIdx := strings.Index(body, "Zebra.mkv")
+	assert.Greater(t, alphaIdx, -1, "Alpha.mkv should be in body")
+	assert.Less(t, alphaIdx, zebraIdx, "Alpha.mkv should appear before Zebra.mkv in default sort")
+}
+
+func TestIndex_SortByLastStarted_StartedMediaFirst(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "NotStarted.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Started.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	var startedID int64
+	for _, m := range media {
+		if m.Filename == "Started.mkv" {
+			startedID = m.ID
+		}
+	}
+	require.NotZero(t, startedID)
+	require.NoError(t, q.InsertStartEvent(context.Background(), startedID))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?sort=last_started", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	startedIdx := strings.Index(body, "Started.mkv")
+	notStartedIdx := strings.Index(body, "NotStarted.mkv")
+	assert.Less(t, startedIdx, notStartedIdx, "Started.mkv should appear before NotStarted.mkv when sorting by last_started")
+}
+
+func TestIndex_SortByAdded_Returns200WithAllMedia(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "MovieA.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "MovieB.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?sort=added", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "MovieA.mkv")
+	assert.Contains(t, body, "MovieB.mkv")
+}
+
+func TestIndex_SortByMarked_Returns200WithAllMedia(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "MovieC.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?sort=marked", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "MovieC.mkv")
+}
