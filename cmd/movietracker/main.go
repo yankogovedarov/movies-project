@@ -105,6 +105,7 @@ func main() {
 	r.GET("/media/:id/open-folder", h.OpenFolder)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
+	r.POST("/media/random-new/start", h.RandomNew)
 	r.POST("/scan", h.Scan)
 
 	go openBrowser("http://localhost:8080")

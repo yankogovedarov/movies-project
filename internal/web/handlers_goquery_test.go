@@ -229,7 +229,7 @@ func TestIndex_SortButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.sort-btn")
-	assert.Equal(t, 4, btns.Length(), "expected 4 sort buttons (name, last_started, added, marked)")
+	assert.Equal(t, 6, btns.Length(), "expected 6 sort buttons (name, path, size, last_started, added, marked)")
 }
 
 func TestIndex_SortButton_NameIsActiveByDefault(t *testing.T) {

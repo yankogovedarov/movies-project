@@ -48,3 +48,24 @@ func statusShort(status string) string {
 		return "Нова"
 	}
 }
+
+// sortBtnHref returns the URL for a sort button click.
+// Clicking an active button toggles the direction; clicking an inactive button resets to asc.
+func sortBtnHref(status, disk, currentSort, currentDir, btnSort string) string {
+	newDir := "asc"
+	if currentSort == btnSort && currentDir == "asc" {
+		newDir = "desc"
+	}
+	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir
+}
+
+// sortBtnContent returns the button label, appending ↑ or ↓ when the button is active.
+func sortBtnContent(icon, currentSort, currentDir, btnSort string) string {
+	if currentSort != btnSort {
+		return icon
+	}
+	if currentDir == "asc" {
+		return icon + "↑"
+	}
+	return icon + "↓"
+}

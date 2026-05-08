@@ -3,6 +3,7 @@ package web
 import (
 	"database/sql"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"os/exec"
 	"path/filepath"
@@ -38,6 +39,7 @@ func (h *Handlers) Index(c *gin.Context) {
 	statusFilter := c.DefaultQuery("status", "all")
 	diskFilter := c.DefaultQuery("disk", "on")
 	sortFilter := c.DefaultQuery("sort", "name")
+	dirFilter := c.DefaultQuery("dir", "asc")
 
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
@@ -76,6 +78,8 @@ func (h *Handlers) Index(c *gin.Context) {
 		media[i] = db.MediaWithStats{Medium: m, MediaStats: stats[m.ID]}
 	}
 
+	asc := dirFilter != "desc"
+
 	switch sortFilter {
 	case "last_started":
 		sort.Slice(media, func(i, j int) bool {
@@ -84,10 +88,13 @@ func (h *Handlers) Index(c *gin.Context) {
 				return media[i].Filename < media[j].Filename
 			}
 			if !vi.Valid {
-				return false
+				return !asc
 			}
 			if !vj.Valid {
-				return true
+				return asc
+			}
+			if asc {
+				return vi.Time.Before(vj.Time)
 			}
 			return vi.Time.After(vj.Time)
 		})
@@ -101,6 +108,9 @@ func (h *Handlers) Index(c *gin.Context) {
 			if media[j].FileCreatedAt.Valid {
 				tj = media[j].FileCreatedAt.Time
 			}
+			if asc {
+				return ti.Before(tj)
+			}
 			return ti.After(tj)
 		})
 	case "marked":
@@ -110,21 +120,87 @@ func (h *Handlers) Index(c *gin.Context) {
 				return media[i].Filename < media[j].Filename
 			}
 			if !vi.Valid {
-				return false
+				return !asc
 			}
 			if !vj.Valid {
-				return true
+				return asc
+			}
+			if asc {
+				return vi.Time.Before(vj.Time)
 			}
 			return vi.Time.After(vj.Time)
 		})
-	default:
+	case "path":
 		sort.Slice(media, func(i, j int) bool {
-			return media[i].Filename < media[j].Filename
+			if asc {
+				return media[i].FolderRelativePath < media[j].FolderRelativePath
+			}
+			return media[i].FolderRelativePath > media[j].FolderRelativePath
+		})
+	case "size":
+		sort.Slice(media, func(i, j int) bool {
+			if asc {
+				return media[i].FileSizeBytes < media[j].FileSizeBytes
+			}
+			return media[i].FileSizeBytes > media[j].FileSizeBytes
+		})
+	default: // "name"
+		sort.Slice(media, func(i, j int) bool {
+			if asc {
+				return media[i].Filename < media[j].Filename
+			}
+			return media[i].Filename > media[j].Filename
 		})
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.ListPage(media, statusFilter, diskFilter, sortFilter).Render(ctx, c.Writer)
+	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter).Render(ctx, c.Writer)
+}
+
+func (h *Handlers) RandomNew(c *gin.Context) {
+	ctx := c.Request.Context()
+	q := db.New(h.DB)
+
+	all, err := q.ListOnDiskMedia(ctx)
+	if err != nil {
+		h.log().Error("list on disk media failed", "err", err)
+		c.Redirect(http.StatusSeeOther, "/")
+		return
+	}
+
+	var candidates []db.Medium
+	for _, m := range all {
+		if m.CurrentStatus == "new" {
+			candidates = append(candidates, m)
+		}
+	}
+
+	if len(candidates) == 0 {
+		c.Redirect(http.StatusSeeOther, "/")
+		return
+	}
+
+	chosen := candidates[rand.Intn(len(candidates))]
+
+	_ = q.InsertStartEvent(ctx, chosen.ID)
+	_ = q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
+		MediaID:    chosen.ID,
+		FromStatus: sql.NullString{String: "new", Valid: true},
+		ToStatus:   "started",
+	})
+	_ = q.UpdateMediaStatus(ctx, db.UpdateMediaStatusParams{
+		CurrentStatus: "started",
+		ID:            chosen.ID,
+	})
+
+	h.log().Info("random new started", "id", chosen.ID, "file", chosen.Filename)
+
+	if h.VLCPath != "" {
+		fullPath := filepath.Join(h.DiskRoot, chosen.FolderRelativePath, chosen.Filename)
+		_ = exec.Command(h.VLCPath, fullPath).Start()
+	}
+
+	c.Redirect(http.StatusSeeOther, "/")
 }
 
 func (h *Handlers) StartMedia(c *gin.Context) {

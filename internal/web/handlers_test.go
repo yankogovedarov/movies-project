@@ -635,7 +635,7 @@ func TestIndex_SortByAdded_OrdersByFileCreatedAt(t *testing.T) {
 	require.NoError(t, err)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?sort=added", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?sort=added&dir=desc", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -643,7 +643,7 @@ func TestIndex_SortByAdded_OrdersByFileCreatedAt(t *testing.T) {
 	newerIdx := strings.Index(body, "NewerFile.mkv")
 	olderIdx := strings.Index(body, "OlderFile.mkv")
 	assert.Greater(t, newerIdx, -1, "NewerFile.mkv should be in body")
-	assert.Less(t, newerIdx, olderIdx, "NewerFile.mkv (2024) should appear before OlderFile.mkv (2023)")
+	assert.Less(t, newerIdx, olderIdx, "NewerFile.mkv (2024) should appear before OlderFile.mkv (2023) with dir=desc")
 }
 
 func TestIndex_SortByMarked_Returns200WithAllMedia(t *testing.T) {
