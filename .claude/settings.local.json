@@ -1,39 +1,25 @@
 {
   "permissions": {
     "allow": [
+      "Bash(go build *)",
       "Bash(go test *)",
       "Bash(sqlc generate *)",
       "Bash(templ generate *)",
-      "Bash(go build *)",
-      "Bash(task build *)",
-      "Bash(./bin/movietracker.exe)",
-      "Bash(ls -la*)",
-      "Bash(Start-Process -FilePath \".\\\\movietracker_smoke.exe\" -PassThru)",
-      "Bash(./movietracker_smoke.exe)",
-      "Bash(cat /tmp/smoke_server.log | tail -5)",
-      "Read(//tmp/**)",
-      "Bash(curl*)",
-      "Bash(./build/movietracker.exe)",
-      "PowerShell(Get-ChildItem *)",
-      "PowerShell(Test-Path *)",
-      "PowerShell(Get-Content *)",
-      "PowerShell(Select-String *)",
-      "PowerShell(git *)",
-      "PowerShell(gh *)",
-      "PowerShell(python *)",
-      "PowerShell(py *)",
-      "PowerShell(pip *)",
-      "PowerShell(pytest *)",
-      "PowerShell(ruff *)",
-      "PowerShell(mypy *)",
-      "Bash(python:*)",
-      "Bash(pytest:*)",
-      "Bash(git:*)",
-      "Bash(gh:*)"
+      "Bash(./bin/movietracker.exe *)",
+      "Bash(./build/movietracker.exe *)",
+      "Bash(ls *)",
+      "Bash(curl *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)"
     ],
     "deny": [
-      "PowerShell(Remove-Item -Recurse*)",
-      "Bash(rm -rf*)"
+      "Bash(rm -rf*)",
+      "PowerShell(Remove-Item -Recurse*)"
     ]
   }
 }
