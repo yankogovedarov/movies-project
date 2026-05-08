@@ -338,7 +338,7 @@ func MediaRow(m db.Medium) templ.Component {
 	})
 }
 
-func ListPage(media []db.Medium) templ.Component {
+func ListPage(media []db.Medium, statusFilter string, diskFilter string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -359,17 +359,97 @@ func ListPage(media []db.Medium) templ.Component {
 			templ_7745c5c3_Var25 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><script src=\"https://unpkg.com/htmx.org@1.9.12\"></script><style>\n\t\t\t\t.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }\n\t\t\t\t.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }\n\t\t\t\t.top-nav form { margin: 0; }\n\t\t\t\t.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }\n\t\t\t\t.top-nav form button[type=\"submit\"] {\n\t\t\t\t\tbackground: none !important; border: 1px solid transparent !important; box-shadow: none !important;\n\t\t\t\t\tcolor: var(--pico-color, inherit) !important; cursor: pointer; font-family: inherit; width: auto;\n\t\t\t\t}\n\t\t\t\t.top-nav form button[type=\"submit\"]:hover {\n\t\t\t\t\tbackground: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;\n\t\t\t\t}\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\t.status-completed { color: var(--pico-color-green-500, #22c55e); }\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\n\t\t\t\ttd, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }\n\t\t\t\tth.filename, td.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\n\t\t\t\tth.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\n\t\t\t\tth.size,     td.size     { width: 4.5rem; white-space: nowrap; }\n\t\t\t\tth.status,   td.status   { width: 4rem; white-space: nowrap; }\n\t\t\t\tth.actions,  td.actions  { width: 9rem; white-space: nowrap; }\n\t\t\t\tform { display: inline; margin: 0; }\n\t\t\t\tbutton.filename-link {\n\t\t\t\t\tbackground: none; border: none; padding: 0;\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\n\t\t\t\t\ttext-decoration: underline; font: inherit; font-size: 0.85rem;\n\t\t\t\t\ttext-align: left; white-space: nowrap;\n\t\t\t\t\toverflow: hidden; text-overflow: ellipsis;\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\n\t\t\t\t}\n\t\t\t\ta.folder-link {\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\n\t\t\t\t\twhite-space: nowrap; overflow: hidden; text-overflow: ellipsis;\n\t\t\t\t\tfont-size: 0.85rem;\n\t\t\t\t}\n\t\t\t\t.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }\n\t\t\t\t.actions-grid form { display: contents; }\n\t\t\t\tbutton.icon-btn, a.icon-btn {\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\n\t\t\t\t}\n\t\t\t\ta.icon-btn {\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\n\t\t\t\t}\n\t\t\t\t@media (max-width: 768px) {\n\t\t\t\t\tth.size, td.size, th.folder, td.folder { display: none; }\n\t\t\t\t}\n\t\t\t</style></head><body><main class=\"container\"><nav class=\"top-nav\"><h1>Movie Tracker</h1><a href=\"/\">Списък</a> <a href=\"/tree\">Дърво</a><form method=\"POST\" action=\"/scan\"><button type=\"submit\">Сканирай</button></form></nav>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><script src=\"https://unpkg.com/htmx.org@1.9.12\"></script><style>\n\t\t\t\t.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }\n\t\t\t\t.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }\n\t\t\t\t.top-nav form { margin: 0; }\n\t\t\t\t.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }\n\t\t\t\t.top-nav form button[type=\"submit\"] {\n\t\t\t\t\tbackground: none !important; border: 1px solid transparent !important; box-shadow: none !important;\n\t\t\t\t\tcolor: var(--pico-color, inherit) !important; cursor: pointer; font-family: inherit; width: auto;\n\t\t\t\t}\n\t\t\t\t.top-nav form button[type=\"submit\"]:hover {\n\t\t\t\t\tbackground: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;\n\t\t\t\t}\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\t.status-completed { color: var(--pico-color-green-500, #22c55e); }\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\n\t\t\t\ttd, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }\n\t\t\t\tth.filename, td.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\n\t\t\t\tth.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\n\t\t\t\tth.size,     td.size     { width: 4.5rem; white-space: nowrap; }\n\t\t\t\tth.status,   td.status   { width: 4rem; white-space: nowrap; }\n\t\t\t\tth.actions,  td.actions  { width: 9rem; white-space: nowrap; }\n\t\t\t\tform { display: inline; margin: 0; }\n\t\t\t\tbutton.filename-link {\n\t\t\t\t\tbackground: none; border: none; padding: 0;\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\n\t\t\t\t\ttext-decoration: underline; font: inherit; font-size: 0.85rem;\n\t\t\t\t\ttext-align: left; white-space: nowrap;\n\t\t\t\t\toverflow: hidden; text-overflow: ellipsis;\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\n\t\t\t\t}\n\t\t\t\ta.folder-link {\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\n\t\t\t\t\twhite-space: nowrap; overflow: hidden; text-overflow: ellipsis;\n\t\t\t\t\tfont-size: 0.85rem;\n\t\t\t\t}\n\t\t\t\t.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }\n\t\t\t\t.actions-grid form { display: contents; }\n\t\t\t\tbutton.icon-btn, a.icon-btn {\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\n\t\t\t\t}\n\t\t\t\ta.icon-btn {\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\n\t\t\t\t}\n\t\t\t\t@media (max-width: 768px) {\n\t\t\t\t\tth.size, td.size, th.folder, td.folder { display: none; }\n\t\t\t\t}\n\t\t\t</style></head><body><main class=\"container\"><nav class=\"top-nav\"><h1>Movie Tracker</h1><a href=\"/\">Списък</a> <a href=\"/tree\">Дърво</a><form method=\"POST\" action=\"/scan\"><button type=\"submit\">Сканирай</button></form><form method=\"GET\" action=\"/\" class=\"filter-form\"><select name=\"status\"><option value=\"all\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if statusFilter == "all" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, ">Всички</option> <option value=\"new\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if statusFilter == "new" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, ">Нова</option> <option value=\"started\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if statusFilter == "started" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, ">Стартирана</option> <option value=\"completed_both\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if statusFilter == "completed_both" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, ">Завършена (двамата)</option> <option value=\"completed_yanko\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if statusFilter == "completed_yanko" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, ">Завършена (Янко)</option> <option value=\"completed_liza\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if statusFilter == "completed_liza" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, ">Завършена (Лиза)</option></select> <select name=\"disk\"><option value=\"on\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if diskFilter == "on" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, ">На диска</option> <option value=\"all\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if diskFilter == "all" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, ">Всички</option></select> <button type=\"submit\">Филтър</button></form></nav>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(media) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p>Няма намерени медии на диска.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p>Няма намерени медии на диска.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<figure><table><thead><tr><th class=\"filename\">Файл</th><th class=\"folder\">Папка</th><th class=\"size\">Размер</th><th class=\"status\">Статус</th><th class=\"actions\">Функции</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<figure><table><thead><tr><th class=\"filename\">Файл</th><th class=\"folder\">Папка</th><th class=\"size\">Размер</th><th class=\"status\">Статус</th><th class=\"actions\">Функции</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -379,12 +459,12 @@ func ListPage(media []db.Medium) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</tbody></table></figure>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</tbody></table></figure>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</main></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</main></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

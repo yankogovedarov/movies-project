@@ -490,3 +490,68 @@ func TestTreeHandler_ShowsFolderNames(t *testing.T) {
 	assert.Contains(t, body, "Action")
 	assert.Contains(t, body, "Drama")
 }
+
+func TestIndex_FilterByStatus_ReturnsOnlyMatching(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "New.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Started.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	var startedID int64
+	for _, m := range media {
+		if m.Filename == "Started.mkv" {
+			startedID = m.ID
+		}
+	}
+	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+		CurrentStatus: "started",
+		ID:            startedID,
+	}))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?status=new", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "New.mkv")
+	assert.NotContains(t, w.Body.String(), "Started.mkv")
+}
+
+func TestIndex_FilterDisk_All_IncludesOffDisk(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "OnDisk.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "OffDisk.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	_, err := d.Exec("UPDATE media SET on_disk = 0 WHERE filename = 'OffDisk.mkv'")
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?disk=all", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "OnDisk.mkv")
+	assert.Contains(t, w.Body.String(), "OffDisk.mkv")
+}
+
+func TestIndex_DefaultFilter_ExcludesOffDisk(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "OnDisk.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "OffDisk.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	_, err := d.Exec("UPDATE media SET on_disk = 0 WHERE filename = 'OffDisk.mkv'")
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "OnDisk.mkv")
+	assert.NotContains(t, w.Body.String(), "OffDisk.mkv")
+}

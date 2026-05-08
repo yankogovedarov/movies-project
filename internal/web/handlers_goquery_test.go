@@ -209,3 +209,38 @@ func TestIndex_Actions_HasFiveStatusButtons(t *testing.T) {
 	assert.Contains(t, statusValues, "completed_yanko")
 	assert.Contains(t, statusValues, "completed_liza")
 }
+
+func TestIndex_FilterForm_Present(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	assert.Equal(t, 1, doc.Find("select[name=status]").Length(), "expected status filter select")
+	assert.Equal(t, 1, doc.Find("select[name=disk]").Length(), "expected disk filter select")
+}
+
+func TestIndex_FilterForm_ReflectsActiveParam(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+		CurrentStatus: "started",
+		ID:            media[0].ID,
+	}))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?status=started", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	selected := doc.Find("select[name=status] option[selected]")
+	require.Equal(t, 1, selected.Length(), "expected one selected option")
+	val, _ := selected.Attr("value")
+	assert.Equal(t, "started", val)
+}

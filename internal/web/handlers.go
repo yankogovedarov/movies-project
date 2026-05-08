@@ -34,15 +34,37 @@ func isHTMX(c *gin.Context) bool {
 }
 
 func (h *Handlers) Index(c *gin.Context) {
+	statusFilter := c.DefaultQuery("status", "all")
+	diskFilter := c.DefaultQuery("disk", "on")
+
+	ctx := c.Request.Context()
 	q := db.New(h.DB)
-	media, err := q.ListOnDiskMedia(c.Request.Context())
+
+	var media []db.Medium
+	var err error
+	if diskFilter == "all" {
+		media, err = q.ListAllMedia(ctx)
+	} else {
+		media, err = q.ListOnDiskMedia(ctx)
+	}
 	if err != nil {
 		h.log().Error("list media failed", "err", err)
 		c.String(http.StatusInternalServerError, "db error: %v", err)
 		return
 	}
+
+	if statusFilter != "all" {
+		filtered := make([]db.Medium, 0, len(media))
+		for _, m := range media {
+			if m.CurrentStatus == statusFilter {
+				filtered = append(filtered, m)
+			}
+		}
+		media = filtered
+	}
+
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.ListPage(media).Render(c.Request.Context(), c.Writer)
+	templates.ListPage(media, statusFilter, diskFilter).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) StartMedia(c *gin.Context) {

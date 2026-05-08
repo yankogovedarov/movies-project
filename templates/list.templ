@@ -88,7 +88,7 @@ templ MediaRow(m db.Medium) {
 	</tr>
 }
 
-templ ListPage(media []db.Medium) {
+templ ListPage(media []db.Medium, statusFilter string, diskFilter string) {
 	<!DOCTYPE html>
 	<html lang="bg">
 		<head>
@@ -159,6 +159,21 @@ templ ListPage(media []db.Medium) {
 					<a href="/tree">Дърво</a>
 					<form method="POST" action="/scan">
 						<button type="submit">Сканирай</button>
+					</form>
+					<form method="GET" action="/" class="filter-form">
+						<select name="status">
+							<option value="all" if statusFilter == "all" { selected }>Всички</option>
+							<option value="new" if statusFilter == "new" { selected }>Нова</option>
+							<option value="started" if statusFilter == "started" { selected }>Стартирана</option>
+							<option value="completed_both" if statusFilter == "completed_both" { selected }>Завършена (двамата)</option>
+							<option value="completed_yanko" if statusFilter == "completed_yanko" { selected }>Завършена (Янко)</option>
+							<option value="completed_liza" if statusFilter == "completed_liza" { selected }>Завършена (Лиза)</option>
+						</select>
+						<select name="disk">
+							<option value="on" if diskFilter == "on" { selected }>На диска</option>
+							<option value="all" if diskFilter == "all" { selected }>Всички</option>
+						</select>
+						<button type="submit">Филтър</button>
 					</form>
 				</nav>
 				if len(media) == 0 {
