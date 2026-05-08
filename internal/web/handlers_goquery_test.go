@@ -50,9 +50,9 @@ func TestIndex_FilenameCell_IsLinkButton(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	link := doc.Find("td.filename a.filename-link")
-	require.Equal(t, 1, link.Length(), "expected filename-link anchor")
-	assert.Equal(t, "Inception.mkv", strings.TrimSpace(link.Text()))
+	btn := doc.Find("td.filename form button.filename-link")
+	require.Equal(t, 1, btn.Length(), "expected filename-link button")
+	assert.Equal(t, "Inception.mkv", strings.TrimSpace(btn.Text()))
 }
 
 func TestIndex_FolderCell_ShowsPath(t *testing.T) {
@@ -82,9 +82,9 @@ func TestIndex_StartFormAction(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	href, exists := doc.Find("td.filename a.filename-link").Attr("href")
-	require.True(t, exists, "expected filename-link anchor in filename cell")
-	assert.Contains(t, href, "/media/", "filename link should point to detail page")
+	action, exists := doc.Find("td.filename form").Attr("action")
+	require.True(t, exists, "expected form in filename cell")
+	assert.Contains(t, action, "/start", "start form action should contain /start")
 }
 
 func TestIndex_StatusFormAction(t *testing.T) {
@@ -98,7 +98,7 @@ func TestIndex_StatusFormAction(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	action, exists := doc.Find("td.actions form").Attr("action")
+	action, exists := doc.Find("td.actions form").First().Attr("action")
 	require.True(t, exists, "expected form in actions cell")
 	assert.Contains(t, action, "/status", "status form action should contain /status")
 }
@@ -143,7 +143,7 @@ func TestDetailPage_ShowsHistoryTables(t *testing.T) {
 	assert.Contains(t, body, "История на статусите")
 }
 
-func TestIndex_StatusSelect_HasFiveOptions(t *testing.T) {
+func TestIndex_Actions_HasFiveStatusButtons(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -154,17 +154,17 @@ func TestIndex_StatusSelect_HasFiveOptions(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	options := doc.Find("select[name=status] option")
-	assert.Equal(t, 5, options.Length(), "expected 5 status options")
+	statusForms := doc.Find("td.actions form")
+	assert.Equal(t, 5, statusForms.Length(), "expected 5 status forms in actions column")
 
-	var values []string
-	options.Each(func(_ int, s *goquery.Selection) {
-		v, _ := s.Attr("value")
-		values = append(values, v)
+	var statusValues []string
+	statusForms.Each(func(_ int, s *goquery.Selection) {
+		v, _ := s.Find("input[name=status]").Attr("value")
+		statusValues = append(statusValues, v)
 	})
-	assert.Contains(t, values, "new")
-	assert.Contains(t, values, "started")
-	assert.Contains(t, values, "completed_both")
-	assert.Contains(t, values, "completed_yanko")
-	assert.Contains(t, values, fmt.Sprintf("%s", "completed_liza"))
+	assert.Contains(t, statusValues, "new")
+	assert.Contains(t, statusValues, "started")
+	assert.Contains(t, statusValues, "completed_both")
+	assert.Contains(t, statusValues, "completed_yanko")
+	assert.Contains(t, statusValues, "completed_liza")
 }

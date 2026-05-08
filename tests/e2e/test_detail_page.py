@@ -8,9 +8,9 @@ BASE_URL = "http://localhost:8080"
 
 
 def _get_first_media_id(page: Page):
-    """Връща ID-то на първата медия от списъка или None."""
+    """Връща ID-то на първата медия от ℹ бутона в списъка или None."""
     page.goto(BASE_URL)
-    link = page.locator("td.filename a.filename-link").first
+    link = page.locator("a.icon-btn[title='Детайли']").first
     if link.count() == 0:
         return None
     href = link.get_attribute("href")
@@ -60,10 +60,10 @@ def test_detail_has_status_dropdown(page: Page):
     expect(page.locator("select[name=status]")).to_be_visible()
 
 
-def test_clicking_filename_opens_detail(page: Page):
+def test_detail_icon_button_opens_detail(page: Page):
     page.goto(BASE_URL)
-    if page.locator("td.filename a.filename-link").count() == 0:
+    if page.locator("a.icon-btn[title='Детайли']").count() == 0:
         pytest.skip("No media available")
-    page.locator("td.filename a.filename-link").first.click()
+    page.locator("a.icon-btn[title='Детайли']").first.click()
     expect(page.locator("h1")).to_be_visible()
     assert "/media/" in page.url

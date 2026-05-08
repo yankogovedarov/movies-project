@@ -38,6 +38,7 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r.GET("/", h.Index)
 	r.GET("/tree", h.Tree)
 	r.GET("/media/:id", h.MediaDetail)
+	r.GET("/media/:id/open-folder", h.OpenFolder)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/scan", h.Scan)
@@ -86,7 +87,7 @@ func TestIndexHandler_EmptyDB_ShowsNoMediaMessage(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Няма намерени медии")
 }
 
-func TestIndex_ShowsFilenameLink(t *testing.T) {
+func TestIndex_ShowsStartButton(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -96,7 +97,25 @@ func TestIndex_ShowsFilenameLink(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
-	assert.Contains(t, w.Body.String(), "/media/")
+	assert.Contains(t, w.Body.String(), "/start")
+}
+
+func TestOpenFolder_Returns303(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d/open-folder", id), nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/", w.Header().Get("Location"))
 }
 
 func TestStartMedia_RecordsEventAndSetsStarted(t *testing.T) {
@@ -232,7 +251,7 @@ func TestChangeStatus_NoOp_WhenSameStatus(t *testing.T) {
 	assert.Equal(t, 0, changeCount)
 }
 
-func TestIndex_ShowsStatusDropdown(t *testing.T) {
+func TestIndex_ShowsStatusIconButtons(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -243,8 +262,8 @@ func TestIndex_ShowsStatusDropdown(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	body := w.Body.String()
-	assert.Contains(t, body, `<select name="status"`)
 	assert.Contains(t, body, `value="completed_both"`)
+	assert.Contains(t, body, `class="icon-btn"`)
 }
 
 func TestIndex_HasResponsiveTableClasses(t *testing.T) {
