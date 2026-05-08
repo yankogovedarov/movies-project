@@ -14,7 +14,8 @@
       "PowerShell(templ generate 2>&1)",
       "PowerShell(Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 500; Start-Process -FilePath \".\\\\movietracker.exe\")",
       "Bash(sqlc generate *)",
-      "Bash(templ generate *)"
+      "Bash(templ generate *)",
+      "Bash(go build *)"
     ]
   }
 }

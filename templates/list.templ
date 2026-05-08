@@ -98,20 +98,27 @@ templ ListPage(media []db.Medium) {
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
 			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<style>
-				.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.2rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }
+				.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }
 				.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }
 				.top-nav form { margin: 0; }
-				.top-nav a, .top-nav button { margin: 0; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
+				.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }
+				.top-nav form button[type="submit"] {
+					background: none !important; border: 1px solid transparent !important; box-shadow: none !important;
+					color: var(--pico-color, inherit) !important; cursor: pointer; font-family: inherit; width: auto;
+				}
+				.top-nav form button[type="submit"]:hover {
+					background: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;
+				}
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
 				.status-completed { color: var(--pico-color-green-500, #22c55e); }
 				table { width: 100%; table-layout: fixed; }
-				td, th { vertical-align: middle; padding: 0.15rem 0.3rem; font-size: 0.85rem; }
-				th.filename, td.filename { width: 35%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-				th.folder,   td.folder   { width: 25%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-				th.size,     td.size     { width: 5rem; white-space: nowrap; }
-				th.status,   td.status   { width: 5rem; white-space: nowrap; }
-				th.actions,  td.actions  { width: auto; white-space: nowrap; }
+				td, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; }
+				th.filename, td.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+				th.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+				th.size,     td.size     { width: 4.5rem; white-space: nowrap; }
+				th.status,   td.status   { width: 4rem; white-space: nowrap; }
+				th.actions,  td.actions  { width: 11rem; white-space: nowrap; }
 				form { display: inline; margin: 0; }
 				button.filename-link {
 					background: none; border: none; padding: 0;
@@ -140,7 +147,6 @@ templ ListPage(media []db.Medium) {
 				}
 				@media (max-width: 768px) {
 					th.size, td.size, th.folder, td.folder { display: none; }
-					th.filename, td.filename { width: 55%; }
 				}
 			</style>
 		</head>
