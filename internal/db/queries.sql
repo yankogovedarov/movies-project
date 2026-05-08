@@ -1,9 +1,10 @@
 -- name: UpsertMedia :one
-INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk)
-VALUES (?, ?, ?, 1)
+INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at)
+VALUES (?, ?, ?, 1, ?)
 ON CONFLICT(filename, file_size_bytes) DO UPDATE SET
     folder_relative_path = excluded.folder_relative_path,
-    on_disk = 1
+    on_disk = 1,
+    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at)
 RETURNING id;
 
 -- name: MarkAllOffDisk :exec
@@ -13,13 +14,13 @@ UPDATE media SET on_disk = 0;
 SELECT COUNT(*) FROM media WHERE on_disk = 1;
 
 -- name: ListOnDiskMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename;
 
 -- name: GetMediaByID :one
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
 FROM media WHERE id = ?;
 
 -- name: InsertStartEvent :exec
@@ -32,7 +33,7 @@ UPDATE media SET current_status = ? WHERE id = ?;
 INSERT INTO status_changes (media_id, from_status, to_status) VALUES (?, ?, ?);
 
 -- name: ListAllMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
 FROM media
 ORDER BY folder_relative_path, filename;
 

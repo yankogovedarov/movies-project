@@ -22,7 +22,7 @@ func (q *Queries) CountOnDisk(ctx context.Context) (int64, error) {
 }
 
 const getMediaByID = `-- name: GetMediaByID :one
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
 FROM media WHERE id = ?
 `
 
@@ -37,6 +37,7 @@ func (q *Queries) GetMediaByID(ctx context.Context, id int64) (Medium, error) {
 		&i.CurrentStatus,
 		&i.OnDisk,
 		&i.CreatedAt,
+		&i.FileCreatedAt,
 	)
 	return i, err
 }
@@ -132,7 +133,7 @@ func (q *Queries) InsertStatusChange(ctx context.Context, arg InsertStatusChange
 }
 
 const listAllMedia = `-- name: ListAllMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
 FROM media
 ORDER BY folder_relative_path, filename
 `
@@ -154,6 +155,7 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 			&i.CurrentStatus,
 			&i.OnDisk,
 			&i.CreatedAt,
+			&i.FileCreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -169,7 +171,7 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 }
 
 const listOnDiskMedia = `-- name: ListOnDiskMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename
@@ -192,6 +194,7 @@ func (q *Queries) ListOnDiskMedia(ctx context.Context) ([]Medium, error) {
 			&i.CurrentStatus,
 			&i.OnDisk,
 			&i.CreatedAt,
+			&i.FileCreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -230,11 +233,12 @@ func (q *Queries) UpdateMediaStatus(ctx context.Context, arg UpdateMediaStatusPa
 }
 
 const upsertMedia = `-- name: UpsertMedia :one
-INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk)
-VALUES (?, ?, ?, 1)
+INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at)
+VALUES (?, ?, ?, 1, ?)
 ON CONFLICT(filename, file_size_bytes) DO UPDATE SET
     folder_relative_path = excluded.folder_relative_path,
-    on_disk = 1
+    on_disk = 1,
+    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at)
 RETURNING id
 `
 
@@ -242,10 +246,16 @@ type UpsertMediaParams struct {
 	Filename           string
 	FolderRelativePath string
 	FileSizeBytes      int64
+	FileCreatedAt      sql.NullTime
 }
 
 func (q *Queries) UpsertMedia(ctx context.Context, arg UpsertMediaParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, upsertMedia, arg.Filename, arg.FolderRelativePath, arg.FileSizeBytes)
+	row := q.db.QueryRowContext(ctx, upsertMedia,
+		arg.Filename,
+		arg.FolderRelativePath,
+		arg.FileSizeBytes,
+		arg.FileCreatedAt,
+	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err

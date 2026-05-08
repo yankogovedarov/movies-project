@@ -93,7 +93,15 @@ func (h *Handlers) Index(c *gin.Context) {
 		})
 	case "added":
 		sort.Slice(media, func(i, j int) bool {
-			return media[i].CreatedAt.After(media[j].CreatedAt)
+			ti := media[i].CreatedAt
+			if media[i].FileCreatedAt.Valid {
+				ti = media[i].FileCreatedAt.Time
+			}
+			tj := media[j].CreatedAt
+			if media[j].FileCreatedAt.Valid {
+				tj = media[j].FileCreatedAt.Time
+			}
+			return ti.After(tj)
 		})
 	case "marked":
 		sort.Slice(media, func(i, j int) bool {

@@ -17,6 +17,7 @@ type Medium struct {
 	CurrentStatus      string
 	OnDisk             int64
 	CreatedAt          time.Time
+	FileCreatedAt      sql.NullTime
 }
 
 type StartEvent struct {

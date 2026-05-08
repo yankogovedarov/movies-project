@@ -7,3 +7,8 @@ sql:
       go:
         package: "db"
         out: "internal/db"
+        overrides:
+          - column: "media.file_created_at"
+            go_type:
+              import: "database/sql"
+              type: "NullTime"

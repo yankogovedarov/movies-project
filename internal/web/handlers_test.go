@@ -620,6 +620,32 @@ func TestIndex_SortByAdded_Returns200WithAllMedia(t *testing.T) {
 	assert.Contains(t, body, "MovieB.mkv")
 }
 
+func TestIndex_SortByAdded_OrdersByFileCreatedAt(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "OlderFile.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "NewerFile.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+
+	older := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	newer := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	_, err := d.Exec("UPDATE media SET file_created_at = ? WHERE filename = 'OlderFile.mkv'", older)
+	require.NoError(t, err)
+	_, err = d.Exec("UPDATE media SET file_created_at = ? WHERE filename = 'NewerFile.mkv'", newer)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?sort=added", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	newerIdx := strings.Index(body, "NewerFile.mkv")
+	olderIdx := strings.Index(body, "OlderFile.mkv")
+	assert.Greater(t, newerIdx, -1, "NewerFile.mkv should be in body")
+	assert.Less(t, newerIdx, olderIdx, "NewerFile.mkv (2024) should appear before OlderFile.mkv (2023)")
+}
+
 func TestIndex_SortByMarked_Returns200WithAllMedia(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{

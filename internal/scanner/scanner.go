@@ -5,13 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type VideoFile struct {
-	Path                string
-	Filename            string
-	SizeBytes           int64
-	FolderRelativePath  string
+	Path               string
+	Filename           string
+	SizeBytes          int64
+	FolderRelativePath string
+	FileCreatedAt      time.Time
 }
 
 func Scan(root string, excludeDirs []string) ([]VideoFile, error) {
@@ -62,6 +64,7 @@ func Scan(root string, excludeDirs []string) ([]VideoFile, error) {
 			Filename:           d.Name(),
 			SizeBytes:          info.Size(),
 			FolderRelativePath: folderRelPath,
+			FileCreatedAt:      fileCreatedAt(path),
 		})
 		return nil
 	})
