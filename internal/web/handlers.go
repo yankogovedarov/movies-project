@@ -29,6 +29,10 @@ func (h *Handlers) log() *slog.Logger {
 	return slog.Default()
 }
 
+func isHTMX(c *gin.Context) bool {
+	return c.GetHeader("HX-Request") == "true"
+}
+
 func (h *Handlers) Index(c *gin.Context) {
 	q := db.New(h.DB)
 	media, err := q.ListOnDiskMedia(c.Request.Context())
@@ -83,6 +87,15 @@ func (h *Handlers) StartMedia(c *gin.Context) {
 		_ = exec.Command(h.VLCPath, fullPath).Start()
 	}
 
+	if isHTMX(c) {
+		updated, err := q.GetMediaByID(ctx, id)
+		if err != nil {
+			updated = media
+		}
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		templates.MediaRow(updated).Render(ctx, c.Writer)
+		return
+	}
 	c.Redirect(http.StatusSeeOther, "/")
 }
 
@@ -126,6 +139,16 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 		h.log().Info("status change", "id", id, "from", media.CurrentStatus, "to", newStatus)
 	}
 
+	if isHTMX(c) {
+		updated, err := q.GetMediaByID(ctx, id)
+		if err != nil {
+			updated = media
+			updated.CurrentStatus = newStatus
+		}
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		templates.MediaRow(updated).Render(ctx, c.Writer)
+		return
+	}
 	c.Redirect(http.StatusSeeOther, "/")
 }
 
@@ -144,6 +167,10 @@ func (h *Handlers) OpenFolder(c *gin.Context) {
 	}
 	folderPath := filepath.Join(h.DiskRoot, media.FolderRelativePath)
 	_ = exec.Command("explorer.exe", folderPath).Start()
+	if isHTMX(c) {
+		c.Status(http.StatusOK)
+		return
+	}
 	c.Redirect(http.StatusSeeOther, "/")
 }
 

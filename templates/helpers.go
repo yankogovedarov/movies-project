@@ -21,3 +21,18 @@ func statusClass(status string) string {
 		return "new"
 	}
 }
+
+func statusShort(status string) string {
+	switch status {
+	case "started":
+		return "Старт"
+	case "completed_both":
+		return "c_Два"
+	case "completed_yanko":
+		return "c_Янко"
+	case "completed_liza":
+		return "c_Лиза"
+	default:
+		return "Нова"
+	}
+}

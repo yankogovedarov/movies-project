@@ -6,6 +6,88 @@ import (
 	"github.com/yankogovedarov/movie-tracker/internal/db"
 )
 
+templ MediaRow(m db.Medium) {
+	<tr>
+		<td class="filename">
+			<form
+				action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }
+				method="POST"
+				hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/start" }
+				hx-target="closest tr"
+				hx-swap="outerHTML"
+			>
+				<button type="submit" class="filename-link" title={ m.Filename }>{ m.Filename }</button>
+			</form>
+		</td>
+		<td class="folder">
+			<a
+				href={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/open-folder") }
+				hx-get={ "/media/" + strconv.FormatInt(m.ID, 10) + "/open-folder" }
+				hx-swap="none"
+				class="folder-link"
+				title={ m.FolderRelativePath }
+			>{ m.FolderRelativePath }</a>
+		</td>
+		<td class="size">{ formatSize(m.FileSizeBytes) }</td>
+		<td class="status"><span class={ "status-" + statusClass(m.CurrentStatus) }>{ statusShort(m.CurrentStatus) }</span></td>
+		<td class="actions">
+			<div class="actions-grid">
+				<form
+					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
+					method="POST"
+					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="status" value="new"/>
+					<button type="submit" class="icon-btn" title="Нова">○</button>
+				</form>
+				<form
+					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
+					method="POST"
+					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="status" value="started"/>
+					<button type="submit" class="icon-btn" title="Стартирана">▶</button>
+				</form>
+				<form
+					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
+					method="POST"
+					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="status" value="completed_both"/>
+					<button type="submit" class="icon-btn" title="Завършена (двамата)">✓</button>
+				</form>
+				<form
+					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
+					method="POST"
+					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="status" value="completed_yanko"/>
+					<button type="submit" class="icon-btn" title="Завършена (Янко)">Я</button>
+				</form>
+				<form
+					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
+					method="POST"
+					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="status" value="completed_liza"/>
+					<button type="submit" class="icon-btn" title="Завършена (Лиза)">Л</button>
+				</form>
+				<a href={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10)) } class="icon-btn" title="Детайли">ℹ</a>
+			</div>
+		</td>
+	</tr>
+}
+
 templ ListPage(media []db.Medium) {
 	<!DOCTYPE html>
 	<html lang="bg">
@@ -14,35 +96,41 @@ templ ListPage(media []db.Medium) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>Movie Tracker</title>
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<style>
-				.top-nav { display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }
-				.top-nav h1 { margin: 0; font-size: 1.2rem; flex: 0 0 auto; }
+				.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.2rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }
+				.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }
 				.top-nav form { margin: 0; }
-				.top-nav button { margin: 0; padding: 0.3rem 0.8rem; }
+				.top-nav a, .top-nav button { margin: 0; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
 				.status-completed { color: var(--pico-color-green-500, #22c55e); }
-				table { width: 100%; table-layout: auto; }
-				td, th { vertical-align: middle; padding: 0.3rem 0.4rem; }
-				th.filename, td.filename { width: 35%; }
-				th.folder,   td.folder   { width: 25%; }
-				th.size,     td.size     { width: 6rem; white-space: nowrap; }
-				th.status,   td.status   { width: 8rem; white-space: nowrap; }
-				th.actions,  td.actions  { width: 10rem; }
-				td.filename, td.folder   { white-space: normal; word-break: break-word; overflow-wrap: break-word; }
+				table { width: 100%; table-layout: fixed; }
+				td, th { vertical-align: middle; padding: 0.15rem 0.3rem; font-size: 0.85rem; }
+				th.filename, td.filename { width: 35%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+				th.folder,   td.folder   { width: 25%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+				th.size,     td.size     { width: 5rem; white-space: nowrap; }
+				th.status,   td.status   { width: 5rem; white-space: nowrap; }
+				th.actions,  td.actions  { width: auto; white-space: nowrap; }
 				form { display: inline; margin: 0; }
 				button.filename-link {
 					background: none; border: none; padding: 0;
 					color: var(--pico-primary); cursor: pointer;
-					text-decoration: underline; font: inherit;
-					text-align: left; word-break: break-word;
+					text-decoration: underline; font: inherit; font-size: 0.85rem;
+					text-align: left; white-space: nowrap;
+					overflow: hidden; text-overflow: ellipsis;
+					display: block; width: 100%;
 				}
-				a.folder-link { word-break: break-word; }
-				.actions-grid { display: flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
+				a.folder-link {
+					display: block; width: 100%;
+					white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+					font-size: 0.85rem;
+				}
+				.actions-grid { display: flex; flex-wrap: nowrap; gap: 0.15rem; align-items: center; }
 				button.icon-btn, a.icon-btn {
 					display: inline-flex; align-items: center; justify-content: center;
-					width: 1.8rem; height: 1.8rem; padding: 0;
-					font-size: 0.85rem; border-radius: 3px; cursor: pointer;
+					width: 1.6rem; height: 1.6rem; padding: 0;
+					font-size: 0.8rem; border-radius: 3px; cursor: pointer;
 					text-decoration: none; line-height: 1; flex-shrink: 0;
 				}
 				a.icon-btn {
@@ -82,43 +170,7 @@ templ ListPage(media []db.Medium) {
 							</thead>
 							<tbody>
 								for _, m := range media {
-									<tr>
-										<td class="filename">
-											<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }>
-												<button type="submit" class="filename-link" title={ m.Filename }>{ m.Filename }</button>
-											</form>
-										</td>
-										<td class="folder">
-											<a href={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/open-folder") } class="folder-link" title={ m.FolderRelativePath }>{ m.FolderRelativePath }</a>
-										</td>
-										<td class="size">{ formatSize(m.FileSizeBytes) }</td>
-										<td class="status"><span class={ "status-" + statusClass(m.CurrentStatus) }>{ m.CurrentStatus }</span></td>
-										<td class="actions">
-											<div class="actions-grid">
-												<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }>
-													<input type="hidden" name="status" value="new"/>
-													<button type="submit" class="icon-btn" title="Нова">○</button>
-												</form>
-												<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }>
-													<input type="hidden" name="status" value="started"/>
-													<button type="submit" class="icon-btn" title="Стартирана">▶</button>
-												</form>
-												<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }>
-													<input type="hidden" name="status" value="completed_both"/>
-													<button type="submit" class="icon-btn" title="Завършена (двамата)">✓</button>
-												</form>
-												<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }>
-													<input type="hidden" name="status" value="completed_yanko"/>
-													<button type="submit" class="icon-btn" title="Завършена (Янко)">Я</button>
-												</form>
-												<form method="POST" action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }>
-													<input type="hidden" name="status" value="completed_liza"/>
-													<button type="submit" class="icon-btn" title="Завършена (Лиза)">Л</button>
-												</form>
-												<a href={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10)) } class="icon-btn" title="Детайли">ℹ</a>
-											</div>
-										</td>
-									</tr>
+									@MediaRow(m)
 								}
 							</tbody>
 						</table>

@@ -55,6 +55,47 @@ func TestIndex_FilenameCell_IsLinkButton(t *testing.T) {
 	assert.Equal(t, "Inception.mkv", strings.TrimSpace(btn.Text()))
 }
 
+func TestIndex_FilenameForm_HasHxPost(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Inception.mkv", FolderRelativePath: "SciFi", SizeBytes: 1_500_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	form := doc.Find("td.filename form")
+	hxPost, exists := form.Attr("hx-post")
+	require.True(t, exists, "expected hx-post on filename form")
+	assert.Contains(t, hxPost, "/start")
+	hxTarget, _ := form.Attr("hx-target")
+	assert.Equal(t, "closest tr", hxTarget)
+}
+
+func TestIndex_ActionForms_HaveHxPost(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	forms := doc.Find("td.actions form")
+	require.Equal(t, 5, forms.Length(), "expected 5 action forms")
+	forms.Each(func(_ int, s *goquery.Selection) {
+		hxPost, exists := s.Attr("hx-post")
+		assert.True(t, exists, "expected hx-post on action form")
+		assert.Contains(t, hxPost, "/status")
+		hxTarget, _ := s.Attr("hx-target")
+		assert.Equal(t, "closest tr", hxTarget)
+	})
+}
+
 func TestIndex_FolderCell_ShowsPath(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{

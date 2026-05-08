@@ -360,6 +360,67 @@ func TestHandlers_WorkWithNilLogger(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, w.Code)
 }
 
+func TestStartMedia_HTMX_ReturnsRow(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil)
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+	assert.Contains(t, w.Body.String(), "<tr>")
+	assert.Contains(t, w.Body.String(), "Movie.mkv")
+}
+
+func TestChangeStatus_HTMX_ReturnsRow(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	body := "status=completed_both"
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+	assert.Contains(t, w.Body.String(), "<tr>")
+}
+
+func TestOpenFolder_HTMX_Returns200(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	media, err := q.ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	id := media[0].ID
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d/open-folder", id), nil)
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
 func TestMediaDetail_Returns200(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
