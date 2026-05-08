@@ -3,6 +3,7 @@ module github.com/yankogovedarov/movie-tracker
 go 1.26.2
 
 require (
+	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/a-h/templ v0.3.1001
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-migrate/migrate/v4 v4.19.1

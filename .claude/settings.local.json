@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go test *)",
+      "PowerShell(Start-Process \"http://localhost:8080\")",
+      "PowerShell(go build -o movietracker.exe ./cmd/movietracker 2>&1)",
+      "PowerShell(Start-Process -FilePath \".\\\\movietracker.exe\")",
+      "PowerShell(go list -m github.com/PuerkitoBio/goquery 2>&1)",
+      "PowerShell(go get github.com/PuerkitoBio/goquery 2>&1)",
+      "PowerShell(go test ./internal/web/... -v -run \"TestIndex_Table|TestIndex_Filename|TestIndex_Folder|TestIndex_Start|TestIndex_Status\" 2>&1)",
+      "PowerShell(go test ./... 2>&1)",
+      "PowerShell(New-Item -ItemType Directory -Path \"tests\\\\e2e\" -Force)",
+      "PowerShell(New-Item -ItemType Directory -Path \"internal\\\\tree\" -Force)",
+      "PowerShell(templ generate 2>&1)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 500; Start-Process -FilePath \".\\\\movietracker.exe\")",
+      "Bash(sqlc generate *)",
+      "Bash(templ generate *)"
+    ]
+  }
+}
