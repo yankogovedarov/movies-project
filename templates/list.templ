@@ -113,12 +113,12 @@ templ ListPage(media []db.Medium) {
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
 				.status-completed { color: var(--pico-color-green-500, #22c55e); }
 				table { width: 100%; table-layout: fixed; }
-				td, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; }
+				td, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }
 				th.filename, td.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 				th.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 				th.size,     td.size     { width: 4.5rem; white-space: nowrap; }
 				th.status,   td.status   { width: 4rem; white-space: nowrap; }
-				th.actions,  td.actions  { width: 11rem; white-space: nowrap; }
+				th.actions,  td.actions  { width: 9rem; white-space: nowrap; }
 				form { display: inline; margin: 0; }
 				button.filename-link {
 					background: none; border: none; padding: 0;
@@ -126,17 +126,18 @@ templ ListPage(media []db.Medium) {
 					text-decoration: underline; font: inherit; font-size: 0.85rem;
 					text-align: left; white-space: nowrap;
 					overflow: hidden; text-overflow: ellipsis;
-					display: block; width: 100%;
+					display: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;
 				}
 				a.folder-link {
-					display: block; width: 100%;
+					display: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;
 					white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 					font-size: 0.85rem;
 				}
-				.actions-grid { display: flex; flex-wrap: nowrap; gap: 0.15rem; align-items: center; }
+				.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }
+				.actions-grid form { display: contents; }
 				button.icon-btn, a.icon-btn {
 					display: inline-flex; align-items: center; justify-content: center;
-					width: 1.6rem; height: 1.6rem; padding: 0;
+					width: 1.35rem; height: 1.35rem; padding: 0;
 					font-size: 0.8rem; border-radius: 3px; cursor: pointer;
 					text-decoration: none; line-height: 1; flex-shrink: 0;
 				}
