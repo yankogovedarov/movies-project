@@ -210,18 +210,18 @@ func TestIndex_Actions_HasFiveStatusButtons(t *testing.T) {
 	assert.Contains(t, statusValues, "completed_liza")
 }
 
-func TestIndex_FilterForm_Present(t *testing.T) {
+func TestIndex_FilterButtons_Present(t *testing.T) {
 	d := openTestDB(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	assert.Equal(t, 1, doc.Find("select[name=status]").Length(), "expected status filter select")
-	assert.Equal(t, 1, doc.Find("select[name=disk]").Length(), "expected disk filter select")
+	btns := doc.Find("a.filter-btn")
+	assert.Equal(t, 7, btns.Length(), "expected 7 filter buttons (6 status + 1 disk toggle)")
 }
 
-func TestIndex_FilterForm_ReflectsActiveParam(t *testing.T) {
+func TestIndex_FilterButtons_ReflectsActiveParam(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -239,8 +239,8 @@ func TestIndex_FilterForm_ReflectsActiveParam(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	selected := doc.Find("select[name=status] option[selected]")
-	require.Equal(t, 1, selected.Length(), "expected one selected option")
-	val, _ := selected.Attr("value")
-	assert.Equal(t, "started", val)
+	active := doc.Find("a.filter-btn.filter-active")
+	require.GreaterOrEqual(t, active.Length(), 1, "expected at least one active filter button")
+	href, _ := active.First().Attr("href")
+	assert.Contains(t, href, "status=started", "active button href should contain status=started")
 }
