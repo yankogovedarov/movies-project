@@ -109,6 +109,9 @@ templ ListPage(media []db.Medium, statusFilter string, diskFilter string) {
 				.top-nav form button[type="submit"]:hover {
 					background: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;
 				}
+				.filter-form { display: inline-flex !important; align-items: center; gap: 0.3rem; flex-wrap: nowrap; }
+				.filter-form select { margin: 0; padding: 0.1rem 0.25rem; font-size: 0.8rem; height: 1.8rem; width: auto; min-width: 7rem; }
+				.filter-form button[type="submit"] { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.8rem; height: 1.8rem; background: var(--pico-primary) !important; color: var(--pico-primary-inverse, #fff) !important; border: none !important; border-radius: 3px; cursor: pointer; }
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
 				.status-completed { color: var(--pico-color-green-500, #22c55e); }
