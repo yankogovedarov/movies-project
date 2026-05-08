@@ -5,8 +5,6 @@
       "Bash(go test *)",
       "Bash(sqlc generate *)",
       "Bash(templ generate *)",
-      "Bash(./bin/movietracker.exe *)",
-      "Bash(./build/movietracker.exe *)",
       "Bash(ls *)",
       "Bash(curl *)",
       "Bash(git *)",
@@ -15,11 +13,14 @@
       "Bash(pip *)",
       "Bash(pytest *)",
       "Bash(ruff *)",
-      "Bash(mypy *)"
+      "Bash(mypy *)",
+      "Bash(awk *)",
+      "Bash(./movietracker.exe *)"
     ],
     "deny": [
-      "Bash(rm -rf*)",
-      "PowerShell(Remove-Item -Recurse*)"
+      "Bash(rm *)",
+      "PowerShell(Remove-Item *)",
+      "Bash(task generate *)"
     ]
   }
 }
