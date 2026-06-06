@@ -2,6 +2,7 @@ package web
 
 import (
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"math/rand"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yankogovedarov/movie-tracker/internal/db"
@@ -35,11 +37,47 @@ func isHTMX(c *gin.Context) bool {
 	return c.GetHeader("HX-Request") == "true"
 }
 
+func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter string) []db.Medium {
+	result := raw
+	if statusFilter != "all" {
+		f := make([]db.Medium, 0, len(result))
+		for _, m := range result {
+			if m.CurrentStatus == statusFilter {
+				f = append(f, m)
+			}
+		}
+		result = f
+	}
+	if qFilter != "" {
+		q := strings.ToLower(qFilter)
+		f := make([]db.Medium, 0, len(result))
+		for _, m := range result {
+			if strings.Contains(strings.ToLower(m.Filename), q) ||
+				strings.Contains(strings.ToLower(m.FolderRelativePath), q) {
+				f = append(f, m)
+			}
+		}
+		result = f
+	}
+	if transFilter != "all" {
+		f := make([]db.Medium, 0, len(result))
+		for _, m := range result {
+			if m.TranslationType == transFilter {
+				f = append(f, m)
+			}
+		}
+		result = f
+	}
+	return result
+}
+
 func (h *Handlers) Index(c *gin.Context) {
 	statusFilter := c.DefaultQuery("status", "all")
 	diskFilter := c.DefaultQuery("disk", "on")
 	sortFilter := c.DefaultQuery("sort", "name")
 	dirFilter := c.DefaultQuery("dir", "asc")
+	qFilter := c.DefaultQuery("q", "")
+	transFilter := c.DefaultQuery("trans", "all")
 
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
@@ -57,15 +95,7 @@ func (h *Handlers) Index(c *gin.Context) {
 		return
 	}
 
-	if statusFilter != "all" {
-		filtered := make([]db.Medium, 0, len(raw))
-		for _, m := range raw {
-			if m.CurrentStatus == statusFilter {
-				filtered = append(filtered, m)
-			}
-		}
-		raw = filtered
-	}
+	raw = filterMedia(raw, statusFilter, qFilter, transFilter)
 
 	stats, err := db.FetchMediaStats(ctx, h.DB)
 	if err != nil {
@@ -154,29 +184,44 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter).Render(ctx, c.Writer)
+	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, transFilter).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) RandomNew(c *gin.Context) {
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
 
-	all, err := q.ListOnDiskMedia(ctx)
+	statusFilter := c.PostForm("status")
+	diskFilter := c.PostForm("disk")
+	qFilter := c.PostForm("q")
+	transFilter := c.PostForm("trans")
+	if statusFilter == "" {
+		statusFilter = "all"
+	}
+	if diskFilter == "" {
+		diskFilter = "on"
+	}
+	if transFilter == "" {
+		transFilter = "all"
+	}
+
+	var all []db.Medium
+	var err error
+	if diskFilter == "all" {
+		all, err = q.ListAllMedia(ctx)
+	} else {
+		all, err = q.ListOnDiskMedia(ctx)
+	}
 	if err != nil {
-		h.log().Error("list on disk media failed", "err", err)
+		h.log().Error("list media failed", "err", err)
 		c.Redirect(http.StatusSeeOther, "/")
 		return
 	}
 
-	var candidates []db.Medium
-	for _, m := range all {
-		if m.CurrentStatus == "new" {
-			candidates = append(candidates, m)
-		}
-	}
+	candidates := filterMedia(all, statusFilter, qFilter, transFilter)
 
 	if len(candidates) == 0 {
-		c.Redirect(http.StatusSeeOther, "/")
+		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s", statusFilter, diskFilter, qFilter, transFilter))
 		return
 	}
 
@@ -185,7 +230,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	_ = q.InsertStartEvent(ctx, chosen.ID)
 	_ = q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
 		MediaID:    chosen.ID,
-		FromStatus: sql.NullString{String: "new", Valid: true},
+		FromStatus: sql.NullString{String: chosen.CurrentStatus, Valid: true},
 		ToStatus:   "started",
 	})
 	_ = q.UpdateMediaStatus(ctx, db.UpdateMediaStatusParams{
@@ -193,13 +238,43 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		ID:            chosen.ID,
 	})
 
-	h.log().Info("random new started", "id", chosen.ID, "file", chosen.Filename)
+	h.log().Info("random started", "id", chosen.ID, "file", chosen.Filename)
 
 	if h.VLCPath != "" {
 		fullPath := filepath.Join(h.DiskRoot, chosen.FolderRelativePath, chosen.Filename)
 		_ = exec.Command(h.VLCPath, fullPath).Start()
 	}
 
+	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s", statusFilter, diskFilter, qFilter, transFilter))
+}
+
+func (h *Handlers) SetTranslationType(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	ctx := c.Request.Context()
+	q := db.New(h.DB)
+
+	translationType := c.PostForm("type")
+	_ = q.UpdateTranslationType(ctx, db.UpdateTranslationTypeParams{
+		TranslationType: translationType,
+		ID:              id,
+	})
+
+	if isHTMX(c) {
+		media, err := q.GetMediaByID(ctx, id)
+		if err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		stats, _ := db.FetchMediaStats(ctx, h.DB)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		templates.MediaRow(db.MediaWithStats{Medium: media, MediaStats: stats[id]}).Render(ctx, c.Writer)
+		return
+	}
 	c.Redirect(http.StatusSeeOther, "/")
 }
 

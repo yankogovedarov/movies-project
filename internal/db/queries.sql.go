@@ -22,7 +22,7 @@ func (q *Queries) CountOnDisk(ctx context.Context) (int64, error) {
 }
 
 const getMediaByID = `-- name: GetMediaByID :one
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
 FROM media WHERE id = ?
 `
 
@@ -38,6 +38,7 @@ func (q *Queries) GetMediaByID(ctx context.Context, id int64) (Medium, error) {
 		&i.OnDisk,
 		&i.CreatedAt,
 		&i.FileCreatedAt,
+		&i.TranslationType,
 	)
 	return i, err
 }
@@ -133,7 +134,7 @@ func (q *Queries) InsertStatusChange(ctx context.Context, arg InsertStatusChange
 }
 
 const listAllMedia = `-- name: ListAllMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
 FROM media
 ORDER BY folder_relative_path, filename
 `
@@ -156,6 +157,7 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 			&i.OnDisk,
 			&i.CreatedAt,
 			&i.FileCreatedAt,
+			&i.TranslationType,
 		); err != nil {
 			return nil, err
 		}
@@ -171,7 +173,7 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 }
 
 const listOnDiskMedia = `-- name: ListOnDiskMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename
@@ -195,6 +197,7 @@ func (q *Queries) ListOnDiskMedia(ctx context.Context) ([]Medium, error) {
 			&i.OnDisk,
 			&i.CreatedAt,
 			&i.FileCreatedAt,
+			&i.TranslationType,
 		); err != nil {
 			return nil, err
 		}
@@ -229,6 +232,20 @@ type UpdateMediaStatusParams struct {
 
 func (q *Queries) UpdateMediaStatus(ctx context.Context, arg UpdateMediaStatusParams) error {
 	_, err := q.db.ExecContext(ctx, updateMediaStatus, arg.CurrentStatus, arg.ID)
+	return err
+}
+
+const updateTranslationType = `-- name: UpdateTranslationType :exec
+UPDATE media SET translation_type = ? WHERE id = ?
+`
+
+type UpdateTranslationTypeParams struct {
+	TranslationType string
+	ID              int64
+}
+
+func (q *Queries) UpdateTranslationType(ctx context.Context, arg UpdateTranslationTypeParams) error {
+	_, err := q.db.ExecContext(ctx, updateTranslationType, arg.TranslationType, arg.ID)
 	return err
 }
 

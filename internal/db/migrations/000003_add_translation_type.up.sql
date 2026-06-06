@@ -1,0 +1,1 @@
+ALTER TABLE media ADD COLUMN translation_type TEXT NOT NULL DEFAULT '';

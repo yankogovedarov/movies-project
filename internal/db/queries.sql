@@ -14,13 +14,13 @@ UPDATE media SET on_disk = 0;
 SELECT COUNT(*) FROM media WHERE on_disk = 1;
 
 -- name: ListOnDiskMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename;
 
 -- name: GetMediaByID :one
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
 FROM media WHERE id = ?;
 
 -- name: InsertStartEvent :exec
@@ -33,9 +33,12 @@ UPDATE media SET current_status = ? WHERE id = ?;
 INSERT INTO status_changes (media_id, from_status, to_status) VALUES (?, ?, ?);
 
 -- name: ListAllMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
 FROM media
 ORDER BY folder_relative_path, filename;
+
+-- name: UpdateTranslationType :exec
+UPDATE media SET translation_type = ? WHERE id = ?;
 
 -- name: GetStartEvents :many
 SELECT id, media_id, started_at

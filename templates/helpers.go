@@ -51,12 +51,20 @@ func statusShort(status string) string {
 
 // sortBtnHref returns the URL for a sort button click.
 // Clicking an active button toggles the direction; clicking an inactive button resets to asc.
-func sortBtnHref(status, disk, currentSort, currentDir, btnSort string) string {
+func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans string) string {
 	newDir := "asc"
 	if currentSort == btnSort && currentDir == "asc" {
 		newDir = "desc"
 	}
-	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir
+	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&trans=" + trans
+}
+
+// translationToggleValue returns "" (unset) if current==target, else target.
+func translationToggleValue(current, target string) string {
+	if current == target {
+		return ""
+	}
+	return target
 }
 
 // sortBtnContent returns the button label, appending ↑ or ↓ when the button is active.

@@ -18,6 +18,7 @@ type Medium struct {
 	OnDisk             int64
 	CreatedAt          time.Time
 	FileCreatedAt      sql.NullTime
+	TranslationType    string
 }
 
 type StartEvent struct {
