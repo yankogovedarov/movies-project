@@ -19,7 +19,9 @@
       "Bash(./movietracker.exe *)",
       "Bash(task generate*)",
       "PowerShell(cd C:\\\\VS\\\\2026_05_01_Movies; & \"$env:USERPROFILE\\\\go\\\\bin\\\\templ.exe\" generate ./... 2>&1)",
-      "PowerShell(cd C:\\\\VS\\\\2026_05_01_Movies; & \"$env:USERPROFILE\\\\go\\\\bin\\\\templ.exe\" generate 2>&1)"
+      "PowerShell(cd C:\\\\VS\\\\2026_05_01_Movies; & \"$env:USERPROFILE\\\\go\\\\bin\\\\templ.exe\" generate 2>&1)",
+      "Bash(~/go/bin/sqlc generate *)",
+      "Bash(~/go/bin/templ generate *)"
     ],
     "deny": [
       "Bash(rm *)",
