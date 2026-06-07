@@ -106,7 +106,9 @@ func main() {
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/media/random-new/start", h.RandomNew)
+	r.POST("/media/:id/translation-type", h.SetTranslationType)
 	r.POST("/scan", h.Scan)
+	r.GET("/static/*filepath", h.StaticFile)
 
 	go openBrowser("http://localhost:8080")
 	r.Run(":8080")
