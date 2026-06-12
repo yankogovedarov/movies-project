@@ -16,23 +16,15 @@
       "Bash(mypy *)",
       "Bash(awk *)",
       "Bash(task *)",
-      "Bash(./movietracker.exe *)",
+      "Bash(bin/movietracker.exe *)",
       "Bash(task generate*)",
-      "PowerShell(cd C:\\\\VS\\\\2026_05_01_Movies; & \"$env:USERPROFILE\\\\go\\\\bin\\\\templ.exe\" generate ./... 2>&1)",
-      "PowerShell(cd C:\\\\VS\\\\2026_05_01_Movies; & \"$env:USERPROFILE\\\\go\\\\bin\\\\templ.exe\" generate 2>&1)",
       "Bash(~/go/bin/sqlc generate *)",
       "Bash(~/go/bin/templ generate *)",
-      "Skill(run)",
-      "Skill(run:*)",
       "PowerShell(task generate 2>&1)",
-      "PowerShell($env:PATH = \"$env:USERPROFILE\\\\go\\\\bin;$env:PATH\"; templ generate 2>&1)",
-      "PowerShell($env:PATH = \"$env:USERPROFILE\\\\go\\\\bin;$env:PATH\"; sqlc generate 2>&1)",
-      "PowerShell($env:PATH = \"$env:USERPROFILE\\\\go\\\\bin;$env:PATH\"; go build -o movietracker.exe ./cmd/movietracker 2>&1)",
-      "Bash(Get-ChildItem -Path \"c:\\\\VS\\\\2026_05_01_Movies\\\\docs\" -Recurse -Name)"
-    ],
-    "deny": [
-      "Bash(rm *)",
-      "PowerShell(Remove-Item *)"
+      "Bash(go mod *)",
+      "Bash(command -v task)",
+      "Bash(cd c:/VS/2026_05_01_Movies && ls ~/go/bin/ 2>/dev/null | grep -i task || echo \"no task in go/bin\"; echo \"=== chromium installed? ===\"; python -m playwright install --dry-run chromium 2>&1 | head -20)",
+      "Read(//c/Users/x/go/bin/**)"
     ]
   }
 }
