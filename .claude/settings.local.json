@@ -23,7 +23,6 @@
       "PowerShell(task generate 2>&1)",
       "Bash(go mod *)",
       "Bash(command -v task)",
-      "Bash(cd c:/VS/2026_05_01_Movies && ls ~/go/bin/ 2>/dev/null | grep -i task || echo \"no task in go/bin\"; echo \"=== chromium installed? ===\"; python -m playwright install --dry-run chromium 2>&1 | head -20)",
       "Read(//c/Users/x/go/bin/**)"
     ]
   }
