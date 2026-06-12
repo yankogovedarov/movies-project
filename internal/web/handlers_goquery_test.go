@@ -218,7 +218,7 @@ func TestIndex_FilterButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.filter-btn")
-	assert.Equal(t, 7, btns.Length(), "expected 7 filter buttons (6 status + 1 disk toggle)")
+	assert.Equal(t, 11, btns.Length(), "expected 11 filter buttons (6 status + 1 disk toggle + 4 translation)")
 }
 
 func TestIndex_SortButtons_Present(t *testing.T) {
