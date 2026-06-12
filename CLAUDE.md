@@ -65,7 +65,7 @@ movie-tracker/
 | `task lint` | Стартира `gofmt` + `golangci-lint` |
 | `task test` | Стартира Go тестове (unit + integration + API) |
 | `task test:e2e` | Стартира browser E2E тестове (Python Playwright) |
-| `task build` | Билдва статичен `.exe` |
+| `task build` | Билдва статичен `.exe` в `bin/` папката (винаги — никога в корена на проекта) |
 | `task run` | Стартира с hot reload (`air`) |
 | `task migrate-new -- <name>` | Създава нова миграция |
 

@@ -47,11 +47,11 @@ task run
 # Пусни тестове
 task test
 
-# Билдвай production .exe
+# Билдвай production .exe (изходът отива в bin/)
 task build
 ```
 
-**За потребители:** Копирай `movietracker.exe` в папка `MovieTracker\` на диска → двойно кликни → отвори браузъра на `http://localhost:8080`.
+**За потребители:** Копирай `bin\movietracker.exe` в папка `MovieTracker\` на диска → двойно кликни → отвори браузъра на `http://localhost:8080`.
 
 ## Структура на проекта
 

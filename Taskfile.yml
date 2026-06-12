@@ -28,9 +28,9 @@ tasks:
       - go test ./...
 
   build:
-    desc: Build static executable
+    desc: Build static executable into bin/
     cmds:
-      - go build -o movietracker.exe ./cmd/movietracker
+      - go build -o bin/movietracker.exe ./cmd/movietracker
 
   run:
     desc: Start with hot reload (air)
