@@ -21,7 +21,14 @@
       "PowerShell(cd C:\\\\VS\\\\2026_05_01_Movies; & \"$env:USERPROFILE\\\\go\\\\bin\\\\templ.exe\" generate ./... 2>&1)",
       "PowerShell(cd C:\\\\VS\\\\2026_05_01_Movies; & \"$env:USERPROFILE\\\\go\\\\bin\\\\templ.exe\" generate 2>&1)",
       "Bash(~/go/bin/sqlc generate *)",
-      "Bash(~/go/bin/templ generate *)"
+      "Bash(~/go/bin/templ generate *)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "PowerShell(task generate 2>&1)",
+      "PowerShell($env:PATH = \"$env:USERPROFILE\\\\go\\\\bin;$env:PATH\"; templ generate 2>&1)",
+      "PowerShell($env:PATH = \"$env:USERPROFILE\\\\go\\\\bin;$env:PATH\"; sqlc generate 2>&1)",
+      "PowerShell($env:PATH = \"$env:USERPROFILE\\\\go\\\\bin;$env:PATH\"; go build -o movietracker.exe ./cmd/movietracker 2>&1)",
+      "Bash(Get-ChildItem -Path \"c:\\\\VS\\\\2026_05_01_Movies\\\\docs\" -Recurse -Name)"
     ],
     "deny": [
       "Bash(rm *)",
