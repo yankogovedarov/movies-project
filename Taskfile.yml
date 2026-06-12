@@ -46,6 +46,6 @@ tasks:
       - pytest --browser chromium -v
 
   migrate-new:
-    desc: Create a new migration file
+    desc: Create a new migration file (in internal/db/migrations — the //go:embed source)
     cmds:
-      - migrate create -ext sql -dir migrations -seq {{.CLI_ARGS}}
+      - migrate create -ext sql -dir internal/db/migrations -seq {{.CLI_ARGS}}

@@ -44,11 +44,12 @@ movie-tracker/
 ├── internal/
 │   ├── config/                 # TOML loading
 │   ├── db/                     # sqlc генериран + queries.sql
+│   │   └── migrations/         # SQL миграции — embedded оттук чрез //go:embed (000001-000003)
 │   ├── scanner/                # Сканиране на диска
 │   ├── media/                  # Модел, статуси
 │   ├── vlc/                    # VLC интеграция
 │   └── web/                    # HTTP handlers + templ templates
-├── migrations/                 # SQL миграции (embedded)
+├── migrations/                 # ⚠️ DEPRECATED — старо копие на 000001; реалните са в internal/db/migrations/
 ├── templates/                  # .templ файлове
 ├── static/                     # Pico.css, HTMX (embedded)
 ├── tests/                      # Integration tests
@@ -110,6 +111,7 @@ movie-tracker/
 - **Plan first**: Write plan document locally in `docs/Итерации/Итерация NN - <name>.md` **before** starting implementation
 - **TDD-strict**: Failing tests first (red), then minimal implementation (green), then refactor if needed
 - **One atomic commit per iteration**: Commit plan document + all implementation files together after verification
+- **Green before commit**: Run `task test` (Go) **and** `task test:e2e` (browser) before each iteration commit; UI промени трябва да обновяват и съответните Go (goquery) + Playwright тестове. (Урок: итерации 21/22 промениха UI, но оставиха stale тестове — 1 Go + 11 e2e failure-а, защото свитата не е пускана преди комита.)
 - Never push intermediate states or partial work — each commit should be a complete, working vertical slice
 
 ## Git Janitor Agent
