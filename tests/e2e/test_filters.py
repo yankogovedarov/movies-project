@@ -1,6 +1,8 @@
 """
 E2E тестове за филтри по статус и наличност (/?status=...&disk=...).
 """
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -9,45 +11,57 @@ BASE_URL = "http://localhost:8080"
 
 def test_filter_controls_visible(page: Page):
     page.goto(BASE_URL)
-    expect(page.locator("select[name='status']")).to_be_visible()
-    expect(page.locator("select[name='disk']")).to_be_visible()
+    expect(page.locator(".filter-btns")).to_be_visible()
+    expect(page.locator("a.filter-btn[title='Всички статуси']")).to_be_visible()
 
 
-def test_filter_status_select_has_all_options(page: Page):
+def test_filter_status_buttons_cover_all_statuses(page: Page):
+    # Таргетираме конкретните статус бутони по title, за да е сигурно, че
+    # status=all идва уникално от „Всички статуси", а не от disk-toggle/превод
+    # бутон, който носи текущия статус.
     page.goto(BASE_URL)
-    options = page.locator("select[name='status'] option")
-    values = [options.nth(i).get_attribute("value") for i in range(options.count())]
-    assert "all" in values
-    assert "new" in values
-    assert "started" in values
-    assert "completed_both" in values
-    assert "completed_yanko" in values
-    assert "completed_liza" in values
+    title_to_status = {
+        "Всички статуси": "all",
+        "Нова": "new",
+        "Стартирана": "started",
+        "Завършена от двамата": "completed_both",
+        "Завършена от Янко": "completed_yanko",
+        "Завършена от Лиза": "completed_liza",
+    }
+    for title, status in title_to_status.items():
+        href = page.locator(f"a.filter-btn[title='{title}']").get_attribute("href")
+        assert f"status={status}" in href, (
+            f"Expected button '{title}' to point to status={status}, got href={href}"
+        )
 
 
-def test_filter_disk_select_has_on_and_all_options(page: Page):
+def test_filter_disk_toggle_has_both_directions(page: Page):
+    # При disk=on (по подразбиране) toggle ↕ сочи към disk=all.
     page.goto(BASE_URL)
-    options = page.locator("select[name='disk'] option")
-    values = [options.nth(i).get_attribute("value") for i in range(options.count())]
-    assert "on" in values
-    assert "all" in values
+    toggle = page.locator("a.filter-btn[title*='кликни']")
+    expect(toggle).to_have_count(1)
+    assert "disk=all" in toggle.get_attribute("href")
+
+    # При disk=all toggle ↕ сочи обратно към disk=on.
+    page.goto(f"{BASE_URL}/?disk=all")
+    toggle = page.locator("a.filter-btn[title*='кликни']")
+    expect(toggle).to_have_count(1)
+    assert "disk=on" in toggle.get_attribute("href")
 
 
 def test_filter_by_status_updates_url(page: Page):
     page.goto(BASE_URL)
-    page.select_option("select[name='status']", "started")
-    page.locator("button[type='submit']", has_text="Филтър").click()
+    page.locator("a.filter-btn[title='Стартирана']").click()
     assert "status=started" in page.url
 
 
 def test_filter_by_status_new_shows_results(page: Page):
     page.goto(f"{BASE_URL}/?status=new")
-    expect(page.locator("select[name='status']")).to_be_visible()
-    selected_val = page.locator("select[name='status']").input_value()
-    assert selected_val == "new"
+    btn = page.locator("a.filter-btn[title='Нова']")
+    expect(btn).to_have_class(re.compile(r"\bfilter-active\b"))
 
 
-def test_filter_disk_all_selected_when_param_present(page: Page):
+def test_filter_disk_toggle_active_when_param_present(page: Page):
     page.goto(f"{BASE_URL}/?disk=all")
-    selected_val = page.locator("select[name='disk']").input_value()
-    assert selected_val == "all"
+    toggle = page.locator("a.filter-btn[title*='кликни']")
+    expect(toggle).to_have_class(re.compile(r"\bfilter-active\b"))

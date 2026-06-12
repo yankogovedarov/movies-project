@@ -10,7 +10,7 @@ BASE_URL = "http://localhost:8080"
 def test_sort_buttons_visible(page: Page):
     page.goto(BASE_URL)
     btns = page.locator("a.sort-btn")
-    expect(btns).to_have_count(4)
+    expect(btns).to_have_count(6)
 
 
 def test_sort_name_button_active_by_default(page: Page):

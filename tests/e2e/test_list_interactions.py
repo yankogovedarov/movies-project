@@ -33,7 +33,7 @@ def test_list_has_tree_navigation_link(page: Page):
 
 def test_list_has_scan_button_in_navbar(page: Page):
     page.goto(BASE_URL)
-    expect(page.locator("button[type=submit]", has_text="Сканирай")).to_be_visible()
+    expect(page.locator("button.icon-btn[title='Сканирай диска']")).to_be_visible()
 
 
 def test_actions_has_five_status_buttons(page: Page):
@@ -41,7 +41,7 @@ def test_actions_has_five_status_buttons(page: Page):
     if not _has_media(page):
         pytest.skip("No media available")
     row = page.locator("tbody tr").first
-    assert row.locator("button.icon-btn").count() == 5
+    assert row.locator("td.actions button.icon-btn").count() == 5
 
 
 def test_filename_cell_is_button_styled_as_link(page: Page):
@@ -135,6 +135,6 @@ def test_detail_link_opens_detail_page(page: Page):
 
 def test_scan_button_redirects_to_list(page: Page):
     page.goto(BASE_URL)
-    page.locator("button[type=submit]", has_text="Сканирай").first.click()
+    page.locator("button.icon-btn[title='Сканирай диска']").first.click()
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
     assert page.url.rstrip("/").endswith("8080") or page.url.endswith("/")

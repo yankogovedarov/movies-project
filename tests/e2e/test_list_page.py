@@ -10,5 +10,5 @@ def test_page_loads(page: Page):
 
 def test_scan_button_visible(page: Page):
     page.goto(BASE_URL)
-    btn = page.locator("button[type=submit]", has_text="Сканирай")
+    btn = page.locator("button.icon-btn[title='Сканирай диска']")
     expect(btn).to_be_visible()
