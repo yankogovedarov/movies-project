@@ -2,6 +2,7 @@
 bin/
 *.exe
 tmp/
+.build-number
 
 # Database
 *.db

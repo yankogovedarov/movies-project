@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -17,7 +18,20 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+// version and buildNumber are injected at build time via -ldflags -X.
+var (
+	version     = "dev"
+	buildNumber = "0"
+)
+
 func main() {
+	for _, arg := range os.Args[1:] {
+		if arg == "--version" || arg == "-v" || arg == "version" {
+			fmt.Printf("Movie Tracker %s (build %s)\n", version, buildNumber)
+			return
+		}
+	}
+
 	paths, err := disk.Discover(os.Executable)
 	if err != nil {
 		slog.Error("disk discovery failed", "err", err)
@@ -43,6 +57,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	slog.Info("starting", "appFolder", paths.AppFolder, "diskRoot", paths.DiskRoot)
+	slog.Info("Movie Tracker", "version", version, "build", buildNumber)
 
 	cfg, err := config.Load()
 	if err != nil {

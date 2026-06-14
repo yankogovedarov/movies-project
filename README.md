@@ -32,6 +32,7 @@
 | ✅ Сортиране по път/размер + посока (asc/desc) + случаен нов филм (`POST /media/random-new/start`) | 21 |
 | ✅ Текстово търсене + филтър по тип превод + задаване на тип превод (`POST /media/:id/translation-type`) | 22 |
 | ✅ 🎲 без презареждане: HTMX OOB swap + flash регион; избира само от филтрираните; запазва статуса на вече-завършени | 24 |
+| ✅ Авто-версиониране при билд (`cmd/bumpbuild` + ldflags); `--version` флаг; startup лог с версия+build | 25 |
 
 ### Предстои
 
@@ -49,8 +50,11 @@ task run
 # Пусни тестове
 task test
 
-# Билдвай production .exe (изходът отива в bin/)
+# Билдвай production .exe (изходът отива в bin/, увеличава build номера)
 task build
+
+# Провери версията без пълно стартиране
+bin\movietracker.exe --version
 ```
 
 **За потребители:** Копирай `bin\movietracker.exe` в папка `MovieTracker\` на диска → двойно кликни → отвори браузъра на `http://localhost:8080`.
