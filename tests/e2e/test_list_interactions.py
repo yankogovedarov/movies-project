@@ -26,9 +26,12 @@ def test_list_shows_table_or_empty_state(page: Page):
     assert has_table or has_empty, "Expected table or empty-state message"
 
 
-def test_list_has_tree_navigation_link(page: Page):
+def test_list_has_no_view_switch_links(page: Page):
+    # Bug 16: view-switch links (Списък/Дърво) are removed from the main menu;
+    # the app works in list mode. The /tree route still exists but is not exposed here.
     page.goto(BASE_URL)
-    expect(page.locator("a[href='/tree']")).to_be_visible()
+    expect(page.locator("nav.top-nav a[href='/tree']")).to_have_count(0)
+    expect(page.locator("nav.top-nav a[href='/']")).to_have_count(0)
 
 
 def test_list_has_scan_button_in_navbar(page: Page):

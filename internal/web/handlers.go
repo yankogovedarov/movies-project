@@ -262,9 +262,9 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		}
 		s, _ := db.FetchSingleMediaStats(ctx, h.DB, chosen.ID)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		// The flash text is the hx-target (#flash) response body; the OOB row
-		// re-targets itself by id and is swapped independently by HTMX.
-		templates.Flash("🎲 Стартирах: " + chosen.Filename).Render(ctx, c.Writer)
+		// No flash message (Bug 16): the response is only the OOB row, which
+		// HTMX swaps by id. The hx-target (#flash) receives the empty remainder
+		// and is therefore cleared.
 		templates.MediaRowOOB(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
 		return
 	}

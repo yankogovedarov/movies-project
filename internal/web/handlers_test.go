@@ -776,7 +776,7 @@ func TestRandomNew_HTMX_ReturnsOOBRow(t *testing.T) {
 	assert.Contains(t, body, `hx-swap-oob="true"`)
 	assert.Contains(t, body, `id="media-`)
 	assert.Contains(t, body, "OobMovie.mkv")
-	assert.Contains(t, body, "Стартирах", "expected flash message in HTMX response")
+	assert.NotContains(t, body, "Стартирах", "flash success message must be removed (Bug 16)")
 }
 
 func TestRandomNew_HTMX_DoesNotRedirect(t *testing.T) {
