@@ -25,6 +25,7 @@ func SyncScanResults(database *sql.DB, files []scanner.VideoFile) error {
 			FolderRelativePath: f.FolderRelativePath,
 			FileSizeBytes:      f.SizeBytes,
 			FileCreatedAt:      sql.NullTime{Time: f.FileCreatedAt, Valid: !f.FileCreatedAt.IsZero()},
+			TranslationType:    f.TranslationType,
 		})
 		if err != nil {
 			return fmt.Errorf("upsert %q: %w", f.Filename, err)

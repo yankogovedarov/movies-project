@@ -250,12 +250,15 @@ func (q *Queries) UpdateTranslationType(ctx context.Context, arg UpdateTranslati
 }
 
 const upsertMedia = `-- name: UpsertMedia :one
-INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at)
-VALUES (?, ?, ?, 1, ?)
+INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at, translation_type)
+VALUES (?, ?, ?, 1, ?, ?)
 ON CONFLICT(filename, file_size_bytes) DO UPDATE SET
     folder_relative_path = excluded.folder_relative_path,
     on_disk = 1,
-    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at)
+    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at),
+    -- Keep an existing (manually set or previously detected) translation type;
+    -- only fill in the detected hint when the current value is still empty.
+    translation_type = CASE WHEN media.translation_type != '' THEN media.translation_type ELSE excluded.translation_type END
 RETURNING id
 `
 
@@ -264,6 +267,7 @@ type UpsertMediaParams struct {
 	FolderRelativePath string
 	FileSizeBytes      int64
 	FileCreatedAt      sql.NullTime
+	TranslationType    string
 }
 
 func (q *Queries) UpsertMedia(ctx context.Context, arg UpsertMediaParams) (int64, error) {
@@ -272,6 +276,7 @@ func (q *Queries) UpsertMedia(ctx context.Context, arg UpsertMediaParams) (int64
 		arg.FolderRelativePath,
 		arg.FileSizeBytes,
 		arg.FileCreatedAt,
+		arg.TranslationType,
 	)
 	var id int64
 	err := row.Scan(&id)

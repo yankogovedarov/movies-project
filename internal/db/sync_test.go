@@ -103,6 +103,56 @@ func TestSyncScanResults_EmptyScanMarksAllOffDisk(t *testing.T) {
 	assert.Equal(t, int64(0), count)
 }
 
+func TestSyncScanResults_FillsTranslationWhenEmpty(t *testing.T) {
+	d := openTestDB(t)
+	files := []scanner.VideoFile{
+		{Filename: "movie.mkv", FolderRelativePath: "Action", SizeBytes: 1024000, TranslationType: "bg"},
+	}
+	require.NoError(t, db.SyncScanResults(d, files))
+
+	row := d.QueryRow("SELECT translation_type FROM media WHERE filename = 'movie.mkv'")
+	var tt string
+	require.NoError(t, row.Scan(&tt))
+	assert.Equal(t, "bg", tt)
+}
+
+func TestSyncScanResults_FillsTranslationOnRescanWhenPreviouslyEmpty(t *testing.T) {
+	d := openTestDB(t)
+	files := []scanner.VideoFile{
+		{Filename: "movie.mkv", FolderRelativePath: "Action", SizeBytes: 1024000, TranslationType: ""},
+	}
+	require.NoError(t, db.SyncScanResults(d, files))
+
+	files[0].TranslationType = "sub"
+	require.NoError(t, db.SyncScanResults(d, files))
+
+	row := d.QueryRow("SELECT translation_type FROM media WHERE filename = 'movie.mkv'")
+	var tt string
+	require.NoError(t, row.Scan(&tt))
+	assert.Equal(t, "sub", tt)
+}
+
+func TestSyncScanResults_DoesNotOverwriteExistingTranslation(t *testing.T) {
+	d := openTestDB(t)
+	files := []scanner.VideoFile{
+		{Filename: "movie.mkv", FolderRelativePath: "Action", SizeBytes: 1024000, TranslationType: "sub"},
+	}
+	require.NoError(t, db.SyncScanResults(d, files))
+
+	// Simulate a manual override by the user.
+	_, err := d.Exec("UPDATE media SET translation_type = 'orig' WHERE filename = 'movie.mkv'")
+	require.NoError(t, err)
+
+	// A later scan now detects "bg" — it must NOT clobber the user's choice.
+	files[0].TranslationType = "bg"
+	require.NoError(t, db.SyncScanResults(d, files))
+
+	row := d.QueryRow("SELECT translation_type FROM media WHERE filename = 'movie.mkv'")
+	var tt string
+	require.NoError(t, row.Scan(&tt))
+	assert.Equal(t, "orig", tt)
+}
+
 func TestSyncScanResults_Idempotent(t *testing.T) {
 	d := openTestDB(t)
 

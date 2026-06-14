@@ -33,6 +33,34 @@ func TestScan(t *testing.T) {
 	assert.False(t, filenames["other.txt"])
 }
 
+func TestScan_DetectsTranslationType(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "Movies")
+	os.MkdirAll(dir, 0755)
+
+	// SUB: sibling .srt with the same base name
+	os.WriteFile(filepath.Join(dir, "subbed.mkv"), []byte("v"), 0644)
+	os.WriteFile(filepath.Join(dir, "subbed.srt"), []byte("s"), 0644)
+	// BG: marker in the filename
+	os.WriteFile(filepath.Join(dir, "dubbed.BGAUDIO.mkv"), []byte("v"), 0644)
+	// none
+	os.WriteFile(filepath.Join(dir, "plain.mkv"), []byte("v"), 0644)
+
+	files, err := scanner.Scan(root, []string{})
+	assert.NoError(t, err)
+
+	got := map[string]string{}
+	for _, f := range files {
+		got[f.Filename] = f.TranslationType
+	}
+	assert.Equal(t, "sub", got["subbed.mkv"])
+	assert.Equal(t, "bg", got["dubbed.BGAUDIO.mkv"])
+	assert.Equal(t, "", got["plain.mkv"])
+	// subtitle files themselves are not tracked as media
+	_, hasSrt := got["subbed.srt"]
+	assert.False(t, hasSrt)
+}
+
 func TestScan_ExcludesFolder(t *testing.T) {
 	root := t.TempDir()
 	os.MkdirAll(filepath.Join(root, "Games"), 0755)
