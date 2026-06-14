@@ -221,6 +221,11 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	candidates := filterMedia(all, statusFilter, qFilter, transFilter)
 
 	if len(candidates) == 0 {
+		if isHTMX(c) {
+			c.Header("Content-Type", "text/html; charset=utf-8")
+			templates.Flash("Няма филми за избор").Render(ctx, c.Writer)
+			return
+		}
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s", statusFilter, diskFilter, qFilter, transFilter))
 		return
 	}
@@ -228,21 +233,40 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	chosen := candidates[rand.Intn(len(candidates))]
 
 	_ = q.InsertStartEvent(ctx, chosen.ID)
-	_ = q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
-		MediaID:    chosen.ID,
-		FromStatus: sql.NullString{String: chosen.CurrentStatus, Valid: true},
-		ToStatus:   "started",
-	})
-	_ = q.UpdateMediaStatus(ctx, db.UpdateMediaStatusParams{
-		CurrentStatus: "started",
-		ID:            chosen.ID,
-	})
+
+	// Only a brand-new media transitions to "started"; an already-completed
+	// media keeps its status so it stays inside the active filter.
+	if chosen.CurrentStatus == "new" {
+		_ = q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
+			MediaID:    chosen.ID,
+			FromStatus: sql.NullString{String: "new", Valid: true},
+			ToStatus:   "started",
+		})
+		_ = q.UpdateMediaStatus(ctx, db.UpdateMediaStatusParams{
+			CurrentStatus: "started",
+			ID:            chosen.ID,
+		})
+	}
 
 	h.log().Info("random started", "id", chosen.ID, "file", chosen.Filename)
 
 	if h.VLCPath != "" {
 		fullPath := filepath.Join(h.DiskRoot, chosen.FolderRelativePath, chosen.Filename)
 		_ = exec.Command(h.VLCPath, fullPath).Start()
+	}
+
+	if isHTMX(c) {
+		updated, err := q.GetMediaByID(ctx, chosen.ID)
+		if err != nil {
+			updated = chosen
+		}
+		s, _ := db.FetchSingleMediaStats(ctx, h.DB, chosen.ID)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		// The flash text is the hx-target (#flash) response body; the OOB row
+		// re-targets itself by id and is swapped independently by HTMX.
+		templates.Flash("🎲 Стартирах: " + chosen.Filename).Render(ctx, c.Writer)
+		templates.MediaRowOOB(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
+		return
 	}
 
 	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s", statusFilter, diskFilter, qFilter, transFilter))

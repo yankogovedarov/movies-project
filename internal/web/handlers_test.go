@@ -41,6 +41,7 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r.GET("/media/:id/open-folder", h.OpenFolder)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
+	r.POST("/media/random-new/start", h.RandomNew)
 	r.POST("/scan", h.Scan)
 	return r
 }
@@ -377,7 +378,7 @@ func TestStartMedia_HTMX_ReturnsRow(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
-	assert.Contains(t, w.Body.String(), "<tr>")
+	assert.Contains(t, w.Body.String(), `<tr id="media-`)
 	assert.Contains(t, w.Body.String(), "Movie.mkv")
 }
 
@@ -400,7 +401,7 @@ func TestChangeStatus_HTMX_ReturnsRow(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
-	assert.Contains(t, w.Body.String(), "<tr>")
+	assert.Contains(t, w.Body.String(), `<tr id="media-`)
 }
 
 func TestOpenFolder_HTMX_Returns200(t *testing.T) {
@@ -658,4 +659,152 @@ func TestIndex_SortByMarked_Returns200WithAllMedia(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "MovieC.mkv")
+}
+
+func startEventCount(t *testing.T, d *sql.DB, id int64) int {
+	t.Helper()
+	var n int
+	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM start_events WHERE media_id = ?", id).Scan(&n))
+	return n
+}
+
+func mediaIDByName(t *testing.T, d *sql.DB, name string) int64 {
+	t.Helper()
+	q := db.New(d)
+	media, err := q.ListAllMedia(context.Background())
+	require.NoError(t, err)
+	for _, m := range media {
+		if m.Filename == name {
+			return m.ID
+		}
+	}
+	t.Fatalf("media %q not found", name)
+	return 0
+}
+
+func TestRandomNew_PicksFromFilteredStatus(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "YankoPick.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Other1.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+		{Filename: "Other2.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+	})
+	q := db.New(d)
+
+	yankoID := mediaIDByName(t, d, "YankoPick.mkv")
+	other1ID := mediaIDByName(t, d, "Other1.mkv")
+	other2ID := mediaIDByName(t, d, "Other2.mkv")
+
+	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+		CurrentStatus: "completed_yanko",
+		ID:            yankoID,
+	}))
+	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+		CurrentStatus: "started",
+		ID:            other1ID,
+	}))
+	// other2 stays "new"
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=completed_yanko&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	// Only the yanko-status media is a candidate, so the pick is deterministic.
+	assert.GreaterOrEqual(t, startEventCount(t, d, yankoID), 1, "filtered (yanko) media should have a start event")
+	assert.Equal(t, 0, startEventCount(t, d, other1ID), "non-matching media should not be started")
+	assert.Equal(t, 0, startEventCount(t, d, other2ID), "non-matching media should not be started")
+}
+
+func TestRandomNew_NewBecomesStarted(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "FreshMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	id := mediaIDByName(t, d, "FreshMovie.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=new&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	updated, err := q.GetMediaByID(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, "started", updated.CurrentStatus)
+	assert.GreaterOrEqual(t, startEventCount(t, d, id), 1)
+}
+
+func TestRandomNew_KeepsCompletedStatus(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "DoneMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	q := db.New(d)
+	id := mediaIDByName(t, d, "DoneMovie.mkv")
+	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+		CurrentStatus: "completed_yanko",
+		ID:            id,
+	}))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=completed_yanko&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	updated, err := q.GetMediaByID(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, "completed_yanko", updated.CurrentStatus, "completed status must be preserved")
+	assert.GreaterOrEqual(t, startEventCount(t, d, id), 1, "a start event must still be recorded")
+}
+
+func TestRandomNew_HTMX_ReturnsOOBRow(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "OobMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+	body := w.Body.String()
+	assert.Contains(t, body, `hx-swap-oob="true"`)
+	assert.Contains(t, body, `id="media-`)
+	assert.Contains(t, body, "OobMovie.mkv")
+	assert.Contains(t, body, "Стартирах", "expected flash message in HTMX response")
+}
+
+func TestRandomNew_HTMX_DoesNotRedirect(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "NoRedirect.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusSeeOther, w.Code)
+	assert.Empty(t, w.Header().Get("Location"))
+}
+
+func TestRandomNew_NoCandidates_HTMX(t *testing.T) {
+	d := openTestDB(t)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Empty(t, w.Header().Get("Location"))
+	assert.Contains(t, w.Body.String(), "Няма филми")
 }

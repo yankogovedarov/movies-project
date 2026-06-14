@@ -7,7 +7,23 @@ import (
 )
 
 templ MediaRow(m db.MediaWithStats) {
-	<tr>
+	<tr id={ "media-" + strconv.FormatInt(m.ID, 10) }>
+		@mediaRowCells(m)
+	</tr>
+}
+
+templ MediaRowOOB(m db.MediaWithStats) {
+	<tr id={ "media-" + strconv.FormatInt(m.ID, 10) } hx-swap-oob="true">
+		@mediaRowCells(m)
+	</tr>
+}
+
+// Flash renders a short status message into the #flash region (templ auto-escapes msg).
+templ Flash(msg string) {
+	<span>{ msg }</span>
+}
+
+templ mediaRowCells(m db.MediaWithStats) {
 		<td class="filename">
 			<form
 				action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start") }
@@ -122,7 +138,6 @@ templ MediaRow(m db.MediaWithStats) {
 				<a href={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10)) } class="icon-btn" title="Детайли">ℹ</a>
 			</div>
 		</td>
-	</tr>
 }
 
 templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string, sortFilter string, dirFilter string, qFilter string, transFilter string) {
@@ -210,6 +225,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				.nav-label { font-size: 0.7rem; color: var(--pico-muted-color); align-self: center; }
 				.search-input { height: 1.35rem; padding: 0 0.3rem; font-size: 0.8rem; width: 8rem; }
 				th.translation, td.translation { width: 5rem; white-space: nowrap; }
+				.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }
 			</style>
 		</head>
 		<body>
@@ -256,7 +272,13 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "added", qFilter, transFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "added") } title="По дата добавяне">{ sortBtnContent("⊕", sortFilter, dirFilter, "added") }</a>
 						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "marked", qFilter, transFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "marked") } title="По дата завършване">{ sortBtnContent("✓", sortFilter, dirFilter, "marked") }</a>
 					</div>
-					<form method="POST" action="/media/random-new/start">
+					<form
+						method="POST"
+						action="/media/random-new/start"
+						hx-post="/media/random-new/start"
+						hx-target="#flash"
+						hx-swap="innerHTML"
+					>
 						<input type="hidden" name="status" value={ statusFilter }/>
 						<input type="hidden" name="disk" value={ diskFilter }/>
 						<input type="hidden" name="q" value={ qFilter }/>
@@ -264,6 +286,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						<button type="submit" class="sort-btn" title="Стартирай случаен от филтрираните">🎲</button>
 					</form>
 				</nav>
+				<div id="flash" class="flash"></div>
 				if len(media) == 0 {
 					<p>Няма намерени медии на диска.</p>
 				} else {

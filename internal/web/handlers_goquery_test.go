@@ -294,6 +294,40 @@ func TestIndex_Row_NoStartInfo_WhenNeverStarted(t *testing.T) {
 	assert.Equal(t, 0, startInfo.Length(), "expected no .start-info for never-started media")
 }
 
+func TestIndex_RandomForm_HasHxPost(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+
+	var randomForm *goquery.Selection
+	doc.Find("form").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+		action, _ := s.Attr("action")
+		hxPost, _ := s.Attr("hx-post")
+		if strings.Contains(action, "random-new/start") || strings.Contains(hxPost, "random-new/start") {
+			randomForm = s
+			return false
+		}
+		return true
+	})
+	require.NotNil(t, randomForm, "expected 🎲 random form")
+
+	hxPost, exists := randomForm.Attr("hx-post")
+	require.True(t, exists, "expected hx-post on random form")
+	assert.Contains(t, hxPost, "random-new/start")
+
+	for _, name := range []string{"status", "disk", "q", "trans"} {
+		assert.Equal(t, 1, randomForm.Find(fmt.Sprintf("input[name=%s]", name)).Length(),
+			"expected hidden input %q in random form", name)
+	}
+}
+
 func TestIndex_FilterButtons_ReflectsActiveParam(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
