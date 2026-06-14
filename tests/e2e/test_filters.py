@@ -65,3 +65,12 @@ def test_filter_disk_toggle_active_when_param_present(page: Page):
     page.goto(f"{BASE_URL}/?disk=all")
     toggle = page.locator("a.filter-btn[title*='кликни']")
     expect(toggle).to_have_class(re.compile(r"\bfilter-active\b"))
+
+
+def test_search_input_is_live(page: Page):
+    # Bug 16: text search works while typing — the input fires on keyup, no Enter.
+    page.goto(BASE_URL)
+    search = page.locator("input[type=search][name=q]")
+    expect(search).to_have_attribute("hx-get", "/")
+    expect(search).to_have_attribute("hx-trigger", re.compile(r"keyup"))
+    expect(search).to_have_attribute("hx-target", "#media-list")

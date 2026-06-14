@@ -328,6 +328,38 @@ func TestIndex_RandomForm_HasHxPost(t *testing.T) {
 	}
 }
 
+func TestIndex_SearchInput_IsLive(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+
+	// Results region is wrapped so HTMX can hx-select/hx-swap it independently.
+	require.Equal(t, 1, doc.Find("#media-list").Length(), "expected #media-list wrapper")
+
+	input := doc.Find("input[type=search][name=q]")
+	require.Equal(t, 1, input.Length(), "expected search input")
+
+	hxGet, ok := input.Attr("hx-get")
+	require.True(t, ok, "search input must have hx-get for live search")
+	assert.Equal(t, "/", hxGet)
+
+	hxTrigger, ok := input.Attr("hx-trigger")
+	require.True(t, ok, "search input must have hx-trigger for live search")
+	assert.Contains(t, hxTrigger, "keyup", "search must trigger on keyup (no Enter needed)")
+
+	hxTarget, _ := input.Attr("hx-target")
+	assert.Equal(t, "#media-list", hxTarget)
+	hxSelect, _ := input.Attr("hx-select")
+	assert.Equal(t, "#media-list", hxSelect)
+}
+
 func TestIndex_FilterButtons_ReflectsActiveParam(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{

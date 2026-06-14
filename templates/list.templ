@@ -241,7 +241,20 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						<input type="hidden" name="sort" value={ sortFilter }/>
 						<input type="hidden" name="dir" value={ dirFilter }/>
 						<input type="hidden" name="trans" value={ transFilter }/>
-						<input type="search" name="q" value={ qFilter } placeholder="🔍 търси..." class="search-input"/>
+						<input
+							type="search"
+							name="q"
+							value={ qFilter }
+							placeholder="🔍 търси..."
+							class="search-input"
+							hx-get="/"
+							hx-trigger="keyup changed delay:300ms, search"
+							hx-target="#media-list"
+							hx-select="#media-list"
+							hx-swap="outerHTML"
+							hx-include="closest form"
+							hx-push-url="true"
+						/>
 					</form>
 					<span class="nav-label">філтър:</span>
 					<div class="filter-btns">
@@ -285,29 +298,31 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 					</form>
 				</nav>
 				<div id="flash" class="flash"></div>
-				if len(media) == 0 {
-					<p>Няма намерени медии на диска.</p>
-				} else {
-					<figure>
-						<table>
-							<thead>
-								<tr>
-									<th class="filename">Файл</th>
-									<th class="folder">Папка</th>
-									<th class="size">Размер</th>
-									<th class="status">Статус</th>
-									<th class="translation">Пр</th>
-									<th class="actions">Функции</th>
-								</tr>
-							</thead>
-							<tbody>
-								for _, m := range media {
-									@MediaRow(m)
-								}
-							</tbody>
-						</table>
-					</figure>
-				}
+				<div id="media-list">
+					if len(media) == 0 {
+						<p>Няма намерени медии.</p>
+					} else {
+						<figure>
+							<table>
+								<thead>
+									<tr>
+										<th class="filename">Файл</th>
+										<th class="folder">Папка</th>
+										<th class="size">Размер</th>
+										<th class="status">Статус</th>
+										<th class="translation">Пр</th>
+										<th class="actions">Функции</th>
+									</tr>
+								</thead>
+								<tbody>
+									for _, m := range media {
+										@MediaRow(m)
+									}
+								</tbody>
+							</table>
+						</figure>
+					}
+				</div>
 			</main>
 		</body>
 	</html>
