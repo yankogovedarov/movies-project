@@ -20,6 +20,7 @@ def test_tree_has_list_navigation_link(page: Page):
     expect(page.locator("a[href='/']")).to_be_visible()
 
 
-def test_list_has_tree_navigation_link(page: Page):
-    page.goto(BASE_URL)
-    expect(page.locator("a[href='/tree']")).to_be_visible()
+# NB: the list view intentionally has NO view-switch nav link to /tree — those
+# links were removed in Bug #16 (Итерация 26); the app runs in list mode while the
+# /tree route is kept. Absence on the list page is asserted in
+# test_list_interactions.py::test_list_has_no_view_switch_links.
