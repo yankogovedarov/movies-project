@@ -30,7 +30,7 @@ tasks:
   build:
     desc: Build static executable into bin/ (auto-increments build number)
     vars:
-      VERSION: v1.0.0
+      VERSION: v1.0.1
       BUILD:
         sh: go run ./cmd/bumpbuild
     cmds:
