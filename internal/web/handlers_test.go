@@ -521,6 +521,25 @@ func TestIndex_FilterByStatus_ReturnsOnlyMatching(t *testing.T) {
 	assert.NotContains(t, w.Body.String(), "Started.mkv")
 }
 
+func TestIndex_FilterTransNone_ShowsOnlyUnset(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Unset.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000, TranslationType: ""},
+		{Filename: "Subbed.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000, TranslationType: "sub"},
+		{Filename: "Dubbed.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000, TranslationType: "bg"},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?trans=none", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "Unset.mkv")
+	assert.NotContains(t, body, "Subbed.mkv")
+	assert.NotContains(t, body, "Dubbed.mkv")
+}
+
 func TestIndex_FilterDisk_All_IncludesOffDisk(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{

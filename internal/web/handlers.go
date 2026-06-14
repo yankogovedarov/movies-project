@@ -60,9 +60,14 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter string) []d
 		result = f
 	}
 	if transFilter != "all" {
+		// "none" matches media with no translation type set yet.
+		want := transFilter
+		if transFilter == "none" {
+			want = ""
+		}
 		f := make([]db.Medium, 0, len(result))
 		for _, m := range result {
-			if m.TranslationType == transFilter {
+			if m.TranslationType == want {
 				f = append(f, m)
 			}
 		}

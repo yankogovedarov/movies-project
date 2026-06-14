@@ -218,7 +218,39 @@ func TestIndex_FilterButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.filter-btn")
-	assert.Equal(t, 11, btns.Length(), "expected 11 filter buttons (6 status + 1 disk toggle + 4 translation)")
+	assert.Equal(t, 12, btns.Length(), "expected 12 filter buttons (6 status + 1 disk toggle + 5 translation)")
+}
+
+func TestIndex_TransFilter_HasLabelAndNoneButton(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "превод:", "expected a 'превод:' label separating translation filters")
+
+	doc := parseBody(t, body)
+	// The translation group is its own container.
+	assert.Equal(t, 1, doc.Find(".trans-btns").Length(), "expected a single .trans-btns group")
+	// The "неустановено" (unset) filter button points to trans=none.
+	none := doc.Find(".trans-btns a.filter-btn[title='Неустановен превод']")
+	require.Equal(t, 1, none.Length(), "expected a single 'неустановено' button")
+	href, _ := none.Attr("href")
+	assert.Contains(t, href, "trans=none")
+}
+
+func TestIndex_TransNoneButton_ActiveWhenParam(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?trans=none", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	none := doc.Find(".trans-btns a.filter-btn[title='Неустановен превод']")
+	require.Equal(t, 1, none.Length())
+	class, _ := none.Attr("class")
+	assert.Contains(t, class, "filter-active", "trans=none button should be active when trans=none")
 }
 
 func TestIndex_SortButtons_Present(t *testing.T) {

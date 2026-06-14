@@ -164,7 +164,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				button, [type=submit], [type=button], [type=reset], [role=button],
 				input, select, textarea { margin-bottom: 0; }
 				figure { margin-bottom: 0; }
-				.filter-btns, .sort-btns { display: inline-flex; align-items: center; gap: 0.2rem; }
+				.filter-btns, .trans-btns, .sort-btns { display: inline-flex; align-items: center; gap: 0.2rem; }
 				.filter-btn, .sort-btn {
 					display: inline-flex; align-items: center; justify-content: center;
 					width: 1.35rem; height: 1.35rem; padding: 0;
@@ -281,7 +281,11 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						} else {
 							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=all&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter) } class="filter-btn" title="Само на диска — кликни за всички">↕</a>
 						}
+					</div>
+					<span class="nav-label">превод:</span>
+					<div class="trans-btns">
 						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=all") } class={ "filter-btn", templ.KV("filter-active", transFilter == "all") } title="Всички типове превод">◉</a>
+						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=none") } class={ "filter-btn", templ.KV("filter-active", transFilter == "none") } title="Неустановен превод">?</a>
 						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=sub") } class={ "filter-btn", templ.KV("filter-active", transFilter == "sub") } title="Субтитри">СУБ</a>
 						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=bg") } class={ "filter-btn", templ.KV("filter-active", transFilter == "bg") } title="Български говор">БГ</a>
 						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=orig") } class={ "filter-btn", templ.KV("filter-active", transFilter == "orig") } title="Оригинал">ОРГ</a>
