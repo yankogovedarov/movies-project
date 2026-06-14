@@ -150,7 +150,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 			<link rel="stylesheet" href="/static/pico.min.css"/>
 			<script src="/static/htmx.min.js"></script>
 			<style>
-				.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }
+				.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; position: sticky; top: 0; z-index: 20; background: var(--pico-background-color, #fff); }
 				.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }
 				.top-nav form { margin: 0; }
 				.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }
@@ -218,6 +218,18 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 					background: var(--pico-secondary-background, #f0f0f0);
 					color: var(--pico-secondary-inverse, #333);
 					border: 1px solid var(--pico-muted-border-color, #ccc);
+				}
+					/* Translation column: faded inactive types, strongly highlighted active one
+					   so the current type (СУБ/БГ/ОРГ) is visible at a glance (Bug 16). */
+				td.translation .icon-btn {
+					background: var(--pico-secondary-background, #f0f0f0);
+					color: var(--pico-muted-color, #888);
+					border: 1px solid var(--pico-muted-border-color, #ccc);
+					opacity: 0.6;
+				}
+				td.translation .icon-btn.filter-active {
+					background: var(--pico-primary); color: var(--pico-primary-inverse, #fff);
+					border-color: var(--pico-primary); font-weight: 700; opacity: 1;
 				}
 				@media (max-width: 768px) {
 					th.size, td.size, th.folder, td.folder { display: none; }

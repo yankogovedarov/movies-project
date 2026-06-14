@@ -328,6 +328,20 @@ func TestIndex_RandomForm_HasHxPost(t *testing.T) {
 	}
 }
 
+func TestIndex_StickyNavAndTranslationHighlight_CSS(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	// Bug 16 part 5: filter bar stays visible while scrolling.
+	assert.Contains(t, body, "position: sticky", "expected sticky .top-nav CSS")
+	// Bug 16 part 3: active translation type is visibly highlighted.
+	assert.Contains(t, body, "td.translation .icon-btn.filter-active",
+		"expected highlight CSS for active translation button")
+}
+
 func TestIndex_SearchInput_IsLive(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
