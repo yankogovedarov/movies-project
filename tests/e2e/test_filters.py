@@ -89,3 +89,13 @@ def test_search_input_is_plain_height(page: Page):
         f"search height {search_box['height']} should match filter button "
         f"height {filter_box['height']}"
     )
+
+
+def test_search_input_has_no_icon(page: Page):
+    # Bug 18: the search field must have no icon — Pico adds a magnifier via
+    # background-image on [type=search]; it must be overridden to none.
+    page.goto(BASE_URL)
+    bg = page.locator("input[type=search][name=q]").evaluate(
+        "el => getComputedStyle(el).backgroundImage"
+    )
+    assert bg == "none", f"search input must have no background icon, got {bg!r}"

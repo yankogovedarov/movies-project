@@ -242,8 +242,10 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				   forces a large height/padding. */
 				.top-nav input.search-input {
 					box-sizing: border-box; height: 1.35rem; min-height: 0; line-height: 1.35rem;
-					margin: 0; padding: 0 0.4rem; font-size: 0.8rem; width: 10rem;
+					margin: 0; padding: 0 0.4rem; padding-inline-start: 0.4rem;
+					font-size: 0.8rem; width: 10rem;
 					border-radius: 4px; --pico-form-element-spacing-vertical: 0;
+					background-image: none;
 					-webkit-appearance: none; appearance: none;
 				}
 				.top-nav input.search-input::-webkit-search-cancel-button,
