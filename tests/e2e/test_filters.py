@@ -74,3 +74,18 @@ def test_search_input_is_live(page: Page):
     expect(search).to_have_attribute("hx-get", "/")
     expect(search).to_have_attribute("hx-trigger", re.compile(r"keyup"))
     expect(search).to_have_attribute("hx-target", "#media-list")
+
+
+def test_search_input_is_plain_height(page: Page):
+    # Bug 18 part 1: the search field must be plain — about the same height as the
+    # other nav-bar controls (filter buttons), not the tall default Pico input.
+    page.goto(BASE_URL)
+    search_box = page.locator("input[type=search][name=q]").bounding_box()
+    filter_box = page.locator("a.filter-btn[title='Всички статуси']").bounding_box()
+    assert search_box is not None and filter_box is not None
+    # Allow a few px of tolerance (border/rounding), but it must NOT be the ~40px
+    # tall default Pico input.
+    assert abs(search_box["height"] - filter_box["height"]) <= 6, (
+        f"search height {search_box['height']} should match filter button "
+        f"height {filter_box['height']}"
+    )

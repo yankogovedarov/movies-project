@@ -236,14 +236,18 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				}
 				.nav-label { font-size: 0.7rem; color: var(--pico-muted-color); align-self: center; }
 				/* Bug 18 part 1: plain search field — same height as the rest of the nav bar
-				   and no icons (no native search look / clear ✕ button). */
-				.search-input {
-					box-sizing: border-box; height: 1.35rem; line-height: 1.35rem; margin: 0;
-					padding: 0 0.3rem; font-size: 0.8rem; width: 8rem;
+				   and no icons (no native search look / clear ✕ button).
+				   Scoped as `.top-nav input.search-input` (specificity 0,2,1) so it wins over
+				   Pico's tall `input:not([type=checkbox],...)` rule (0,1,1) which otherwise
+				   forces a large height/padding. */
+				.top-nav input.search-input {
+					box-sizing: border-box; height: 1.35rem; min-height: 0; line-height: 1.35rem;
+					margin: 0; padding: 0 0.4rem; font-size: 0.8rem; width: 10rem;
+					border-radius: 4px; --pico-form-element-spacing-vertical: 0;
 					-webkit-appearance: none; appearance: none;
 				}
-				.search-input::-webkit-search-cancel-button,
-				.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+				.top-nav input.search-input::-webkit-search-cancel-button,
+				.top-nav input.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
 				th.translation, td.translation { width: 5rem; white-space: nowrap; }
 				.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }
 			</style>
