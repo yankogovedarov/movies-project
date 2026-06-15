@@ -276,7 +276,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 							hx-push-url="true"
 						/>
 					</form>
-					<span class="nav-label">філтър:</span>
+					<span class="nav-label">филтър:</span>
 					<div class="filter-btns">
 						<a href={ templ.SafeURL("/?status=all&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "all") } title="Всички статуси">◎</a>
 						<a href={ templ.SafeURL("/?status=new&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "new") } title="Нова">○</a>

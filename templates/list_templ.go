@@ -799,7 +799,7 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\" placeholder=\"търси...\" class=\"search-input\" hx-get=\"/\" hx-trigger=\"keyup changed delay:300ms, search\" hx-target=\"#media-list\" hx-select=\"#media-list\" hx-swap=\"outerHTML\" hx-include=\"closest form\" hx-push-url=\"true\"></form><span class=\"nav-label\">філтър:</span><div class=\"filter-btns\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\" placeholder=\"търси...\" class=\"search-input\" hx-get=\"/\" hx-trigger=\"keyup changed delay:300ms, search\" hx-target=\"#media-list\" hx-select=\"#media-list\" hx-swap=\"outerHTML\" hx-include=\"closest form\" hx-push-url=\"true\"></form><span class=\"nav-label\">филтър:</span><div class=\"filter-btns\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

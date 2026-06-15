@@ -437,6 +437,23 @@ func TestIndex_SearchInput_IsPlain(t *testing.T) {
 		"expected CSS hiding the native search clear button")
 }
 
+// Bug 18 part 2: the filter-group label must be spelled correctly — "филтър:"
+// (all Cyrillic), not the typo "філтър:" which used the Ukrainian і (U+0456).
+func TestIndex_FilterLabel_Spelling(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "филтър:", "expected correctly spelled filter label")
+	assert.NotContains(t, body, "філтър:", "filter label must not use the Ukrainian і (U+0456)")
+}
+
 func TestIndex_FilterButtons_ReflectsActiveParam(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
