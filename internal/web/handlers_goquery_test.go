@@ -406,6 +406,37 @@ func TestIndex_SearchInput_IsLive(t *testing.T) {
 	assert.Equal(t, "#media-list", hxSelect)
 }
 
+// Bug 18 part 1: the search control must be plain — same height as the rest of the
+// nav bar and without icons (no 🔍 emoji in the placeholder, no native clear button).
+func TestIndex_SearchInput_IsPlain(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+
+	// Functionality preserved.
+	input := doc.Find("input[type=search][name=q]")
+	require.Equal(t, 1, input.Length(), "expected search input")
+
+	class, _ := input.Attr("class")
+	assert.Contains(t, class, "search-input", "search input must keep the search-input class")
+
+	// No icon in the placeholder.
+	placeholder, _ := input.Attr("placeholder")
+	assert.NotContains(t, placeholder, "🔍", "placeholder must not contain the magnifier emoji")
+
+	// Native search decorations hidden so no clear (✕) icon is shown.
+	body := w.Body.String()
+	assert.Contains(t, body, "-webkit-search-cancel-button",
+		"expected CSS hiding the native search clear button")
+}
+
 func TestIndex_FilterButtons_ReflectsActiveParam(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{

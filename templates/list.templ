@@ -235,7 +235,15 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 					th.size, td.size, th.folder, td.folder { display: none; }
 				}
 				.nav-label { font-size: 0.7rem; color: var(--pico-muted-color); align-self: center; }
-				.search-input { height: 1.35rem; padding: 0 0.3rem; font-size: 0.8rem; width: 8rem; }
+				/* Bug 18 part 1: plain search field — same height as the rest of the nav bar
+				   and no icons (no native search look / clear ✕ button). */
+				.search-input {
+					box-sizing: border-box; height: 1.35rem; line-height: 1.35rem; margin: 0;
+					padding: 0 0.3rem; font-size: 0.8rem; width: 8rem;
+					-webkit-appearance: none; appearance: none;
+				}
+				.search-input::-webkit-search-cancel-button,
+				.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
 				th.translation, td.translation { width: 5rem; white-space: nowrap; }
 				.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }
 			</style>
@@ -257,7 +265,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 							type="search"
 							name="q"
 							value={ qFilter }
-							placeholder="🔍 търси..."
+							placeholder="търси..."
 							class="search-input"
 							hx-get="/"
 							hx-trigger="keyup changed delay:300ms, search"
