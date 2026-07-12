@@ -290,6 +290,23 @@ func TestIndex_SortButton_LastStartedIsActive_WhenParam(t *testing.T) {
 	assert.Contains(t, href, "sort=last_started", "active sort button href should contain sort=last_started")
 }
 
+func TestIndex_DateSortButtons_FirstClickIsDescending(t *testing.T) {
+	// Bug #19: hrefs of the date sort buttons (added, marked) must start with
+	// dir=desc when the button is inactive (most recent first on first click).
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	for _, title := range []string{"По дата добавяне", "По дата завършване"} {
+		btn := doc.Find(fmt.Sprintf("a.sort-btn[title='%s']", title))
+		require.Equal(t, 1, btn.Length(), "expected sort button %q", title)
+		href, _ := btn.Attr("href")
+		assert.Contains(t, href, "dir=desc", "inactive %q button should link to dir=desc", title)
+	}
+}
+
 func TestIndex_Row_ShowsStartCount_WhenStarted(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{

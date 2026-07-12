@@ -61,6 +61,42 @@ def test_sort_buttons_preserve_disk_filter(page: Page):
         assert "disk=all" in href, f"sort button {i} should preserve disk=all in href"
 
 
+@pytest.mark.parametrize("title,key", [
+    ("По дата добавяне", "added"),
+    ("По дата завършване", "marked"),
+])
+def test_date_sort_first_click_is_descending(page: Page, title: str, key: str):
+    """Бъг 19: първото натискане на датов сорт бутон сортира низходящо."""
+    page.goto(BASE_URL)
+    btn = page.locator(f"a.sort-btn[title='{title}']")
+    href = btn.get_attribute("href")
+    assert f"sort={key}" in href
+    assert "dir=desc" in href, f"first click on {key} should sort descending"
+    btn.click()
+    assert f"sort={key}" in page.url and "dir=desc" in page.url
+
+
+@pytest.mark.parametrize("title,key", [
+    ("По дата добавяне", "added"),
+    ("По дата завършване", "marked"),
+])
+def test_date_sort_second_click_is_ascending(page: Page, title: str, key: str):
+    """Бъг 19: второто натискане (активен бутон) обръща посоката на възходяща."""
+    page.goto(f"{BASE_URL}/?sort={key}&dir=desc")
+    btn = page.locator(f"a.sort-btn[title='{title}']")
+    href = btn.get_attribute("href")
+    assert f"sort={key}" in href
+    assert "dir=asc" in href, f"second click on {key} should sort ascending"
+
+
+def test_nondate_sort_first_click_is_ascending(page: Page):
+    """Регресия: недатовите сорт бутони запазват asc при първо натискане."""
+    page.goto(BASE_URL)
+    for title in ("По папка/път", "По размер", "По последно стартиране"):
+        href = page.locator(f"a.sort-btn[title='{title}']").get_attribute("href")
+        assert "dir=asc" in href, f"first click on '{title}' should sort ascending"
+
+
 def test_sort_by_name_page_loads(page: Page):
     page.goto(f"{BASE_URL}/?sort=name")
     expect(page.locator("table")).to_be_visible()

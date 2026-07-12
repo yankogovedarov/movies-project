@@ -30,7 +30,7 @@ tasks:
   build:
     desc: Build static executable into bin/ (auto-increments build number)
     vars:
-      VERSION: v1.3.0
+      VERSION: v1.4.0
       BUILD:
         sh: go run ./cmd/bumpbuild
     cmds:
@@ -46,7 +46,7 @@ tasks:
     dir: tests/e2e
     cmds:
       - pip install . --quiet
-      - playwright install chromium --quiet
+      - playwright install chromium
       - pytest --browser chromium -v
 
   migrate-new:

@@ -49,12 +49,26 @@ func statusShort(status string) string {
 	}
 }
 
+// defaultSortDir returns the direction for the first click on a sort button.
+// Date sorts (added, marked) start descending — most recent first (Bug #19).
+func defaultSortDir(btnSort string) string {
+	if btnSort == "added" || btnSort == "marked" {
+		return "desc"
+	}
+	return "asc"
+}
+
 // sortBtnHref returns the URL for a sort button click.
-// Clicking an active button toggles the direction; clicking an inactive button resets to asc.
+// Clicking an active button toggles the direction; clicking an inactive button
+// resets to that button's default direction.
 func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans string) string {
-	newDir := "asc"
-	if currentSort == btnSort && currentDir == "asc" {
-		newDir = "desc"
+	newDir := defaultSortDir(btnSort)
+	if currentSort == btnSort {
+		if currentDir == "desc" {
+			newDir = "asc"
+		} else {
+			newDir = "desc"
+		}
 	}
 	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&trans=" + trans
 }
