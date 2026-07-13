@@ -30,11 +30,11 @@ tasks:
   build:
     desc: Build static executable into bin/ (auto-increments build number)
     vars:
-      VERSION: v1.4.0
+      VERSION: v1.5.0
       BUILD:
         sh: go run ./cmd/bumpbuild
     cmds:
-      - go build -ldflags "-X main.version={{.VERSION}} -X main.buildNumber={{.BUILD}}" -o bin/movietracker.exe ./cmd/movietracker
+      - go build -trimpath -ldflags "-s -w -X main.version={{.VERSION}} -X main.buildNumber={{.BUILD}}" -o bin/movietracker.exe ./cmd/movietracker
 
   run:
     desc: Start with hot reload (air)
