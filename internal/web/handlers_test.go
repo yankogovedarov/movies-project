@@ -1,13 +1,17 @@
 package web_test
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -826,4 +830,36 @@ func TestRandomNew_NoCandidates_HTMX(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Empty(t, w.Header().Get("Location"))
 	assert.Contains(t, w.Body.String(), "Няма филми")
+}
+
+func TestRandomNew_LogsIndexAndPoolSize(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "LogA.mkv", FolderRelativePath: "Alpha", SizeBytes: 1_000_000_000},
+		{Filename: "LogB.mkv", FolderRelativePath: "Beta", SizeBytes: 2_000_000_000},
+		{Filename: "LogC.mkv", FolderRelativePath: "Gamma", SizeBytes: 3_000_000_000},
+	})
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	h := &web.Handlers{DB: d, DiskRoot: t.TempDir(), VLCPath: "", Log: logger}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/media/random-new/start", h.RandomNew)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.ServeHTTP(w, req)
+
+	logOutput := buf.String()
+	assert.Contains(t, logOutput, "pool=3", "log must report the size of the random pool")
+
+	m := regexp.MustCompile(`index=([0-9]+)`).FindStringSubmatch(logOutput)
+	require.Len(t, m, 2, "log must report the chosen random index")
+	idx, err := strconv.Atoi(m[1])
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, idx, 0, "index must be >= 0")
+	assert.LessOrEqual(t, idx, 2, "index must be <= pool-1")
 }

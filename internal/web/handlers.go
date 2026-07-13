@@ -235,7 +235,8 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		return
 	}
 
-	chosen := candidates[rand.Intn(len(candidates))]
+	idx := rand.Intn(len(candidates))
+	chosen := candidates[idx]
 
 	_ = q.InsertStartEvent(ctx, chosen.ID)
 
@@ -253,7 +254,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		})
 	}
 
-	h.log().Info("random started", "id", chosen.ID, "file", chosen.Filename)
+	h.log().Info("random started", "id", chosen.ID, "file", chosen.Filename, "index", idx, "pool", len(candidates))
 
 	if h.VLCPath != "" {
 		fullPath := filepath.Join(h.DiskRoot, chosen.FolderRelativePath, chosen.Filename)
