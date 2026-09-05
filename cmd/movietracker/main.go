@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yankogovedarov/movie-tracker/internal/config"
@@ -72,6 +73,18 @@ func main() {
 	}
 
 	dbPath := filepath.Join(paths.AppFolder, "movietracker.db")
+
+	backupPath, err := db.Backup(dbPath, time.Now(), db.BackupKeep)
+	if err != nil {
+		slog.Error("database backup failed", "err", err)
+		os.Exit(1)
+	}
+	if backupPath != "" {
+		slog.Info("database backup created", "path", backupPath)
+	} else {
+		slog.Info("no database to back up (first run)")
+	}
+
 	d, err := db.Open(dbPath)
 	if err != nil {
 		slog.Error("database open failed", "err", err)
