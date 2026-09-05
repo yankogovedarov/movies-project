@@ -46,6 +46,8 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/media/random-new/start", h.RandomNew)
+	r.POST("/media/:id/translation-type", h.SetTranslationType)
+	r.POST("/media/:id/for-deletion", h.SetForDeletion)
 	r.POST("/scan", h.Scan)
 	return r
 }
@@ -862,4 +864,158 @@ func TestRandomNew_LogsIndexAndPoolSize(t *testing.T) {
 	require.NoError(t, err)
 	assert.GreaterOrEqual(t, idx, 0, "index must be >= 0")
 	assert.LessOrEqual(t, idx, 2, "index must be <= pool-1")
+}
+
+// markForDeletion raises the "за изтриване" flag directly in the DB, mirroring
+// the raw-SQL setup used for on_disk in the disk-filter tests.
+func markForDeletion(t *testing.T, d *sql.DB, filename string) {
+	t.Helper()
+	_, err := d.Exec("UPDATE media SET for_deletion = 1 WHERE filename = ?", filename)
+	require.NoError(t, err)
+}
+
+func forDeletionFlag(t *testing.T, d *sql.DB, id int64) int64 {
+	t.Helper()
+	var v int64
+	require.NoError(t, d.QueryRow("SELECT for_deletion FROM media WHERE id = ?", id).Scan(&v))
+	return v
+}
+
+func TestIndex_FilterForDeletion_ShowsOnlyMarked(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	markForDeletion(t, d, "Trash.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "Trash.mkv")
+	assert.NotContains(t, body, "Keep.mkv")
+}
+
+func TestIndex_DefaultDelFilter_ShowsBoth(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	markForDeletion(t, d, "Trash.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Keep.mkv")
+	assert.Contains(t, body, "Trash.mkv")
+}
+
+// The flag is independent of the watch status: a completed media can also be
+// marked for deletion, so the two filters combine instead of excluding.
+func TestIndex_ForDeletionCombinesWithStatus(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "DoneTrash.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "DoneKeep.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+		{Filename: "NewTrash.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+	})
+	q := db.New(d)
+	for _, name := range []string{"DoneTrash.mkv", "DoneKeep.mkv"} {
+		require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+			CurrentStatus: "completed_both",
+			ID:            mediaIDByName(t, d, name),
+		}))
+	}
+	markForDeletion(t, d, "DoneTrash.mkv")
+	markForDeletion(t, d, "NewTrash.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?status=completed_both&del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "DoneTrash.mkv")
+	assert.NotContains(t, body, "DoneKeep.mkv")
+	assert.NotContains(t, body, "NewTrash.mkv")
+}
+
+func TestSetForDeletion_TogglesFlag(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Film.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	id := mediaIDByName(t, d, "Film.mkv")
+	r := newRouter(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/for-deletion", id), strings.NewReader("value=1"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, int64(1), forDeletionFlag(t, d, id))
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/for-deletion", id), strings.NewReader("value=0"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.ServeHTTP(w, req)
+	assert.Equal(t, int64(0), forDeletionFlag(t, d, id))
+}
+
+func TestSetForDeletion_HTMX_ReturnsRowOnly(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Film.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	id := mediaIDByName(t, d, "Film.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/for-deletion", id), strings.NewReader("value=1"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "<tr")
+	assert.NotContains(t, body, "<html", "HTMX response must be the row only")
+	assert.Equal(t, int64(1), forDeletionFlag(t, d, id))
+}
+
+func TestSetForDeletion_InvalidID_Returns404(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/abc/for-deletion", strings.NewReader("value=1"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	newRouter(t, d).ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestRandomNew_RespectsForDeletionFilter(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Other1.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+		{Filename: "Other2.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+	})
+	markForDeletion(t, d, "Trash.mkv")
+	trashID := mediaIDByName(t, d, "Trash.mkv")
+	r := newRouter(t, d)
+
+	for i := 0; i < 10; i++ {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/media/random-new/start",
+			strings.NewReader("status=all&disk=on&trans=all&del=yes"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.ServeHTTP(w, req)
+	}
+
+	assert.Equal(t, 10, startEventCount(t, d, trashID), "only the marked media may be picked")
+	assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Other1.mkv")))
+	assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Other2.mkv")))
 }

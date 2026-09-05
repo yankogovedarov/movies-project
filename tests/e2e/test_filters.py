@@ -99,3 +99,26 @@ def test_search_input_has_no_icon(page: Page):
         "el => getComputedStyle(el).backgroundImage"
     )
     assert bg == "none", f"search input must have no background icon, got {bg!r}"
+
+
+def test_for_deletion_filter_button_present(page: Page):
+    # Бъг 22: филтърът „за изтриване" живее в съществуващата група .filter-btns.
+    page.goto(BASE_URL)
+    btn = page.locator(".filter-btns a.filter-btn[title='За изтриване']")
+    expect(btn).to_have_count(1)
+    assert "del=yes" in btn.get_attribute("href")
+
+
+def test_for_deletion_filter_active_when_param(page: Page):
+    page.goto(f"{BASE_URL}/?del=yes")
+    btn = page.locator(".filter-btns a.filter-btn[title='За изтриване']")
+    expect(btn).to_have_class(re.compile(r"\bfilter-active\b"))
+    # Активният бутон връща обратно към пълния списък.
+    assert "del=all" in btn.get_attribute("href")
+
+
+def test_for_deletion_filter_survives_status_click(page: Page):
+    page.goto(f"{BASE_URL}/?del=yes")
+    page.locator("a.filter-btn[title='Стартирана']").click()
+    assert "del=yes" in page.url
+    assert "status=started" in page.url

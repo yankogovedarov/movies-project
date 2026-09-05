@@ -39,12 +39,14 @@ def test_list_has_scan_button_in_navbar(page: Page):
     expect(page.locator("button.icon-btn[title='Сканирай диска']")).to_be_visible()
 
 
-def test_actions_has_five_status_buttons(page: Page):
+def test_actions_has_status_and_deletion_buttons(page: Page):
+    # 5 статус бутона + 1 „за изтриване" (Бъг 22).
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
     row = page.locator("tbody tr").first
-    assert row.locator("td.actions button.icon-btn").count() == 5
+    assert row.locator("td.actions button.icon-btn").count() == 6
+    assert row.locator("td.actions button.icon-btn[title='За изтриване']").count() == 1
 
 
 def test_filename_cell_is_button_styled_as_link(page: Page):

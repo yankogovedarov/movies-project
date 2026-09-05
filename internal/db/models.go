@@ -19,6 +19,7 @@ type Medium struct {
 	CreatedAt          time.Time
 	FileCreatedAt      sql.NullTime
 	TranslationType    string
+	ForDeletion        int64
 }
 
 type StartEvent struct {

@@ -22,7 +22,7 @@ func (q *Queries) CountOnDisk(ctx context.Context) (int64, error) {
 }
 
 const getMediaByID = `-- name: GetMediaByID :one
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
 FROM media WHERE id = ?
 `
 
@@ -39,6 +39,7 @@ func (q *Queries) GetMediaByID(ctx context.Context, id int64) (Medium, error) {
 		&i.CreatedAt,
 		&i.FileCreatedAt,
 		&i.TranslationType,
+		&i.ForDeletion,
 	)
 	return i, err
 }
@@ -134,7 +135,7 @@ func (q *Queries) InsertStatusChange(ctx context.Context, arg InsertStatusChange
 }
 
 const listAllMedia = `-- name: ListAllMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
 FROM media
 ORDER BY folder_relative_path, filename
 `
@@ -158,6 +159,7 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 			&i.CreatedAt,
 			&i.FileCreatedAt,
 			&i.TranslationType,
+			&i.ForDeletion,
 		); err != nil {
 			return nil, err
 		}
@@ -173,7 +175,7 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 }
 
 const listOnDiskMedia = `-- name: ListOnDiskMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename
@@ -198,6 +200,7 @@ func (q *Queries) ListOnDiskMedia(ctx context.Context) ([]Medium, error) {
 			&i.CreatedAt,
 			&i.FileCreatedAt,
 			&i.TranslationType,
+			&i.ForDeletion,
 		); err != nil {
 			return nil, err
 		}
@@ -218,6 +221,20 @@ UPDATE media SET on_disk = 0
 
 func (q *Queries) MarkAllOffDisk(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, markAllOffDisk)
+	return err
+}
+
+const updateForDeletion = `-- name: UpdateForDeletion :exec
+UPDATE media SET for_deletion = ? WHERE id = ?
+`
+
+type UpdateForDeletionParams struct {
+	ForDeletion int64
+	ID          int64
+}
+
+func (q *Queries) UpdateForDeletion(ctx context.Context, arg UpdateForDeletionParams) error {
+	_, err := q.db.ExecContext(ctx, updateForDeletion, arg.ForDeletion, arg.ID)
 	return err
 }
 

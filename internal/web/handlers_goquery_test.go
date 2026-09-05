@@ -86,14 +86,24 @@ func TestIndex_ActionForms_HaveHxPost(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	forms := doc.Find("td.actions form")
-	require.Equal(t, 5, forms.Length(), "expected 5 action forms")
+	require.Equal(t, 6, forms.Length(), "expected 6 action forms (5 status + 1 за изтриване)")
+	var statusPosts, delPosts int
 	forms.Each(func(_ int, s *goquery.Selection) {
 		hxPost, exists := s.Attr("hx-post")
 		assert.True(t, exists, "expected hx-post on action form")
-		assert.Contains(t, hxPost, "/status")
+		switch {
+		case strings.Contains(hxPost, "/status"):
+			statusPosts++
+		case strings.Contains(hxPost, "/for-deletion"):
+			delPosts++
+		default:
+			t.Errorf("unexpected hx-post %q in actions column", hxPost)
+		}
 		hxTarget, _ := s.Attr("hx-target")
 		assert.Equal(t, "closest tr", hxTarget)
 	})
+	assert.Equal(t, 5, statusPosts, "expected 5 status forms")
+	assert.Equal(t, 1, delPosts, "expected 1 за-изтриване form")
 }
 
 func TestIndex_FolderCell_ShowsPath(t *testing.T) {
@@ -195,7 +205,9 @@ func TestIndex_Actions_HasFiveStatusButtons(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	statusForms := doc.Find("td.actions form")
+	statusForms := doc.Find("td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
+		return s.Find("input[name=status]").Length() == 1
+	})
 	assert.Equal(t, 5, statusForms.Length(), "expected 5 status forms in actions column")
 
 	var statusValues []string
@@ -218,7 +230,7 @@ func TestIndex_FilterButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.filter-btn")
-	assert.Equal(t, 12, btns.Length(), "expected 12 filter buttons (6 status + 1 disk toggle + 5 translation)")
+	assert.Equal(t, 13, btns.Length(), "expected 13 filter buttons (6 status + 1 disk toggle + 1 за изтриване + 5 translation)")
 }
 
 func TestIndex_TransFilter_HasLabelAndNoneButton(t *testing.T) {
@@ -371,7 +383,7 @@ func TestIndex_RandomForm_HasHxPost(t *testing.T) {
 	require.True(t, exists, "expected hx-post on random form")
 	assert.Contains(t, hxPost, "random-new/start")
 
-	for _, name := range []string{"status", "disk", "q", "trans"} {
+	for _, name := range []string{"status", "disk", "q", "trans", "del"} {
 		assert.Equal(t, 1, randomForm.Find(fmt.Sprintf("input[name=%s]", name)).Length(),
 			"expected hidden input %q in random form", name)
 	}
@@ -493,4 +505,100 @@ func TestIndex_FilterButtons_ReflectsActiveParam(t *testing.T) {
 	require.GreaterOrEqual(t, active.Length(), 1, "expected at least one active filter button")
 	href, _ := active.First().Attr("href")
 	assert.Contains(t, href, "status=started", "active button href should contain status=started")
+}
+
+func TestIndex_ForDeletionFilter_InFilterBtns(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	// Bug 22: the flag filter lives inside the existing "филтър:" group.
+	btn := doc.Find(".filter-btns a.filter-btn[title='За изтриване']")
+	require.Equal(t, 1, btn.Length(), "expected a single 'за изтриване' filter button in .filter-btns")
+
+	href, _ := btn.Attr("href")
+	assert.Contains(t, href, "del=yes", "inactive button must narrow to the marked media")
+	class, _ := btn.Attr("class")
+	assert.NotContains(t, class, "filter-active", "button must be inactive by default")
+}
+
+func TestIndex_ForDeletionFilter_ActiveWhenParam(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	btn := doc.Find(".filter-btns a.filter-btn[title='За изтриване']")
+	require.Equal(t, 1, btn.Length())
+
+	class, _ := btn.Attr("class")
+	assert.Contains(t, class, "filter-active", "button should be active when del=yes")
+	href, _ := btn.Attr("href")
+	assert.Contains(t, href, "del=all", "active button must link back to the unfiltered list")
+}
+
+func TestIndex_ForDeletionFilter_PreservedByOtherFilters(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	// Every status/translation link and every sort link must carry del=yes,
+	// otherwise clicking one of them silently drops the flag filter.
+	doc.Find(".filter-btns a.filter-btn, .trans-btns a.filter-btn, .sort-btns a.sort-btn").
+		Each(func(_ int, sel *goquery.Selection) {
+			title, _ := sel.Attr("title")
+			if title == "За изтриване" {
+				return // this one intentionally toggles back to del=all
+			}
+			href, _ := sel.Attr("href")
+			assert.Contains(t, href, "del=yes", "link %q must preserve the за-изтриване filter", title)
+		})
+
+	// The search and 🎲 forms re-send the filter (hx-include / hidden inputs).
+	carrying := doc.Find("form input[type=hidden][name=del]").FilterFunction(
+		func(_ int, sel *goquery.Selection) bool {
+			v, _ := sel.Attr("value")
+			return v == "yes"
+		})
+	assert.Equal(t, 2, carrying.Length(), "expected the search and random forms to carry del=yes")
+}
+
+func TestIndex_RowHasForDeletionButton(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	markForDeletion(t, d, "Trash.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?sort=name", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	btns := doc.Find("td.actions button.icon-btn[title='За изтриване']")
+	require.Equal(t, 2, btns.Length(), "expected one 🗑 button per row")
+
+	byFile := map[string]*goquery.Selection{}
+	doc.Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
+		name := strings.TrimSpace(row.Find("td.filename button.filename-link").Text())
+		byFile[name] = row
+	})
+
+	marked := byFile["Trash.mkv"].Find("td.actions button.icon-btn[title='За изтриване']")
+	markedClass, _ := marked.Attr("class")
+	assert.Contains(t, markedClass, "filter-active", "marked media must show a highlighted 🗑")
+	markedValue, _ := byFile["Trash.mkv"].Find("td.actions input[name=value]").Attr("value")
+	assert.Equal(t, "0", markedValue, "clicking a marked media must clear the flag")
+
+	plain := byFile["Keep.mkv"].Find("td.actions button.icon-btn[title='За изтриване']")
+	plainClass, _ := plain.Attr("class")
+	assert.NotContains(t, plainClass, "filter-active")
+	plainValue, _ := byFile["Keep.mkv"].Find("td.actions input[name=value]").Attr("value")
+	assert.Equal(t, "1", plainValue, "clicking an unmarked media must raise the flag")
 }

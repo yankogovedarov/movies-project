@@ -61,7 +61,7 @@ func defaultSortDir(btnSort string) string {
 // sortBtnHref returns the URL for a sort button click.
 // Clicking an active button toggles the direction; clicking an inactive button
 // resets to that button's default direction.
-func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans string) string {
+func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans, del string) string {
 	newDir := defaultSortDir(btnSort)
 	if currentSort == btnSort {
 		if currentDir == "desc" {
@@ -70,7 +70,7 @@ func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans string
 			newDir = "desc"
 		}
 	}
-	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&trans=" + trans
+	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&trans=" + trans + "&del=" + del
 }
 
 // translationToggleValue returns "" (unset) if current==target, else target.
@@ -79,6 +79,24 @@ func translationToggleValue(current, target string) string {
 		return ""
 	}
 	return target
+}
+
+// delToggleValue returns the value the "за изтриване" filter button links to:
+// clicking it while active clears the filter, otherwise it narrows to marked media.
+func delToggleValue(current string) string {
+	if current == "yes" {
+		return "all"
+	}
+	return "yes"
+}
+
+// forDeletionToggleValue returns the value a row's 🗑 button submits: "0" to
+// clear an already raised flag, "1" to raise it.
+func forDeletionToggleValue(current int64) string {
+	if current == 1 {
+		return "0"
+	}
+	return "1"
 }
 
 // sortBtnContent returns the button label, appending ↑ or ↓ when the button is active.

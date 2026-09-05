@@ -37,7 +37,7 @@ func isHTMX(c *gin.Context) bool {
 	return c.GetHeader("HX-Request") == "true"
 }
 
-func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter string) []db.Medium {
+func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter string) []db.Medium {
 	result := raw
 	if statusFilter != "all" {
 		f := make([]db.Medium, 0, len(result))
@@ -73,6 +73,17 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter string) []d
 		}
 		result = f
 	}
+	if delFilter == "yes" {
+		// The "за изтриване" flag is independent of the watch status, so this
+		// narrows whatever the other filters already selected.
+		f := make([]db.Medium, 0, len(result))
+		for _, m := range result {
+			if m.ForDeletion == 1 {
+				f = append(f, m)
+			}
+		}
+		result = f
+	}
 	return result
 }
 
@@ -83,6 +94,7 @@ func (h *Handlers) Index(c *gin.Context) {
 	dirFilter := c.DefaultQuery("dir", "asc")
 	qFilter := c.DefaultQuery("q", "")
 	transFilter := c.DefaultQuery("trans", "all")
+	delFilter := c.DefaultQuery("del", "all")
 
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
@@ -100,7 +112,7 @@ func (h *Handlers) Index(c *gin.Context) {
 		return
 	}
 
-	raw = filterMedia(raw, statusFilter, qFilter, transFilter)
+	raw = filterMedia(raw, statusFilter, qFilter, transFilter, delFilter)
 
 	stats, err := db.FetchMediaStats(ctx, h.DB)
 	if err != nil {
@@ -189,7 +201,7 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, transFilter).Render(ctx, c.Writer)
+	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, transFilter, delFilter).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) RandomNew(c *gin.Context) {
@@ -200,6 +212,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	diskFilter := c.PostForm("disk")
 	qFilter := c.PostForm("q")
 	transFilter := c.PostForm("trans")
+	delFilter := c.PostForm("del")
 	if statusFilter == "" {
 		statusFilter = "all"
 	}
@@ -208,6 +221,9 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	}
 	if transFilter == "" {
 		transFilter = "all"
+	}
+	if delFilter == "" {
+		delFilter = "all"
 	}
 
 	var all []db.Medium
@@ -223,7 +239,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		return
 	}
 
-	candidates := filterMedia(all, statusFilter, qFilter, transFilter)
+	candidates := filterMedia(all, statusFilter, qFilter, transFilter, delFilter)
 
 	if len(candidates) == 0 {
 		if isHTMX(c) {
@@ -231,7 +247,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 			templates.Flash("Няма филми за избор").Render(ctx, c.Writer)
 			return
 		}
-		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s", statusFilter, diskFilter, qFilter, transFilter))
+		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s&del=%s", statusFilter, diskFilter, qFilter, transFilter, delFilter))
 		return
 	}
 
@@ -275,7 +291,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s", statusFilter, diskFilter, qFilter, transFilter))
+	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s&del=%s", statusFilter, diskFilter, qFilter, transFilter, delFilter))
 }
 
 func (h *Handlers) SetTranslationType(c *gin.Context) {
@@ -303,6 +319,41 @@ func (h *Handlers) SetTranslationType(c *gin.Context) {
 		stats, _ := db.FetchMediaStats(ctx, h.DB)
 		c.Header("Content-Type", "text/html; charset=utf-8")
 		templates.MediaRow(db.MediaWithStats{Medium: media, MediaStats: stats[id]}).Render(ctx, c.Writer)
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/")
+}
+
+// SetForDeletion toggles the "за изтриване" flag (Bug 22). The submitted value
+// is "1" to raise it and "0" to clear it; the template decides which one to send.
+func (h *Handlers) SetForDeletion(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	ctx := c.Request.Context()
+	q := db.New(h.DB)
+
+	var forDeletion int64
+	if c.PostForm("value") == "1" {
+		forDeletion = 1
+	}
+	_ = q.UpdateForDeletion(ctx, db.UpdateForDeletionParams{
+		ForDeletion: forDeletion,
+		ID:          id,
+	})
+
+	if isHTMX(c) {
+		media, err := q.GetMediaByID(ctx, id)
+		if err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		s, _ := db.FetchSingleMediaStats(ctx, h.DB, id)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		templates.MediaRow(db.MediaWithStats{Medium: media, MediaStats: s}).Render(ctx, c.Writer)
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")
