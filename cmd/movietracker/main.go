@@ -125,7 +125,16 @@ func main() {
 	}
 	slog.Info("db synced", "files", len(files))
 
-	h := &web.Handlers{DB: d, DiskRoot: paths.DiskRoot, VLCPath: vlcPath, Log: logger}
+	// Bug 24: MOVIETRACKER_NO_LAUNCH=1 keeps the binary from opening VLC,
+	// Explorer or the browser, so the e2e suite leaves no windows behind.
+	noLaunch := web.NoLaunch()
+	launcher := web.Launcher(web.ExecLauncher)
+	if noLaunch {
+		launcher = web.NoopLauncher
+		logger.Info("external program launching disabled (MOVIETRACKER_NO_LAUNCH=1)")
+	}
+
+	h := &web.Handlers{DB: d, DiskRoot: paths.DiskRoot, VLCPath: vlcPath, Log: logger, Launcher: launcher}
 	r := gin.Default()
 	r.GET("/", h.Index)
 	r.GET("/tree", h.Tree)
@@ -139,7 +148,9 @@ func main() {
 	r.POST("/scan", h.Scan)
 	r.GET("/static/*filepath", h.StaticFile)
 
-	go openBrowser("http://localhost:8080")
+	if !noLaunch {
+		go openBrowser("http://localhost:8080")
+	}
 	r.Run(":8080")
 }
 

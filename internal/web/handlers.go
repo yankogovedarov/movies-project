@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -19,11 +20,46 @@ import (
 	"github.com/yankogovedarov/movie-tracker/templates"
 )
 
+// Launcher starts an external program (VLC, Explorer). It exists so that
+// tests never spawn real windows: a nil Launcher launches nothing at all, and
+// only main.go opts in to the real one via ExecLauncher.
+type Launcher func(name string, args ...string) error
+
+// ExecLauncher is the production Launcher: it starts the program and returns
+// immediately, without waiting for it to exit.
+func ExecLauncher(name string, args ...string) error {
+	return exec.Command(name, args...).Start()
+}
+
+// NoopLauncher launches nothing. Used when MOVIETRACKER_NO_LAUNCH=1 (see
+// NoLaunch) so that an end-to-end run does not open VLC or Explorer.
+func NoopLauncher(name string, args ...string) error { return nil }
+
+// NoLaunch reports whether external programs must not be started. The e2e
+// suite runs the real binary and sets MOVIETRACKER_NO_LAUNCH=1 for it.
+func NoLaunch() bool {
+	return os.Getenv("MOVIETRACKER_NO_LAUNCH") == "1"
+}
+
 type Handlers struct {
 	DB       *sql.DB
 	DiskRoot string
 	VLCPath  string
 	Log      *slog.Logger
+	// Launcher starts VLC and Explorer. A nil Launcher means "launch nothing",
+	// which keeps the test suite free of stray windows.
+	Launcher Launcher
+}
+
+// launch starts an external program through the configured Launcher. Failures
+// are logged, never surfaced to the user: the page must render either way.
+func (h *Handlers) launch(name string, args ...string) {
+	if h.Launcher == nil {
+		return
+	}
+	if err := h.Launcher(name, args...); err != nil {
+		h.log().Warn("launch failed", "program", name, "error", err)
+	}
 }
 
 func (h *Handlers) log() *slog.Logger {
@@ -315,7 +351,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 
 	if h.VLCPath != "" {
 		fullPath := filepath.Join(h.DiskRoot, chosen.FolderRelativePath, chosen.Filename)
-		_ = exec.Command(h.VLCPath, fullPath).Start()
+		h.launch(h.VLCPath, fullPath)
 	}
 
 	if isHTMX(c) {
@@ -439,7 +475,7 @@ func (h *Handlers) StartMedia(c *gin.Context) {
 
 	if h.VLCPath != "" {
 		fullPath := filepath.Join(h.DiskRoot, media.FolderRelativePath, media.Filename)
-		_ = exec.Command(h.VLCPath, fullPath).Start()
+		h.launch(h.VLCPath, fullPath)
 	}
 
 	if isHTMX(c) {
@@ -523,7 +559,7 @@ func (h *Handlers) OpenFolder(c *gin.Context) {
 		return
 	}
 	folderPath := filepath.Join(h.DiskRoot, media.FolderRelativePath)
-	_ = exec.Command("explorer.exe", folderPath).Start()
+	h.launch("explorer.exe", folderPath)
 	if isHTMX(c) {
 		c.Status(http.StatusOK)
 		return

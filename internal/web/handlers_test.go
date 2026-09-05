@@ -1165,3 +1165,128 @@ func TestIndex_FreshDB_UsesDefaultFilters(t *testing.T) {
 	assert.Equal(t, []string{"all", "on", "name", "asc", "", "all", "all"},
 		[]string{status, disk, sortF, dir, q, trans, del})
 }
+
+// ---------------------------------------------------------------------------
+// Bug 24: тестовете не трябва да пускат VLC или Explorer
+// ---------------------------------------------------------------------------
+
+// launchRecorder заменя реалното стартиране на външна програма и запомня какво
+// е щяло да бъде пуснато.
+type launchRecorder struct {
+	calls [][]string
+}
+
+func (r *launchRecorder) launch(name string, args ...string) error {
+	r.calls = append(r.calls, append([]string{name}, args...))
+	return nil
+}
+
+func newRouterWithHandlers(t *testing.T, h *web.Handlers) *gin.Engine {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.GET("/media/:id/open-folder", h.OpenFolder)
+	r.POST("/media/:id/start", h.StartMedia)
+	r.POST("/media/random-new/start", h.RandomNew)
+	return r
+}
+
+func seedOne(t *testing.T, d *sql.DB) int64 {
+	t.Helper()
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	media, err := db.New(d).ListOnDiskMedia(context.Background())
+	require.NoError(t, err)
+	return media[0].ID
+}
+
+func TestOpenFolder_UsesLauncherInsteadOfSpawningExplorer(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	root := t.TempDir()
+	rec := &launchRecorder{}
+	h := &web.Handlers{DB: d, DiskRoot: root, Launcher: rec.launch}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d/open-folder", id), nil)
+	newRouterWithHandlers(t, h).ServeHTTP(w, req)
+
+	require.Len(t, rec.calls, 1)
+	assert.Equal(t, []string{"explorer.exe", filepath.Join(root, "Films")}, rec.calls[0])
+}
+
+func TestOpenFolder_NilLauncher_DoesNotLaunch(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	h := &web.Handlers{DB: d, DiskRoot: t.TempDir()}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d/open-folder", id), nil)
+	newRouterWithHandlers(t, h).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+}
+
+func TestStartMedia_LaunchesVLCThroughLauncher(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	root := t.TempDir()
+	rec := &launchRecorder{}
+	h := &web.Handlers{DB: d, DiskRoot: root, VLCPath: `C:\fake\vlc.exe`, Launcher: rec.launch}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil)
+	newRouterWithHandlers(t, h).ServeHTTP(w, req)
+
+	require.Len(t, rec.calls, 1)
+	assert.Equal(t, []string{`C:\fake\vlc.exe`, filepath.Join(root, "Films", "Movie.mkv")}, rec.calls[0])
+}
+
+func TestStartMedia_WithoutVLCPath_DoesNotLaunch(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	rec := &launchRecorder{}
+	h := &web.Handlers{DB: d, DiskRoot: t.TempDir(), VLCPath: "", Launcher: rec.launch}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil)
+	newRouterWithHandlers(t, h).ServeHTTP(w, req)
+
+	assert.Empty(t, rec.calls)
+}
+
+func TestRandomNew_LaunchesVLCThroughLauncher(t *testing.T) {
+	d := openTestDB(t)
+	seedOne(t, d)
+	root := t.TempDir()
+	rec := &launchRecorder{}
+	h := &web.Handlers{DB: d, DiskRoot: root, VLCPath: `C:\fake\vlc.exe`, Launcher: rec.launch}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	newRouterWithHandlers(t, h).ServeHTTP(w, req)
+
+	require.Len(t, rec.calls, 1)
+	assert.Equal(t, []string{`C:\fake\vlc.exe`, filepath.Join(root, "Films", "Movie.mkv")}, rec.calls[0])
+}
+
+func TestNoLaunch_TrueWhenEnvIsOne(t *testing.T) {
+	t.Setenv("MOVIETRACKER_NO_LAUNCH", "1")
+	assert.True(t, web.NoLaunch())
+}
+
+func TestNoLaunch_FalseWhenEnvIsUnset(t *testing.T) {
+	t.Setenv("MOVIETRACKER_NO_LAUNCH", "")
+	assert.False(t, web.NoLaunch())
+}
+
+func TestNoLaunch_FalseWhenEnvIsZero(t *testing.T) {
+	t.Setenv("MOVIETRACKER_NO_LAUNCH", "0")
+	assert.False(t, web.NoLaunch())
+}
+
+func TestNoopLauncher_DoesNothing(t *testing.T) {
+	assert.NoError(t, web.NoopLauncher("explorer.exe", `C:\Windows`))
+}

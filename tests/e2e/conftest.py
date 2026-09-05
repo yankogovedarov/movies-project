@@ -47,10 +47,15 @@ def live_server():
 
     _kill_port_8080()
 
+    # Bug 24: тестовете не бива да оставят отворени прозорци след себе си.
+    # Флагът спира пускането на VLC, Explorer и авто-отварянето на браузъра.
+    env = dict(os.environ, MOVIETRACKER_NO_LAUNCH="1")
+
     proc = subprocess.Popen(
         [EXE_PATH],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        env=env,
     )
 
     if not _wait_for_server(timeout=30):
