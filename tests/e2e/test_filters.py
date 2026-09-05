@@ -122,3 +122,31 @@ def test_for_deletion_filter_survives_status_click(page: Page):
     page.locator("a.filter-btn[title='Стартирана']").click()
     assert "del=yes" in page.url
     assert "status=started" in page.url
+
+
+def test_filters_persist_after_reopen(page: Page):
+    # Бъг 23: избраните филтри и сорт се пазят в базата, така че ново отваряне на
+    # голо "/" (както след рестарт на .exe-то) ги възстановява.
+    page.goto(f"{BASE_URL}/?status=started&sort=size&dir=desc&trans=bg&del=yes")
+
+    page.goto(BASE_URL)
+    expect(page.locator("a.filter-btn[title='Стартирана']")).to_have_class(
+        re.compile(r"\bfilter-active\b")
+    )
+    expect(page.locator("a.filter-btn[title='Български говор']")).to_have_class(
+        re.compile(r"\bfilter-active\b")
+    )
+    expect(page.locator(".filter-btns a.filter-btn[title='За изтриване']")).to_have_class(
+        re.compile(r"\bfilter-active\b")
+    )
+    sort_btn = page.locator("a.sort-btn[title='По размер']")
+    expect(sort_btn).to_have_class(re.compile(r"\bfilter-active\b"))
+    assert sort_btn.inner_text().strip() == "Рз↓"
+
+
+def test_search_text_persists_after_reopen(page: Page):
+    # Решение на потребителя: помни се и текстът от полето „търси…".
+    page.goto(f"{BASE_URL}/?q=zzz-няма-такъв-филм")
+
+    page.goto(BASE_URL)
+    expect(page.locator("input[type=search][name=q]")).to_have_value("zzz-няма-такъв-филм")

@@ -40,3 +40,15 @@ type TreeState struct {
 	FolderPath string
 	Expanded   int64
 }
+
+type UiPref struct {
+	ID           int64
+	StatusFilter string
+	DiskFilter   string
+	SortFilter   string
+	DirFilter    string
+	QFilter      string
+	TransFilter  string
+	DelFilter    string
+	UpdatedAt    time.Time
+}

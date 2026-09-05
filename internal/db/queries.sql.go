@@ -110,6 +110,36 @@ func (q *Queries) GetStatusChanges(ctx context.Context, mediaID int64) ([]Status
 	return items, nil
 }
 
+const getUIPrefs = `-- name: GetUIPrefs :one
+SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter
+FROM ui_prefs WHERE id = 1
+`
+
+type GetUIPrefsRow struct {
+	StatusFilter string
+	DiskFilter   string
+	SortFilter   string
+	DirFilter    string
+	QFilter      string
+	TransFilter  string
+	DelFilter    string
+}
+
+func (q *Queries) GetUIPrefs(ctx context.Context) (GetUIPrefsRow, error) {
+	row := q.db.QueryRowContext(ctx, getUIPrefs)
+	var i GetUIPrefsRow
+	err := row.Scan(
+		&i.StatusFilter,
+		&i.DiskFilter,
+		&i.SortFilter,
+		&i.DirFilter,
+		&i.QFilter,
+		&i.TransFilter,
+		&i.DelFilter,
+	)
+	return i, err
+}
+
 const insertStartEvent = `-- name: InsertStartEvent :exec
 INSERT INTO start_events (media_id) VALUES (?)
 `
@@ -221,6 +251,43 @@ UPDATE media SET on_disk = 0
 
 func (q *Queries) MarkAllOffDisk(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, markAllOffDisk)
+	return err
+}
+
+const saveUIPrefs = `-- name: SaveUIPrefs :exec
+INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, updated_at)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+ON CONFLICT(id) DO UPDATE SET
+    status_filter = excluded.status_filter,
+    disk_filter = excluded.disk_filter,
+    sort_filter = excluded.sort_filter,
+    dir_filter = excluded.dir_filter,
+    q_filter = excluded.q_filter,
+    trans_filter = excluded.trans_filter,
+    del_filter = excluded.del_filter,
+    updated_at = CURRENT_TIMESTAMP
+`
+
+type SaveUIPrefsParams struct {
+	StatusFilter string
+	DiskFilter   string
+	SortFilter   string
+	DirFilter    string
+	QFilter      string
+	TransFilter  string
+	DelFilter    string
+}
+
+func (q *Queries) SaveUIPrefs(ctx context.Context, arg SaveUIPrefsParams) error {
+	_, err := q.db.ExecContext(ctx, saveUIPrefs,
+		arg.StatusFilter,
+		arg.DiskFilter,
+		arg.SortFilter,
+		arg.DirFilter,
+		arg.QFilter,
+		arg.TransFilter,
+		arg.DelFilter,
+	)
 	return err
 }
 

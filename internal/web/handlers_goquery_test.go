@@ -602,3 +602,38 @@ func TestIndex_RowHasForDeletionButton(t *testing.T) {
 	plainValue, _ := byFile["Keep.mkv"].Find("td.actions input[name=value]").Attr("value")
 	assert.Equal(t, "1", plainValue, "clicking an unmarked media must raise the flag")
 }
+
+// Bug 23: after a restart the restored state must also be visible in the nav
+// bar — the right buttons are highlighted and the search box is pre-filled.
+func TestIndex_RestoredFilters_MarkActiveButtons(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Godzilla.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?status=new&sort=size&dir=desc&q=god&trans=bg&del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+
+	statusClass, _ := doc.Find("a.filter-btn[title='Нова']").Attr("class")
+	assert.Contains(t, statusClass, "filter-active")
+	transClass, _ := doc.Find("a.filter-btn[title='Български говор']").Attr("class")
+	assert.Contains(t, transClass, "filter-active")
+	delClass, _ := doc.Find("a.filter-btn[title='За изтриване']").Attr("class")
+	assert.Contains(t, delClass, "filter-active")
+
+	sortBtn := doc.Find("a.sort-btn[title='По размер']")
+	sortBtnClass, _ := sortBtn.Attr("class")
+	assert.Contains(t, sortBtnClass, "filter-active")
+	assert.Equal(t, "Рз↓", strings.TrimSpace(sortBtn.Text()), "descending size sort must be restored")
+
+	searchValue, _ := doc.Find("input.search-input").Attr("value")
+	assert.Equal(t, "god", searchValue)
+}

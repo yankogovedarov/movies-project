@@ -87,17 +87,58 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter 
 	return result
 }
 
+// defaultPrefs mirrors the ui_prefs row created by migration 000005 — the
+// fallback whenever the remembered state cannot be read.
+func defaultPrefs() db.GetUIPrefsRow {
+	return db.GetUIPrefsRow{
+		StatusFilter: "all",
+		DiskFilter:   "on",
+		SortFilter:   "name",
+		DirFilter:    "asc",
+		QFilter:      "",
+		TransFilter:  "all",
+		DelFilter:    "all",
+	}
+}
+
+// loadPrefs returns the filter/sort state remembered from the previous run
+// (Bug 23). A database problem must never break the list, so it degrades to the
+// built-in defaults.
+func (h *Handlers) loadPrefs(c *gin.Context) db.GetUIPrefsRow {
+	prefs, err := db.New(h.DB).GetUIPrefs(c.Request.Context())
+	if err != nil {
+		h.log().Error("load ui prefs failed", "err", err)
+		return defaultPrefs()
+	}
+	return prefs
+}
+
 func (h *Handlers) Index(c *gin.Context) {
-	statusFilter := c.DefaultQuery("status", "all")
-	diskFilter := c.DefaultQuery("disk", "on")
-	sortFilter := c.DefaultQuery("sort", "name")
-	dirFilter := c.DefaultQuery("dir", "asc")
-	qFilter := c.DefaultQuery("q", "")
-	transFilter := c.DefaultQuery("trans", "all")
-	delFilter := c.DefaultQuery("del", "all")
+	// The remembered state acts as the per-parameter default, so an explicit
+	// query parameter always wins and a bare "/" restores the previous run.
+	prefs := h.loadPrefs(c)
+	statusFilter := c.DefaultQuery("status", prefs.StatusFilter)
+	diskFilter := c.DefaultQuery("disk", prefs.DiskFilter)
+	sortFilter := c.DefaultQuery("sort", prefs.SortFilter)
+	dirFilter := c.DefaultQuery("dir", prefs.DirFilter)
+	qFilter := c.DefaultQuery("q", prefs.QFilter)
+	transFilter := c.DefaultQuery("trans", prefs.TransFilter)
+	delFilter := c.DefaultQuery("del", prefs.DelFilter)
 
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
+
+	if err := q.SaveUIPrefs(ctx, db.SaveUIPrefsParams{
+		StatusFilter: statusFilter,
+		DiskFilter:   diskFilter,
+		SortFilter:   sortFilter,
+		DirFilter:    dirFilter,
+		QFilter:      qFilter,
+		TransFilter:  transFilter,
+		DelFilter:    delFilter,
+	}); err != nil {
+		h.log().Error("save ui prefs failed", "err", err)
+	}
 
 	var raw []db.Medium
 	var err error

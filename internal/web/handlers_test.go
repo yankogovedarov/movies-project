@@ -1019,3 +1019,149 @@ func TestRandomNew_RespectsForDeletionFilter(t *testing.T) {
 	assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Other1.mkv")))
 	assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Other2.mkv")))
 }
+
+// --- Bug 23: filters and sorting are remembered in the database ---
+
+func readPrefs(t *testing.T, d *sql.DB) (status, disk, sortF, dir, q, trans, del string) {
+	t.Helper()
+	row := d.QueryRow(`SELECT status_filter, disk_filter, sort_filter, dir_filter,
+		q_filter, trans_filter, del_filter FROM ui_prefs WHERE id = 1`)
+	require.NoError(t, row.Scan(&status, &disk, &sortF, &dir, &q, &trans, &del))
+	return
+}
+
+func TestIndex_SavesFiltersToDB(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Alpha.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet,
+		"/?status=new&disk=all&sort=size&dir=desc&q=alp&trans=bg&del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	status, disk, sortF, dir, q, trans, del := readPrefs(t, d)
+	assert.Equal(t, "new", status)
+	assert.Equal(t, "all", disk)
+	assert.Equal(t, "size", sortF)
+	assert.Equal(t, "desc", dir)
+	assert.Equal(t, "alp", q)
+	assert.Equal(t, "bg", trans)
+	assert.Equal(t, "yes", del)
+}
+
+func TestIndex_RestoresSavedFilters(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	markForDeletion(t, d, "Trash.mkv")
+
+	// The user filters down to the media marked for deletion...
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// ...restarts the backend, and lands on a bare "/" again.
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "Trash.mkv")
+	assert.NotContains(t, body, "Keep.mkv", "the remembered del=yes filter must still apply")
+}
+
+func TestIndex_RestoresSavedSortAndDirection(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Small.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Big.mkv", FolderRelativePath: "Films", SizeBytes: 5_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?sort=size&dir=desc", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Less(t, strings.Index(body, "Big.mkv"), strings.Index(body, "Small.mkv"),
+		"the remembered sort=size&dir=desc must put the biggest file first")
+}
+
+func TestIndex_RestoresSavedSearchQuery(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Godzilla.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Dune.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?q=dune", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Dune.mkv")
+	assert.NotContains(t, body, "Godzilla.mkv", "the remembered search text must still apply")
+}
+
+func TestIndex_ExplicitParamOverridesSavedPref(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	markForDeletion(t, d, "Trash.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?del=yes", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// An explicit parameter wins over the remembered one and replaces it.
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/?del=all", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Keep.mkv")
+	assert.Contains(t, body, "Trash.mkv")
+
+	_, _, _, _, _, _, del := readPrefs(t, d)
+	assert.Equal(t, "all", del, "the explicit value must be the new remembered one")
+}
+
+func TestIndex_FreshDB_UsesDefaultFilters(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	markForDeletion(t, d, "Trash.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Keep.mkv")
+	assert.Contains(t, body, "Trash.mkv")
+
+	status, disk, sortF, dir, q, trans, del := readPrefs(t, d)
+	assert.Equal(t, []string{"all", "on", "name", "asc", "", "all", "all"},
+		[]string{status, disk, sortF, dir, q, trans, del})
+}

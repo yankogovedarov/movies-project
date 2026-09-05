@@ -65,3 +65,18 @@ def live_server():
         os.remove(EXE_PATH)
     except OSError:
         pass
+
+
+# Bug 23: филтрите и сортирането вече се помнят в базата, а сървърът и базата са
+# общи за цялата сесия. Затова преди всеки тест състоянието се връща към
+# стойностите по подразбиране — иначе филтър, оставен от предишен тест, би текъл
+# в следващия, който отваря голо "/".
+DEFAULT_STATE_URL = (
+    BASE_URL + "/?status=all&disk=on&sort=name&dir=asc&q=&trans=all&del=all"
+)
+
+
+@pytest.fixture(autouse=True)
+def reset_prefs(live_server):
+    urllib.request.urlopen(DEFAULT_STATE_URL, timeout=5).read()
+    yield
