@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -61,7 +62,7 @@ func defaultSortDir(btnSort string) string {
 // sortBtnHref returns the URL for a sort button click.
 // Clicking an active button toggles the direction; clicking an inactive button
 // resets to that button's default direction.
-func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans, del string) string {
+func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans, del, folder string) string {
 	newDir := defaultSortDir(btnSort)
 	if currentSort == btnSort {
 		if currentDir == "desc" {
@@ -70,7 +71,14 @@ func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans, del s
 			newDir = "desc"
 		}
 	}
-	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&trans=" + trans + "&del=" + del
+	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&trans=" + trans + "&del=" + del + folderParam(folder)
+}
+
+// folderParam returns the query-string fragment that carries the main-folder
+// filter (Bug 26). Folder names may contain spaces, Cyrillic or "&", so the
+// value is always query-escaped.
+func folderParam(folder string) string {
+	return "&folder=" + url.QueryEscape(folder)
 }
 
 // translationToggleValue returns "" (unset) if current==target, else target.

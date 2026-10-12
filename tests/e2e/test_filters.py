@@ -150,3 +150,84 @@ def test_search_text_persists_after_reopen(page: Page):
 
     page.goto(BASE_URL)
     expect(page.locator("input[type=search][name=q]")).to_have_value("zzz-няма-такъв-филм")
+
+
+# Бъг 26: падащо меню за основна папка. E2E сканира реалния диск, затова
+# тестовете не разчитат на конкретни имена на папки — избират първата папка от
+# менюто и се пропускат, ако папки няма.
+FOLDER_SELECT = ".filter-btns select[name=folder]"
+
+
+def _choose_first_folder(page: Page) -> str:
+    """Избира първата основна папка от менюто и връща стойността ѝ."""
+    # Голо "/" — URL-ът още няма folder=, така че wait_for_url по-долу наистина
+    # изчаква презареждането след избора.
+    page.goto(BASE_URL)
+    select = page.locator(FOLDER_SELECT)
+    options = select.locator("option")
+    if options.count() < 2:
+        pytest.skip("No main folders available")
+    chosen = options.nth(1).get_attribute("value")
+    select.select_option(index=1)
+    # Смяната изпраща формата за търсене — пълно презареждане с folder= в URL-а.
+    page.wait_for_url(re.compile(r"[?&]folder="))
+    return chosen
+
+
+def test_folder_select_first_in_filter_group(page: Page):
+    # Бъг 26: менюто е първо в групата „филтър:", преди бутона ◎.
+    page.goto(BASE_URL)
+    select = page.locator(FOLDER_SELECT)
+    expect(select).to_be_visible()
+    expect(select.locator("option").first).to_have_text("всички папки")
+    first = page.locator(".filter-btns").evaluate(
+        "el => [el.firstElementChild.tagName, el.firstElementChild.getAttribute('name')]"
+    )
+    assert first == ["SELECT", "folder"], f"first element in .filter-btns is {first}"
+
+
+def test_folder_select_is_plain_height(page: Page):
+    # Бъг 26: менюто е ниско колкото филтър бутоните, а не високият Pico select.
+    page.goto(BASE_URL)
+    select_box = page.locator(FOLDER_SELECT).bounding_box()
+    filter_box = page.locator("a.filter-btn[title='Всички статуси']").bounding_box()
+    assert select_box is not None and filter_box is not None
+    assert abs(select_box["height"] - filter_box["height"]) <= 6, (
+        f"folder select height {select_box['height']} should match filter button "
+        f"height {filter_box['height']}"
+    )
+
+
+def test_folder_select_filters_list(page: Page):
+    # Бъг 26: изборът на папка оставя в списъка само медиите под нея.
+    chosen = _choose_first_folder(page)
+
+    expect(page.locator(FOLDER_SELECT)).to_have_value(chosen)
+    # Менюто предлага само папки с медии, така че списъкът не бива да е празен.
+    expect(page.locator("#media-list")).not_to_contain_text("Няма намерени медии.")
+    paths = page.locator("td.folder a.folder-link").evaluate_all(
+        "els => els.map(e => e.getAttribute('title'))"
+    )
+    assert paths, f"expected rows under {chosen!r}"
+    for path in paths:
+        top = re.split(r"[\\/]", path, maxsplit=1)[0]
+        assert top == chosen, f"row in {path!r} is not under the chosen folder {chosen!r}"
+
+
+def test_live_search_sends_folder(page: Page):
+    # Бъг 26: менюто е свързано с формата за търсене (атрибут form), затова
+    # живото търсене изпраща и избраната папка.
+    _choose_first_folder(page)
+    with page.expect_request(lambda r: "q=" in r.url and r.method == "GET") as request:
+        page.locator("input[type=search][name=q]").press_sequentially("a")
+    assert "folder=" in request.value.url, (
+        f"live search request does not carry the folder: {request.value.url}"
+    )
+
+
+def test_folder_filter_persists_after_reopen(page: Page):
+    # Бъг 26: избраната папка се помни в базата като останалите филтри.
+    chosen = _choose_first_folder(page)
+
+    page.goto(BASE_URL)
+    expect(page.locator(FOLDER_SELECT)).to_have_value(chosen)

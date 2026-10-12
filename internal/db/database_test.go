@@ -83,6 +83,23 @@ func TestMigrate_HasUIPrefsRow(t *testing.T) {
 	assert.Equal(t, "all", del)
 }
 
+// Bug 26: the main-folder filter is remembered next to the other filters and
+// defaults to "all" (no folder filter).
+func TestMigrate_UIPrefsHasFolderFilter(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	d, err := db.Open(dbPath)
+	require.NoError(t, err)
+	defer d.Close()
+	require.NoError(t, db.Migrate(d))
+
+	var folder string
+	row := d.QueryRow("SELECT folder_filter FROM ui_prefs WHERE id = 1")
+	require.NoError(t, row.Scan(&folder))
+	assert.Equal(t, "all", folder, "folder_filter must default to all")
+}
+
 func TestMigrate_UIPrefsRejectsSecondRow(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")

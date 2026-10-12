@@ -111,7 +111,7 @@ func (q *Queries) GetStatusChanges(ctx context.Context, mediaID int64) ([]Status
 }
 
 const getUIPrefs = `-- name: GetUIPrefs :one
-SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter
+SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter
 FROM ui_prefs WHERE id = 1
 `
 
@@ -123,6 +123,7 @@ type GetUIPrefsRow struct {
 	QFilter      string
 	TransFilter  string
 	DelFilter    string
+	FolderFilter string
 }
 
 func (q *Queries) GetUIPrefs(ctx context.Context) (GetUIPrefsRow, error) {
@@ -136,6 +137,7 @@ func (q *Queries) GetUIPrefs(ctx context.Context) (GetUIPrefsRow, error) {
 		&i.QFilter,
 		&i.TransFilter,
 		&i.DelFilter,
+		&i.FolderFilter,
 	)
 	return i, err
 }
@@ -255,8 +257,8 @@ func (q *Queries) MarkAllOffDisk(ctx context.Context) error {
 }
 
 const saveUIPrefs = `-- name: SaveUIPrefs :exec
-INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, updated_at)
-VALUES (1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter, updated_at)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 ON CONFLICT(id) DO UPDATE SET
     status_filter = excluded.status_filter,
     disk_filter = excluded.disk_filter,
@@ -265,6 +267,7 @@ ON CONFLICT(id) DO UPDATE SET
     q_filter = excluded.q_filter,
     trans_filter = excluded.trans_filter,
     del_filter = excluded.del_filter,
+    folder_filter = excluded.folder_filter,
     updated_at = CURRENT_TIMESTAMP
 `
 
@@ -276,6 +279,7 @@ type SaveUIPrefsParams struct {
 	QFilter      string
 	TransFilter  string
 	DelFilter    string
+	FolderFilter string
 }
 
 func (q *Queries) SaveUIPrefs(ctx context.Context, arg SaveUIPrefsParams) error {
@@ -287,6 +291,7 @@ func (q *Queries) SaveUIPrefs(ctx context.Context, arg SaveUIPrefsParams) error 
 		arg.QFilter,
 		arg.TransFilter,
 		arg.DelFilter,
+		arg.FolderFilter,
 	)
 	return err
 }

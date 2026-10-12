@@ -59,12 +59,12 @@ WHERE media_id = ?
 ORDER BY changed_at DESC;
 
 -- name: GetUIPrefs :one
-SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter
+SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter
 FROM ui_prefs WHERE id = 1;
 
 -- name: SaveUIPrefs :exec
-INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, updated_at)
-VALUES (1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter, updated_at)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 ON CONFLICT(id) DO UPDATE SET
     status_filter = excluded.status_filter,
     disk_filter = excluded.disk_filter,
@@ -73,4 +73,5 @@ ON CONFLICT(id) DO UPDATE SET
     q_filter = excluded.q_filter,
     trans_filter = excluded.trans_filter,
     del_filter = excluded.del_filter,
+    folder_filter = excluded.folder_filter,
     updated_at = CURRENT_TIMESTAMP;

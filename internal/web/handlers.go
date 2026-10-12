@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -73,7 +74,40 @@ func isHTMX(c *gin.Context) bool {
 	return c.GetHeader("HX-Request") == "true"
 }
 
-func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter string) []db.Medium {
+// topFolder returns the main (top-level) folder of a media's folder path: the
+// first segment before a `\` or `/`. Real scans store Windows paths with `\`,
+// test seeds also use `/`. A file directly in the disk root has no main folder
+// and yields "".
+func topFolder(folderRelativePath string) string {
+	if i := strings.IndexAny(folderRelativePath, `\/`); i >= 0 {
+		return folderRelativePath[:i]
+	}
+	return folderRelativePath
+}
+
+// folderOptions returns the distinct, sorted main folders of the given media —
+// the choices of the folder dropdown (Bug 26). Root files have no main folder
+// and add no entry. A selected folder that no longer matches any media is kept,
+// so the dropdown still shows what filters the (now empty) list.
+func folderOptions(raw []db.Medium, current string) []string {
+	seen := make(map[string]bool)
+	var folders []string
+	for _, m := range raw {
+		f := topFolder(m.FolderRelativePath)
+		if f == "" || seen[f] {
+			continue
+		}
+		seen[f] = true
+		folders = append(folders, f)
+	}
+	if current != "all" && !seen[current] {
+		folders = append(folders, current)
+	}
+	sort.Strings(folders)
+	return folders
+}
+
+func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter, folderFilter string) []db.Medium {
 	result := raw
 	if statusFilter != "all" {
 		f := make([]db.Medium, 0, len(result))
@@ -120,11 +154,23 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter 
 		}
 		result = f
 	}
+	if folderFilter != "all" {
+		// Exact match on the main folder, so "Movies" does not also catch
+		// "MoviesDnD"; root files only show under "all".
+		f := make([]db.Medium, 0, len(result))
+		for _, m := range result {
+			if topFolder(m.FolderRelativePath) == folderFilter {
+				f = append(f, m)
+			}
+		}
+		result = f
+	}
 	return result
 }
 
-// defaultPrefs mirrors the ui_prefs row created by migration 000005 — the
-// fallback whenever the remembered state cannot be read.
+// defaultPrefs mirrors the ui_prefs row created by migration 000005, plus the
+// folder_filter column added by 000006 — the fallback whenever the remembered
+// state cannot be read.
 func defaultPrefs() db.GetUIPrefsRow {
 	return db.GetUIPrefsRow{
 		StatusFilter: "all",
@@ -134,6 +180,7 @@ func defaultPrefs() db.GetUIPrefsRow {
 		QFilter:      "",
 		TransFilter:  "all",
 		DelFilter:    "all",
+		FolderFilter: "all",
 	}
 }
 
@@ -160,6 +207,12 @@ func (h *Handlers) Index(c *gin.Context) {
 	qFilter := c.DefaultQuery("q", prefs.QFilter)
 	transFilter := c.DefaultQuery("trans", prefs.TransFilter)
 	delFilter := c.DefaultQuery("del", prefs.DelFilter)
+	folderFilter := c.DefaultQuery("folder", prefs.FolderFilter)
+	if folderFilter == "" {
+		// An explicit empty "folder=" means all folders, not "only the files in
+		// the disk root".
+		folderFilter = "all"
+	}
 
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
@@ -172,6 +225,7 @@ func (h *Handlers) Index(c *gin.Context) {
 		QFilter:      qFilter,
 		TransFilter:  transFilter,
 		DelFilter:    delFilter,
+		FolderFilter: folderFilter,
 	}); err != nil {
 		h.log().Error("save ui prefs failed", "err", err)
 	}
@@ -189,7 +243,12 @@ func (h *Handlers) Index(c *gin.Context) {
 		return
 	}
 
-	raw = filterMedia(raw, statusFilter, qFilter, transFilter, delFilter)
+	// The dropdown offers every main folder of the current ↕ mode. It is built
+	// before the other filters narrow the list, so picking a status, a
+	// translation or a search text never hides folders from it.
+	folders := folderOptions(raw, folderFilter)
+
+	raw = filterMedia(raw, statusFilter, qFilter, transFilter, delFilter, folderFilter)
 
 	stats, err := db.FetchMediaStats(ctx, h.DB)
 	if err != nil {
@@ -278,7 +337,7 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, transFilter, delFilter).Render(ctx, c.Writer)
+	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, transFilter, delFilter, folderFilter, folders).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) RandomNew(c *gin.Context) {
@@ -290,6 +349,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	qFilter := c.PostForm("q")
 	transFilter := c.PostForm("trans")
 	delFilter := c.PostForm("del")
+	folderFilter := c.PostForm("folder")
 	if statusFilter == "" {
 		statusFilter = "all"
 	}
@@ -301,6 +361,9 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	}
 	if delFilter == "" {
 		delFilter = "all"
+	}
+	if folderFilter == "" {
+		folderFilter = "all"
 	}
 
 	var all []db.Medium
@@ -316,7 +379,12 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		return
 	}
 
-	candidates := filterMedia(all, statusFilter, qFilter, transFilter, delFilter)
+	candidates := filterMedia(all, statusFilter, qFilter, transFilter, delFilter, folderFilter)
+
+	// Without HTMX the browser is sent back to the list with the same filters.
+	// Folder names may contain spaces, Cyrillic or "&", hence the escaping.
+	listURL := fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s&del=%s&folder=%s",
+		statusFilter, diskFilter, qFilter, transFilter, delFilter, url.QueryEscape(folderFilter))
 
 	if len(candidates) == 0 {
 		if isHTMX(c) {
@@ -324,7 +392,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 			templates.Flash("Няма филми за избор").Render(ctx, c.Writer)
 			return
 		}
-		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s&del=%s", statusFilter, diskFilter, qFilter, transFilter, delFilter))
+		c.Redirect(http.StatusSeeOther, listURL)
 		return
 	}
 
@@ -368,7 +436,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s&del=%s", statusFilter, diskFilter, qFilter, transFilter, delFilter))
+	c.Redirect(http.StatusSeeOther, listURL)
 }
 
 func (h *Handlers) SetTranslationType(c *gin.Context) {

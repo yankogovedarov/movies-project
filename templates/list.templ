@@ -150,7 +150,7 @@ templ mediaRowCells(m db.MediaWithStats) {
 		</td>
 }
 
-templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string, sortFilter string, dirFilter string, qFilter string, transFilter string, delFilter string) {
+templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string, sortFilter string, dirFilter string, qFilter string, transFilter string, delFilter string, folderFilter string, folders []string) {
 	<!DOCTYPE html>
 	<html lang="bg">
 		<head>
@@ -159,8 +159,22 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 			<title>Movie Tracker</title>
 			<link rel="stylesheet" href="/static/pico.min.css"/>
 			<script src="/static/htmx.min.js"></script>
+			<script>
+				/* Bug 26: picking a folder changes the dropdown before form.submit() leaves the
+				   page, so a back/forward-cache restore would show the new folder over the old
+				   list. Resetting the dropdown to the server-rendered option makes them match
+				   again. No reload: reloading a bare "/" would render the newer remembered state
+				   and break Back for every filter. ui_prefs keeps the newer folder until the
+				   next click, like every other filter since Bug 23. */
+				addEventListener("pageshow", function (e) {
+					if (!e.persisted) { return; }
+					var s = document.querySelector("select[name=folder]");
+					var rendered = s && s.querySelector("option[selected]");
+					if (rendered) { s.value = rendered.value; }
+				});
+			</script>
 			<style>
-				.top-nav { display: flex; align-items: center; gap: 0.8rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; position: sticky; top: 0; z-index: 20; background: var(--pico-background-color, #fff); }
+				.top-nav { display: flex; align-items: center; gap: 0.6rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; position: sticky; top: 0; z-index: 20; background: var(--pico-background-color, #fff); }
 				.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }
 				.top-nav form { margin: 0; }
 				.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }
@@ -266,6 +280,21 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				}
 				.top-nav input.search-input::-webkit-search-cancel-button,
 				.top-nav input.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+				/* Bug 26: the main-folder dropdown sits among the 1.35rem filter buttons, so it
+				   is shrunk like the search field. `.top-nav select.folder-select` (specificity
+				   0,2,1) wins over Pico's select rules (0,1,1), which otherwise make it a tall,
+				   full-width form control with a large chevron. max-width keeps one long folder
+				   name from wrapping the nav (it still fits "всички папки"). */
+				.top-nav select.folder-select {
+					box-sizing: border-box; width: auto; max-width: 7.5rem; height: 1.35rem; min-height: 0;
+					margin: 0; padding: 0 1.2rem 0 0.4rem; padding-inline-start: 0.4rem; padding-inline-end: 1.2rem;
+					font-size: 0.8rem; line-height: 1; border-radius: 4px;
+					background-position: center right 0.3rem; background-size: 0.7rem auto;
+					--pico-form-element-spacing-vertical: 0;
+				}
+				.top-nav select.folder-select.filter-active {
+					border-color: var(--pico-primary); color: var(--pico-primary); font-weight: 600;
+				}
 				th.translation, td.translation { width: 5rem; white-space: nowrap; }
 				.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }
 			</style>
@@ -277,7 +306,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 					<form method="POST" action="/scan">
 						<button type="submit" class="icon-btn" title="Сканирай диска">↺</button>
 					</form>
-					<form method="GET" action="/">
+					<form id="search-form" method="GET" action="/">
 						<input type="hidden" name="status" value={ statusFilter }/>
 						<input type="hidden" name="disk" value={ diskFilter }/>
 						<input type="hidden" name="sort" value={ sortFilter }/>
@@ -301,35 +330,41 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 					</form>
 					<span class="nav-label">филтър:</span>
 					<div class="filter-btns">
-						<a href={ templ.SafeURL("/?status=all&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "all") } title="Всички статуси">◎</a>
-						<a href={ templ.SafeURL("/?status=new&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "new") } title="Нова">○</a>
-						<a href={ templ.SafeURL("/?status=started&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "started") } title="Стартирана">▶</a>
-						<a href={ templ.SafeURL("/?status=completed_both&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_both") } title="Завършена от двамата">✓</a>
-						<a href={ templ.SafeURL("/?status=completed_yanko&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_yanko") } title="Завършена от Янко">Я</a>
-						<a href={ templ.SafeURL("/?status=completed_liza&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_liza") } title="Завършена от Лиза">Л</a>
+						<select name="folder" form="search-form" class={ "folder-select", templ.KV("filter-active", folderFilter != "all") } title="Основна папка" autocomplete="off" onchange="this.form.submit()">
+							<option value="all" selected?={ folderFilter == "all" }>всички папки</option>
+							for _, f := range folders {
+								<option value={ f } selected?={ f == folderFilter }>{ f }</option>
+							}
+						</select>
+						<a href={ templ.SafeURL("/?status=all&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "all") } title="Всички статуси">◎</a>
+						<a href={ templ.SafeURL("/?status=new&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "new") } title="Нова">○</a>
+						<a href={ templ.SafeURL("/?status=started&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "started") } title="Стартирана">▶</a>
+						<a href={ templ.SafeURL("/?status=completed_both&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_both") } title="Завършена от двамата">✓</a>
+						<a href={ templ.SafeURL("/?status=completed_yanko&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_yanko") } title="Завършена от Янко">Я</a>
+						<a href={ templ.SafeURL("/?status=completed_liza&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_liza") } title="Завършена от Лиза">Л</a>
 						if diskFilter == "all" {
-							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=on&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class="filter-btn filter-active" title="Показват се всички (вкл. изчезнали) — кликни за само на диска">↕</a>
+							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=on&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class="filter-btn filter-active" title="Показват се всички (вкл. изчезнали) — кликни за само на диска">↕</a>
 						} else {
-							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=all&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter) } class="filter-btn" title="Само на диска — кликни за всички">↕</a>
+							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=all&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class="filter-btn" title="Само на диска — кликни за всички">↕</a>
 						}
-						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delToggleValue(delFilter)) } class={ "filter-btn", templ.KV("filter-active", delFilter == "yes") } title="За изтриване">🗑</a>
+						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delToggleValue(delFilter) + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", delFilter == "yes") } title="За изтриване">🗑</a>
 					</div>
 					<span class="nav-label">превод:</span>
 					<div class="trans-btns">
-						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=all&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", transFilter == "all") } title="Всички типове превод">◉</a>
-						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=none&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", transFilter == "none") } title="Неустановен превод">?</a>
-						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=sub&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", transFilter == "sub") } title="Субтитри">СУБ</a>
-						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=bg&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", transFilter == "bg") } title="Български говор">БГ</a>
-						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=orig&del=" + delFilter) } class={ "filter-btn", templ.KV("filter-active", transFilter == "orig") } title="Оригинал">ОРГ</a>
+						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=all&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", transFilter == "all") } title="Всички типове превод">◉</a>
+						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=none&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", transFilter == "none") } title="Неустановен превод">?</a>
+						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=sub&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", transFilter == "sub") } title="Субтитри">СУБ</a>
+						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=bg&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", transFilter == "bg") } title="Български говор">БГ</a>
+						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=orig&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", transFilter == "orig") } title="Оригинал">ОРГ</a>
 					</div>
 					<span class="nav-label">сорт:</span>
 					<div class="sort-btns">
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "name", qFilter, transFilter, delFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "name") } title="По азбучен ред">{ sortBtnContent("АЯ", sortFilter, dirFilter, "name") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "path", qFilter, transFilter, delFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "path") } title="По папка/път">{ sortBtnContent("Пт", sortFilter, dirFilter, "path") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "size", qFilter, transFilter, delFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "size") } title="По размер">{ sortBtnContent("Рз", sortFilter, dirFilter, "size") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "last_started", qFilter, transFilter, delFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "last_started") } title="По последно стартиране">{ sortBtnContent("▶", sortFilter, dirFilter, "last_started") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "added", qFilter, transFilter, delFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "added") } title="По дата добавяне">{ sortBtnContent("⊕", sortFilter, dirFilter, "added") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "marked", qFilter, transFilter, delFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "marked") } title="По дата завършване">{ sortBtnContent("✓", sortFilter, dirFilter, "marked") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "name", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "name") } title="По азбучен ред">{ sortBtnContent("АЯ", sortFilter, dirFilter, "name") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "path", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "path") } title="По папка/път">{ sortBtnContent("Пт", sortFilter, dirFilter, "path") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "size", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "size") } title="По размер">{ sortBtnContent("Рз", sortFilter, dirFilter, "size") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "last_started", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "last_started") } title="По последно стартиране">{ sortBtnContent("▶", sortFilter, dirFilter, "last_started") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "added", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "added") } title="По дата добавяне">{ sortBtnContent("⊕", sortFilter, dirFilter, "added") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "marked", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "marked") } title="По дата завършване">{ sortBtnContent("✓", sortFilter, dirFilter, "marked") }</a>
 					</div>
 					<form
 						method="POST"
@@ -343,6 +378,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						<input type="hidden" name="q" value={ qFilter }/>
 						<input type="hidden" name="trans" value={ transFilter }/>
 						<input type="hidden" name="del" value={ delFilter }/>
+						<input type="hidden" name="folder" value={ folderFilter }/>
 						<button type="submit" class="sort-btn" title="Стартирай случаен от филтрираните">🎲</button>
 					</form>
 				</nav>

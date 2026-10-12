@@ -51,4 +51,5 @@ type UiPref struct {
 	TransFilter  string
 	DelFilter    string
 	UpdatedAt    time.Time
+	FolderFilter string
 }

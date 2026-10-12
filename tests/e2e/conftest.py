@@ -58,9 +58,11 @@ def live_server():
         env=env,
     )
 
-    if not _wait_for_server(timeout=30):
+    # Сървърът започва да слуша едва след стартовото сканиране на диска, а на dev
+    # машината то обхожда реалния C:\ и вече трае ~45 s — 30 s не стигат.
+    if not _wait_for_server(timeout=120):
         proc.kill()
-        raise RuntimeError("Server did not become ready within 30 seconds")
+        raise RuntimeError("Server did not become ready within 120 seconds")
 
     yield BASE_URL
 
@@ -77,7 +79,7 @@ def live_server():
 # стойностите по подразбиране — иначе филтър, оставен от предишен тест, би текъл
 # в следващия, който отваря голо "/".
 DEFAULT_STATE_URL = (
-    BASE_URL + "/?status=all&disk=on&sort=name&dir=asc&q=&trans=all&del=all"
+    BASE_URL + "/?status=all&disk=on&sort=name&dir=asc&q=&trans=all&del=all&folder=all"
 )
 
 

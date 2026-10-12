@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -1164,6 +1165,7 @@ func TestIndex_FreshDB_UsesDefaultFilters(t *testing.T) {
 	status, disk, sortF, dir, q, trans, del := readPrefs(t, d)
 	assert.Equal(t, []string{"all", "on", "name", "asc", "", "all", "all"},
 		[]string{status, disk, sortF, dir, q, trans, del})
+	assert.Equal(t, "all", readFolderPref(t, d), "the folder filter defaults to all folders")
 }
 
 // ---------------------------------------------------------------------------
@@ -1289,4 +1291,236 @@ func TestNoLaunch_FalseWhenEnvIsZero(t *testing.T) {
 
 func TestNoopLauncher_DoesNothing(t *testing.T) {
 	assert.NoError(t, web.NoopLauncher("explorer.exe", `C:\Windows`))
+}
+
+// ---------------------------------------------------------------------------
+// Bug 26: филтър по основна папка
+// ---------------------------------------------------------------------------
+
+// readFolderPref returns the remembered main-folder filter. It is kept apart
+// from readPrefs so the Bug 23 tests keep their seven-value shape.
+func readFolderPref(t *testing.T, d *sql.DB) string {
+	t.Helper()
+	var folder string
+	require.NoError(t, d.QueryRow("SELECT folder_filter FROM ui_prefs WHERE id = 1").Scan(&folder))
+	return folder
+}
+
+// seedMainFolders seeds one media under each of three main folders, with the
+// backslash paths a real Windows scan stores. "MoviesDnD" deliberately starts
+// with "Movies" to catch prefix matching. Extra files are seeded in the same
+// scan, because every seedMedia call marks the earlier media off disk.
+func seedMainFolders(t *testing.T, d *sql.DB, extra ...scanner.VideoFile) {
+	t.Helper()
+	files := []scanner.VideoFile{
+		{Filename: "Tron.mkv", FolderRelativePath: `Movies\Tron Ares (2025)`, SizeBytes: 1_000_000_000},
+		{Filename: "Dragons.mkv", FolderRelativePath: `MoviesDnD\Dragons`, SizeBytes: 2_000_000_000},
+		{Filename: "Episode01.mkv", FolderRelativePath: `Serials\Show\Season 1`, SizeBytes: 3_000_000_000},
+	}
+	seedMedia(t, d, append(files, extra...))
+}
+
+// rootFile is a media directly in the disk root — it has no main folder.
+var rootFile = scanner.VideoFile{Filename: "RootFile.mkv", FolderRelativePath: "", SizeBytes: 9_000_000_000}
+
+func TestIndex_FolderFilter_ShowsOnlyThatFolder(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "Episode01.mkv", "media at any depth below the main folder must match")
+	assert.NotContains(t, body, "Tron.mkv")
+	assert.NotContains(t, body, "Dragons.mkv")
+}
+
+func TestIndex_FolderFilter_DoesNotMatchFolderPrefix(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Movies", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Tron.mkv")
+	assert.NotContains(t, body, "Dragons.mkv", `"Movies" must not also match "MoviesDnD"`)
+	assert.NotContains(t, body, "Episode01.mkv")
+}
+
+func TestIndex_FolderFilter_DefaultShowsAll(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d, rootFile)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	for _, name := range []string{"Tron.mkv", "Dragons.mkv", "Episode01.mkv", "RootFile.mkv"} {
+		assert.Contains(t, body, name)
+	}
+}
+
+func TestIndex_FolderFilter_EmptyParamMeansAll(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d, rootFile)
+
+	// A remembered folder...
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// ...is replaced by an explicit empty "folder=", which means "all folders"
+	// and not "only the files in the disk root".
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/?folder=", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	for _, name := range []string{"Tron.mkv", "Dragons.mkv", "Episode01.mkv", "RootFile.mkv"} {
+		assert.Contains(t, body, name)
+	}
+	assert.Equal(t, "all", readFolderPref(t, d))
+}
+
+func TestIndex_FolderFilter_AcceptsForwardSlashPaths(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Movie.mkv", FolderRelativePath: "Films/Action", SizeBytes: 1_000_000_000},
+		{Filename: "Nature.mkv", FolderRelativePath: "Docs/Nature", SizeBytes: 2_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Films", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Movie.mkv")
+	assert.NotContains(t, body, "Nature.mkv")
+}
+
+func TestIndex_FolderFilter_CombinesWithStatus(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d, scanner.VideoFile{
+		Filename: "Episode02.mkv", FolderRelativePath: `Serials\Show\Season 1`, SizeBytes: 4_000_000_000,
+	})
+	q := db.New(d)
+	for _, name := range []string{"Tron.mkv", "Episode01.mkv"} {
+		require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+			CurrentStatus: "started",
+			ID:            mediaIDByName(t, d, name),
+		}))
+	}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials&status=started", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Episode01.mkv")
+	assert.NotContains(t, body, "Episode02.mkv", "a new media in the folder is hidden by the status filter")
+	assert.NotContains(t, body, "Tron.mkv", "a started media outside the folder is hidden by the folder filter")
+}
+
+func TestIndex_SavesFolderFilterToDB(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	assert.Equal(t, "Serials", readFolderPref(t, d))
+}
+
+func TestIndex_RestoresSavedFolderFilter(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// A restart (new router, same database) lands on a bare "/" again.
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Episode01.mkv")
+	assert.NotContains(t, body, "Tron.mkv", "the remembered folder filter must still apply")
+	assert.NotContains(t, body, "Dragons.mkv", "the remembered folder filter must still apply")
+}
+
+func TestRandomNew_RespectsFolderFilter(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+	r := newRouter(t, d)
+
+	for i := 0; i < 10; i++ {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/media/random-new/start",
+			strings.NewReader("status=all&disk=on&trans=all&del=all&folder=Serials"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.ServeHTTP(w, req)
+	}
+
+	assert.Equal(t, 10, startEventCount(t, d, mediaIDByName(t, d, "Episode01.mkv")),
+		"only the media under the chosen folder may be picked")
+	assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Tron.mkv")))
+	assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Dragons.mkv")))
+}
+
+// Both non-HTMX redirects (after a pick and when nothing matches) must lead back
+// to the same folder, with the name query-escaped.
+func TestRandomNew_RedirectCarriesEscapedFolder(t *testing.T) {
+	const folder = "99 Гледани"
+	want := "folder=" + url.QueryEscape(folder)
+
+	post := func(t *testing.T, d *sql.DB) *httptest.ResponseRecorder {
+		t.Helper()
+		form := url.Values{
+			"status": {"all"},
+			"disk":   {"on"},
+			"trans":  {"all"},
+			"del":    {"all"},
+			"folder": {folder},
+		}
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		newRouter(t, d).ServeHTTP(w, req)
+		return w
+	}
+
+	t.Run("after a pick", func(t *testing.T) {
+		d := openTestDB(t)
+		seedMedia(t, d, []scanner.VideoFile{
+			{Filename: "Watched.mkv", FolderRelativePath: folder + `\Old Film`, SizeBytes: 1_000_000_000},
+		})
+
+		w := post(t, d)
+
+		require.Equal(t, http.StatusSeeOther, w.Code)
+		assert.Contains(t, w.Header().Get("Location"), want)
+		assert.Equal(t, 1, startEventCount(t, d, mediaIDByName(t, d, "Watched.mkv")),
+			"the media under the folder must be the one picked")
+	})
+
+	t.Run("when nothing matches", func(t *testing.T) {
+		d := openTestDB(t)
+
+		w := post(t, d)
+
+		require.Equal(t, http.StatusSeeOther, w.Code)
+		assert.Contains(t, w.Header().Get("Location"), want)
+	})
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -383,7 +384,7 @@ func TestIndex_RandomForm_HasHxPost(t *testing.T) {
 	require.True(t, exists, "expected hx-post on random form")
 	assert.Contains(t, hxPost, "random-new/start")
 
-	for _, name := range []string{"status", "disk", "q", "trans", "del"} {
+	for _, name := range []string{"status", "disk", "q", "trans", "del", "folder"} {
 		assert.Equal(t, 1, randomForm.Find(fmt.Sprintf("input[name=%s]", name)).Length(),
 			"expected hidden input %q in random form", name)
 	}
@@ -636,4 +637,218 @@ func TestIndex_RestoredFilters_MarkActiveButtons(t *testing.T) {
 
 	searchValue, _ := doc.Find("input.search-input").Attr("value")
 	assert.Equal(t, "god", searchValue)
+}
+
+// ---------------------------------------------------------------------------
+// Bug 26: падащо меню за основна папка
+// ---------------------------------------------------------------------------
+
+// folderOptionValues returns the option values of the folder dropdown, in page
+// order.
+func folderOptionValues(doc *goquery.Document) []string {
+	var values []string
+	doc.Find("select[name=folder] option").Each(func(_ int, opt *goquery.Selection) {
+		v, _ := opt.Attr("value")
+		values = append(values, v)
+	})
+	return values
+}
+
+func TestIndex_FolderSelect_FirstInFilterBtns(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	// The dropdown opens the "филтър:" group, before the ◎ button.
+	first := doc.Find(".filter-btns").Children().First()
+	require.Equal(t, "select", goquery.NodeName(first), "the folder dropdown must be first in .filter-btns")
+	name, _ := first.Attr("name")
+	assert.Equal(t, "folder", name)
+
+	// It belongs to the search form: a change re-sends the current search text
+	// and filters, and the live search carries the folder along.
+	formID, ok := first.Attr("form")
+	require.True(t, ok, "the dropdown must be associated with a form")
+	searchForm := doc.Find("input[type=search][name=q]").Closest("form")
+	require.Equal(t, 1, searchForm.Length(), "expected the search form")
+	searchID, _ := searchForm.Attr("id")
+	require.NotEmpty(t, searchID, "the search form needs an id")
+	assert.Equal(t, searchID, formID)
+
+	onchange, _ := first.Attr("onchange")
+	assert.Contains(t, onchange, "submit()", "picking a folder must submit the form")
+
+	opt := first.Find("option").First()
+	value, _ := opt.Attr("value")
+	assert.Equal(t, "all", value)
+	assert.Equal(t, "всички папки", strings.TrimSpace(opt.Text()))
+}
+
+func TestIndex_FolderSelect_OptionsFromTopFolders(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Ep.mkv", FolderRelativePath: `Serials\X`, SizeBytes: 1_000_000_000},
+		{Filename: "Direct.mkv", FolderRelativePath: "Movies", SizeBytes: 2_000_000_000},
+		{Filename: "Nested.mkv", FolderRelativePath: `Movies\Sub`, SizeBytes: 3_000_000_000},
+		{Filename: "Dnd.mkv", FolderRelativePath: `MoviesDnD\D`, SizeBytes: 4_000_000_000},
+		{Filename: "Root.mkv", FolderRelativePath: "", SizeBytes: 5_000_000_000},
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	// Distinct, sorted, and no entry for the disk root (a root file has no
+	// main folder).
+	assert.Equal(t, []string{"all", "Movies", "MoviesDnD", "Serials"},
+		folderOptionValues(parseBody(t, w.Body.String())))
+}
+
+func TestIndex_FolderSelect_OptionsFollowDiskFilter(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Here.mkv", FolderRelativePath: `Movies\Here`, SizeBytes: 1_000_000_000},
+		{Filename: "Gone.mkv", FolderRelativePath: `Archive\Gone`, SizeBytes: 2_000_000_000},
+	})
+	_, err := d.Exec("UPDATE media SET on_disk = 0 WHERE filename = 'Gone.mkv'")
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	assert.Equal(t, []string{"all", "Movies"}, folderOptionValues(parseBody(t, w.Body.String())),
+		"a folder with only vanished media is not offered in the on-disk view")
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/?disk=all", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	assert.Equal(t, []string{"all", "Archive", "Movies"}, folderOptionValues(parseBody(t, w.Body.String())),
+		"the ↕ all-media view also offers the folders of vanished media")
+}
+
+func TestIndex_FolderSelect_OptionsIgnoreOtherFilters(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	// Neither the chosen folder nor a status that matches nothing may shrink
+	// the dropdown — the user must be able to switch straight to another folder.
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials&status=completed_both", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, []string{"all", "Movies", "MoviesDnD", "Serials"},
+		folderOptionValues(parseBody(t, w.Body.String())))
+}
+
+func TestIndex_FolderSelect_MarksSelectedAndActive(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	// Fresh state first (a later request would be remembered): "всички папки"
+	// is selected and the dropdown is not highlighted.
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	sel := parseBody(t, w.Body.String()).Find("select[name=folder]")
+	require.Equal(t, 1, sel.Length(), "expected the folder dropdown")
+	_, allSelected := sel.Find("option[value=all]").Attr("selected")
+	assert.True(t, allSelected, "всички папки must be selected by default")
+	class, _ := sel.Attr("class")
+	assert.NotContains(t, class, "filter-active", "no folder filter, no highlight")
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/?folder=Serials", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	sel = parseBody(t, w.Body.String()).Find("select[name=folder]")
+	_, serialsSelected := sel.Find("option[value=Serials]").Attr("selected")
+	assert.True(t, serialsSelected, "the chosen folder must be selected")
+	assert.Equal(t, 1, sel.Find("option[selected]").Length(), "exactly one option is selected")
+	class, _ = sel.Attr("class")
+	assert.Contains(t, class, "filter-active", "an active folder filter is highlighted")
+}
+
+func TestIndex_FolderSelect_KeepsUnknownFolderSelected(t *testing.T) {
+	d := openTestDB(t)
+	seedMainFolders(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Old", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	// A remembered folder that no longer exists stays visibly selected, so the
+	// dropdown explains the empty list.
+	old := parseBody(t, body).Find("select[name=folder] option[value=Old]")
+	require.Equal(t, 1, old.Length(), "the unknown folder must still be offered")
+	_, selected := old.Attr("selected")
+	assert.True(t, selected, "the unknown folder must stay selected")
+	assert.Contains(t, body, "Няма намерени медии.")
+}
+
+func TestIndex_FolderFilter_PreservedByOtherFilters(t *testing.T) {
+	const folder = "99 Гледани"
+	want := "folder=" + url.QueryEscape(folder)
+
+	// The ↕ link has two variants (on disk / all media); each request renders
+	// one of them, so both views are checked.
+	for _, tc := range []struct{ name, target string }{
+		{"on disk", "/?folder=" + url.QueryEscape(folder)},
+		{"all media", "/?disk=all&folder=" + url.QueryEscape(folder)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := openTestDB(t)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+			newRouter(t, d).ServeHTTP(w, req)
+
+			doc := parseBody(t, w.Body.String())
+			// Every status/↕/🗑 link, translation link and sort link carries the
+			// folder (escaped), otherwise clicking one of them silently drops the
+			// filter.
+			links := doc.Find(".filter-btns a.filter-btn, .trans-btns a.filter-btn, .sort-btns a.sort-btn")
+			require.Equal(t, 19, links.Length(), "expected 8 filter + 5 translation + 6 sort links")
+			links.Each(func(_ int, sel *goquery.Selection) {
+				title, _ := sel.Attr("title")
+				href, _ := sel.Attr("href")
+				assert.Contains(t, href, want, "link %q must preserve the folder filter", title)
+			})
+
+			// The 🎲 form re-sends the folder as a hidden field.
+			random := doc.Find("form[action='/media/random-new/start']")
+			require.Equal(t, 1, random.Length(), "expected the 🎲 form")
+			value, ok := random.Find("input[type=hidden][name=folder]").Attr("value")
+			require.True(t, ok, "expected a hidden folder input in the 🎲 form")
+			assert.Equal(t, folder, value)
+		})
+	}
+}
+
+// Picking a folder changes the dropdown before the form submit leaves the page,
+// so a back/forward-cache restore would show the new folder over the old list.
+// On such a restore the page resets the dropdown to the server-rendered option.
+// It must not reload: reloading a bare "/" would render the newer remembered
+// state and break Back for every filter.
+func TestIndex_ResetsFolderSelectOnBackForwardCacheRestore(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	var script string
+	parseBody(t, w.Body.String()).Find("head script:not([src])").Each(func(_ int, s *goquery.Selection) {
+		if strings.Contains(s.Text(), "pageshow") {
+			script = s.Text()
+		}
+	})
+	require.NotEmpty(t, script, "expected an inline pageshow listener in <head>")
+	assert.Contains(t, script, "persisted", "only a back/forward-cache restore may touch the dropdown")
+	assert.Contains(t, script, "option[selected]", "the dropdown must be reset to the server-rendered option")
+	assert.NotContains(t, script, "location.reload",
+		"a reload would replace the restored view with the newer remembered state")
 }
