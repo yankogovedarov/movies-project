@@ -46,18 +46,6 @@ UPDATE media SET translation_type = ? WHERE id = ?;
 -- name: UpdateForDeletion :exec
 UPDATE media SET for_deletion = ? WHERE id = ?;
 
--- name: GetStartEvents :many
-SELECT id, media_id, started_at
-FROM start_events
-WHERE media_id = ?
-ORDER BY started_at DESC;
-
--- name: GetStatusChanges :many
-SELECT id, media_id, from_status, to_status, changed_at
-FROM status_changes
-WHERE media_id = ?
-ORDER BY changed_at DESC;
-
 -- name: GetUIPrefs :one
 SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter
 FROM ui_prefs WHERE id = 1;

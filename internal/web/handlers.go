@@ -420,10 +420,18 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		}
 		s, _ := db.FetchSingleMediaStats(ctx, h.DB, chosen.ID)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		// No flash message (Bug 16): the response is only the OOB row, which
-		// HTMX swaps by id. The hx-target (#flash) receives the empty remainder
-		// and is therefore cleared.
-		templates.MediaRowOOB(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
+		// Bug 27: the flash names the started film again. HTMX swaps the OOB row
+		// by id and puts the rest into the hx-target (#flash), but only with the
+		// row first and useTemplateFragments on (see ListPage): the response is
+		// then parsed in a <template>, where a leading <tr> keeps its table
+		// context and the <span> after it stays a sibling. With the flash first
+		// the parser drops the <tr>/<td> tags: the row's content leaks into
+		// #flash and the row is never swapped. Without useTemplateFragments a
+		// leading <tr> is wrapped in <table><tbody>, the <span> is foster-parented
+		// in front of the table and htmx descends into the wrong node, so the OOB
+		// lookup fails and neither the row nor the flash is swapped.
+		_ = templates.MediaRowOOB(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
+		_ = templates.Flash("🎲 Стартирах: "+chosen.Filename).Render(ctx, c.Writer)
 		return
 	}
 
@@ -626,25 +634,6 @@ func (h *Handlers) OpenFolder(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")
-}
-
-func (h *Handlers) MediaDetail(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.Status(http.StatusNotFound)
-		return
-	}
-	ctx := c.Request.Context()
-	q := db.New(h.DB)
-	medium, err := q.GetMediaByID(ctx, id)
-	if err != nil {
-		c.Status(http.StatusNotFound)
-		return
-	}
-	starts, _ := q.GetStartEvents(ctx, id)
-	changes, _ := q.GetStatusChanges(ctx, id)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.DetailPage(medium, starts, changes).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) Tree(c *gin.Context) {

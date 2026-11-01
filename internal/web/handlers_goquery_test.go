@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -153,46 +154,6 @@ func TestIndex_StatusFormAction(t *testing.T) {
 	action, exists := doc.Find("td.actions form").First().Attr("action")
 	require.True(t, exists, "expected form in actions cell")
 	assert.Contains(t, action, "/status", "status form action should contain /status")
-}
-
-func TestDetailPage_ShowsMediaInfo(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Arrival.mkv", FolderRelativePath: "SciFi", SizeBytes: 1_800_000_000},
-	})
-	q := db.New(d)
-	media, err := q.ListOnDiskMedia(context.Background())
-	require.NoError(t, err)
-	id := media[0].ID
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d", id), nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
-	doc := parseBody(t, w.Body.String())
-	assert.Contains(t, doc.Find("h1").Text(), "Arrival.mkv")
-	assert.Equal(t, 1, doc.Find("select[name=status]").Length(), "expected status dropdown")
-}
-
-func TestDetailPage_ShowsHistoryTables(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Interstellar.mkv", FolderRelativePath: "SciFi", SizeBytes: 2_000_000_000},
-	})
-	q := db.New(d)
-	media, err := q.ListOnDiskMedia(context.Background())
-	require.NoError(t, err)
-	id := media[0].ID
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d", id), nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
-	body := w.Body.String()
-	assert.Contains(t, body, "История на стартиранията")
-	assert.Contains(t, body, "История на статусите")
 }
 
 // Bug 27: the row offers ○ ▶ D — the completed statuses (✓ Я Л) are removed.
@@ -942,4 +903,39 @@ func TestTree_StatusOptions_AreNewStartedForDnD(t *testing.T) {
 	})
 	assert.Equal(t, []string{"new", "started", "for_dnd"}, values)
 	assert.Equal(t, []string{"Нова", "Стартирана", "За DnD"}, labels)
+}
+
+// ---------------------------------------------------------------------------
+// Bug 27: 🎲 изписва филма + без „Детайли"
+// ---------------------------------------------------------------------------
+
+// The 🎲 response (OOB row, then the flash) only works when htmx parses partial
+// responses in a <template>. htmx reads its config from a JSON meta tag.
+func TestIndex_HtmxConfigUsesTemplateFragments(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	meta := parseBody(t, w.Body.String()).Find("head meta[name=htmx-config]")
+	require.Equal(t, 1, meta.Length(), "expected one htmx-config meta tag in <head>")
+	content, _ := meta.Attr("content")
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal([]byte(content), &cfg), "htmx-config must be valid JSON, got %q", content)
+	assert.Equal(t, true, cfg["useTemplateFragments"])
+}
+
+func TestIndex_NoDetailsButton(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	require.Equal(t, 1, doc.Find("tbody tr").Length(), "expected the seeded media row")
+	assert.Equal(t, 0, doc.Find("[title='Детайли']").Length(), "the ℹ „Детайли\" button must be gone")
+	assert.Equal(t, 0, doc.Find(fmt.Sprintf("[href='/media/%d']", id)).Length(),
+		"no link may lead to the removed details view")
 }

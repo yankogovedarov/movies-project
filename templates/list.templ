@@ -125,7 +125,6 @@ templ mediaRowCells(m db.MediaWithStats) {
 					<input type="hidden" name="value" value={ forDeletionToggleValue(m.ForDeletion) }/>
 					<button type="submit" class={ "icon-btn", templ.KV("filter-active", m.ForDeletion == 1) } title="За изтриване">🗑</button>
 				</form>
-				<a href={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10)) } class="icon-btn" title="Детайли">ℹ</a>
 			</div>
 		</td>
 }
@@ -138,6 +137,9 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>Movie Tracker</title>
 			<link rel="stylesheet" href="/static/pico.min.css"/>
+			// Bug 27: htmx parses partial responses in a <template>, so the 🎲 response
+			// (the OOB row first, then the flash) both swaps the row and fills #flash.
+			<meta name="htmx-config" content='{"useTemplateFragments":true}'/>
 			<script src="/static/htmx.min.js"></script>
 			<script>
 				/* Bug 26: picking a folder changes the dropdown before form.submit() leaves the
@@ -195,7 +197,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				th.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 				th.size,     td.size     { width: 4.5rem; white-space: nowrap; }
 				th.status,   td.status   { width: 4rem; white-space: nowrap; }
-				th.actions,  td.actions  { width: 7.8rem; white-space: nowrap; }
+				th.actions,  td.actions  { width: 6.35rem; white-space: nowrap; }
 				form { display: inline; margin: 0; }
 				button.filename-link {
 					background: none; border: none; padding: 0;
@@ -212,16 +214,11 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				}
 				.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }
 				.actions-grid form { display: contents; }
-				button.icon-btn, a.icon-btn {
+				button.icon-btn {
 					display: inline-flex; align-items: center; justify-content: center;
 					width: 1.35rem; height: 1.35rem; padding: 0;
 					font-size: 0.8rem; border-radius: 3px; cursor: pointer;
 					text-decoration: none; line-height: 1; flex-shrink: 0;
-				}
-				a.icon-btn {
-					background: var(--pico-secondary-background, #f0f0f0);
-					color: var(--pico-secondary-inverse, #333);
-					border: 1px solid var(--pico-muted-border-color, #ccc);
 				}
 					/* Translation column: faded inactive types, strongly highlighted active one
 					   so the current type (СУБ/БГ/ОРГ) is visible at a glance (Bug 16). */

@@ -42,7 +42,6 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r := gin.New()
 	r.GET("/", h.Index)
 	r.GET("/tree", h.Tree)
-	r.GET("/media/:id", h.MediaDetail)
 	r.GET("/media/:id/open-folder", h.OpenFolder)
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
@@ -429,50 +428,6 @@ func TestOpenFolder_HTMX_Returns200(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestMediaDetail_Returns200(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Inception.mkv", FolderRelativePath: "SciFi", SizeBytes: 1_500_000_000},
-	})
-	q := db.New(d)
-	media, err := q.ListOnDiskMedia(context.Background())
-	require.NoError(t, err)
-	id := media[0].ID
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d", id), nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
-}
-
-func TestMediaDetail_NotFound(t *testing.T) {
-	d := openTestDB(t)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/media/999999", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-}
-
-func TestMediaDetail_ShowsFilename(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Dune.Part.Two.mkv", FolderRelativePath: "SciFi", SizeBytes: 2_400_000_000},
-	})
-	q := db.New(d)
-	media, err := q.ListOnDiskMedia(context.Background())
-	require.NoError(t, err)
-	id := media[0].ID
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d", id), nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Contains(t, w.Body.String(), "Dune.Part.Two.mkv")
-}
-
 func TestTreeHandler_ReturnsHTML(t *testing.T) {
 	d := openTestDB(t)
 	w := httptest.NewRecorder()
@@ -789,7 +744,7 @@ func TestRandomNew_HTMX_ReturnsOOBRow(t *testing.T) {
 	assert.Contains(t, body, `hx-swap-oob="true"`)
 	assert.Contains(t, body, `id="media-`)
 	assert.Contains(t, body, "OobMovie.mkv")
-	assert.NotContains(t, body, "Стартирах", "flash success message must be removed (Bug 16)")
+	assert.Contains(t, body, "🎲 Стартирах: OobMovie.mkv", "Bug 27: the flash names the started film again")
 }
 
 func TestRandomNew_HTMX_DoesNotRedirect(t *testing.T) {
@@ -1617,4 +1572,64 @@ func TestStartMedia_KeepsForDnDStatus(t *testing.T) {
 	assert.Equal(t, "for_dnd", updated.CurrentStatus, "the DnD status must be preserved")
 	assert.Equal(t, 1, startEventCount(t, d, id), "a start event must still be recorded")
 	assert.Equal(t, 0, statusChangeCount(t, d, id), "no history row may be written")
+}
+
+// ---------------------------------------------------------------------------
+// Bug 27: 🎲 изписва филма + без „Детайли"
+// ---------------------------------------------------------------------------
+
+// postRandomHTMX sends the 🎲 form the way HTMX does and returns the response.
+func postRandomHTMX(t *testing.T, d *sql.DB) *httptest.ResponseRecorder {
+	t.Helper()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	newRouter(t, d).ServeHTTP(w, req)
+	return w
+}
+
+// htmx parses a partial response by its first tag: only with the OOB row first
+// (and useTemplateFragments, see ListPage) does the browser swap the row and
+// keep the flash. With the flash first the <tr> tags are dropped and the row's
+// text lands in #flash.
+func TestRandomNew_HTMX_RowComesBeforeFlash(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "OrderMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	body := postRandomHTMX(t, d).Body.String()
+
+	flashAt := strings.Index(body, "🎲 Стартирах: OrderMovie.mkv")
+	require.NotEqual(t, -1, flashAt, "expected the flash in the HTMX response")
+	assert.True(t, strings.HasPrefix(strings.TrimSpace(body), `<tr id="media-`),
+		"the response must start with the OOB row, got %.80q", body)
+	rowAt := strings.Index(body, `hx-swap-oob="true"`)
+	require.NotEqual(t, -1, rowAt, "expected the OOB row in the HTMX response")
+	assert.Less(t, rowAt, flashAt, "the OOB row must come before the flash")
+}
+
+func TestRandomNew_HTMX_FlashEscapesFilename(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Evil<b>Bold</b>.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+
+	body := postRandomHTMX(t, d).Body.String()
+
+	assert.Contains(t, body, "🎲 Стартирах: Evil&lt;b&gt;Bold&lt;/b&gt;.mkv", "the filename must be HTML-escaped in the flash")
+	assert.NotContains(t, body, "<b>", "no markup from the filename may reach the page")
+}
+
+// The details view is removed: GET /media/:id answers 404.
+func TestMediaDetail_RouteRemoved(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/media/%d", id), nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
