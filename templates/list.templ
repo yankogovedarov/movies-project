@@ -112,28 +112,8 @@ templ mediaRowCells(m db.MediaWithStats) {
 					hx-target="closest tr"
 					hx-swap="outerHTML"
 				>
-					<input type="hidden" name="status" value="completed_both"/>
-					<button type="submit" class="icon-btn" title="Завършена (двамата)">✓</button>
-				</form>
-				<form
-					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
-					method="POST"
-					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
-					hx-target="closest tr"
-					hx-swap="outerHTML"
-				>
-					<input type="hidden" name="status" value="completed_yanko"/>
-					<button type="submit" class="icon-btn" title="Завършена (Янко)">Я</button>
-				</form>
-				<form
-					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
-					method="POST"
-					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
-					hx-target="closest tr"
-					hx-swap="outerHTML"
-				>
-					<input type="hidden" name="status" value="completed_liza"/>
-					<button type="submit" class="icon-btn" title="Завършена (Лиза)">Л</button>
+					<input type="hidden" name="status" value="for_dnd"/>
+					<button type="submit" class="icon-btn" title="За DnD">D</button>
 				</form>
 				<form
 					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/for-deletion") }
@@ -207,7 +187,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				.start-info { display: block; font-size: 0.7rem; color: var(--pico-muted-color); line-height: 1.2; }
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
-				.status-completed { color: var(--pico-color-green-500, #22c55e); }
+				.status-dnd { color: var(--pico-color-green-500, #22c55e); }
 				table { width: 100%; table-layout: fixed; }
 				td, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }
 				th.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -215,7 +195,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				th.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 				th.size,     td.size     { width: 4.5rem; white-space: nowrap; }
 				th.status,   td.status   { width: 4rem; white-space: nowrap; }
-				th.actions,  td.actions  { width: 10.4rem; white-space: nowrap; }
+				th.actions,  td.actions  { width: 7.8rem; white-space: nowrap; }
 				form { display: inline; margin: 0; }
 				button.filename-link {
 					background: none; border: none; padding: 0;
@@ -339,9 +319,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						<a href={ templ.SafeURL("/?status=all&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "all") } title="Всички статуси">◎</a>
 						<a href={ templ.SafeURL("/?status=new&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "new") } title="Нова">○</a>
 						<a href={ templ.SafeURL("/?status=started&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "started") } title="Стартирана">▶</a>
-						<a href={ templ.SafeURL("/?status=completed_both&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_both") } title="Завършена от двамата">✓</a>
-						<a href={ templ.SafeURL("/?status=completed_yanko&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_yanko") } title="Завършена от Янко">Я</a>
-						<a href={ templ.SafeURL("/?status=completed_liza&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "completed_liza") } title="Завършена от Лиза">Л</a>
+						<a href={ templ.SafeURL("/?status=for_dnd&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "for_dnd") } title="За DnD">D</a>
 						if diskFilter == "all" {
 							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=on&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)) } class="filter-btn filter-active" title="Показват се всички (вкл. изчезнали) — кликни за само на диска">↕</a>
 						} else {
@@ -364,7 +342,6 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "size", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "size") } title="По размер">{ sortBtnContent("Рз", sortFilter, dirFilter, "size") }</a>
 						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "last_started", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "last_started") } title="По последно стартиране">{ sortBtnContent("▶", sortFilter, dirFilter, "last_started") }</a>
 						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "added", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "added") } title="По дата добавяне">{ sortBtnContent("⊕", sortFilter, dirFilter, "added") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "marked", qFilter, transFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "marked") } title="По дата завършване">{ sortBtnContent("✓", sortFilter, dirFilter, "marked") }</a>
 					</div>
 					<form
 						method="POST"

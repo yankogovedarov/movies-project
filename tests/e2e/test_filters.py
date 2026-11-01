@@ -19,20 +19,20 @@ def test_filter_status_buttons_cover_all_statuses(page: Page):
     # Таргетираме конкретните статус бутони по title, за да е сигурно, че
     # status=all идва уникално от „Всички статуси", а не от disk-toggle/превод
     # бутон, който носи текущия статус.
+    # Бъг 27: статусите са три — ◎ ○ ▶ + D („За DnD"); завършените (✓ Я Л) са махнати.
     page.goto(BASE_URL)
     title_to_status = {
         "Всички статуси": "all",
         "Нова": "new",
         "Стартирана": "started",
-        "Завършена от двамата": "completed_both",
-        "Завършена от Янко": "completed_yanko",
-        "Завършена от Лиза": "completed_liza",
+        "За DnD": "for_dnd",
     }
     for title, status in title_to_status.items():
         href = page.locator(f"a.filter-btn[title='{title}']").get_attribute("href")
         assert f"status={status}" in href, (
             f"Expected button '{title}' to point to status={status}, got href={href}"
         )
+    expect(page.locator("a.filter-btn[href*='status=completed']")).to_have_count(0)
 
 
 def test_filter_disk_toggle_has_both_directions(page: Page):

@@ -26,20 +26,32 @@ func Open(dbPath string) (*sql.DB, error) {
 	return db, nil
 }
 
-func Migrate(db *sql.DB) error {
+// newMigrate builds a migrator over the embedded migrations for db. The caller
+// must not Close the returned instance: that would also close db, which stays
+// owned by the caller. A test uses it to stop at an older schema version
+// before running Migrate (Bug 27).
+func newMigrate(db *sql.DB) (*migrate.Migrate, error) {
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 	if err != nil {
-		return fmt.Errorf("failed to create migrate driver: %w", err)
+		return nil, fmt.Errorf("failed to create migrate driver: %w", err)
 	}
 
 	src, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {
-		return fmt.Errorf("failed to create migrate source: %w", err)
+		return nil, fmt.Errorf("failed to create migrate source: %w", err)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", src, "sqlite3", driver)
 	if err != nil {
-		return fmt.Errorf("failed to create migrate instance: %w", err)
+		return nil, fmt.Errorf("failed to create migrate instance: %w", err)
+	}
+	return m, nil
+}
+
+func Migrate(db *sql.DB) error {
+	m, err := newMigrate(db)
+	if err != nil {
+		return err
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {

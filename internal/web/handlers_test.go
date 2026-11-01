@@ -201,7 +201,7 @@ func TestChangeStatus_UpdatesAndRecordsChange(t *testing.T) {
 	require.NoError(t, err)
 	id := media[0].ID
 
-	body := "status=completed_both"
+	body := "status=started"
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -213,7 +213,7 @@ func TestChangeStatus_UpdatesAndRecordsChange(t *testing.T) {
 
 	updated, err := q.GetMediaByID(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, "completed_both", updated.CurrentStatus)
+	assert.Equal(t, "started", updated.CurrentStatus)
 
 	var changeCount int
 	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM status_changes WHERE media_id = ?", id).Scan(&changeCount))
@@ -222,7 +222,7 @@ func TestChangeStatus_UpdatesAndRecordsChange(t *testing.T) {
 
 func TestChangeStatus_Returns404_ForUnknownID(t *testing.T) {
 	d := openTestDB(t)
-	body := "status=completed_both"
+	body := "status=for_dnd"
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/media/999999/status", nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -270,7 +270,7 @@ func TestIndex_ShowsStatusIconButtons(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	body := w.Body.String()
-	assert.Contains(t, body, `value="completed_both"`)
+	assert.Contains(t, body, `value="for_dnd"`)
 	assert.Contains(t, body, `class="icon-btn"`)
 }
 
@@ -355,7 +355,7 @@ func TestHandlers_WorkWithNilLogger(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, w.Code)
 
 	// ChangeStatus
-	body := fmt.Sprintf("status=completed_both")
+	body := "status=for_dnd"
 	w = httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -399,7 +399,7 @@ func TestChangeStatus_HTMX_ReturnsRow(t *testing.T) {
 	require.NoError(t, err)
 	id := media[0].ID
 
-	body := "status=completed_both"
+	body := "status=for_dnd"
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -673,20 +673,6 @@ func TestIndex_SortByAdded_OrdersByFileCreatedAt(t *testing.T) {
 	assert.Less(t, newerIdx, olderIdx, "NewerFile.mkv (2024) should appear before OlderFile.mkv (2023) with dir=desc")
 }
 
-func TestIndex_SortByMarked_Returns200WithAllMedia(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "MovieC.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?sort=marked", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "MovieC.mkv")
-}
-
 func startEventCount(t *testing.T, d *sql.DB, id int64) int {
 	t.Helper()
 	var n int
@@ -711,19 +697,19 @@ func mediaIDByName(t *testing.T, d *sql.DB, name string) int64 {
 func TestRandomNew_PicksFromFilteredStatus(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "YankoPick.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "DnDPick.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
 		{Filename: "Other1.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
 		{Filename: "Other2.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
 	})
 	q := db.New(d)
 
-	yankoID := mediaIDByName(t, d, "YankoPick.mkv")
+	dndID := mediaIDByName(t, d, "DnDPick.mkv")
 	other1ID := mediaIDByName(t, d, "Other1.mkv")
 	other2ID := mediaIDByName(t, d, "Other2.mkv")
 
 	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
-		CurrentStatus: "completed_yanko",
-		ID:            yankoID,
+		CurrentStatus: "for_dnd",
+		ID:            dndID,
 	}))
 	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
 		CurrentStatus: "started",
@@ -732,12 +718,12 @@ func TestRandomNew_PicksFromFilteredStatus(t *testing.T) {
 	// other2 stays "new"
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=completed_yanko&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on&trans=all"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	newRouter(t, d).ServeHTTP(w, req)
 
-	// Only the yanko-status media is a candidate, so the pick is deterministic.
-	assert.GreaterOrEqual(t, startEventCount(t, d, yankoID), 1, "filtered (yanko) media should have a start event")
+	// Only the DnD media is a candidate, so the pick is deterministic.
+	assert.GreaterOrEqual(t, startEventCount(t, d, dndID), 1, "filtered (DnD) media should have a start event")
 	assert.Equal(t, 0, startEventCount(t, d, other1ID), "non-matching media should not be started")
 	assert.Equal(t, 0, startEventCount(t, d, other2ID), "non-matching media should not be started")
 }
@@ -761,26 +747,27 @@ func TestRandomNew_NewBecomesStarted(t *testing.T) {
 	assert.GreaterOrEqual(t, startEventCount(t, d, id), 1)
 }
 
-func TestRandomNew_KeepsCompletedStatus(t *testing.T) {
+// Bug 27: "За DnD" is a manual status — 🎲 only moves a new media to started.
+func TestRandomNew_KeepsForDnDStatus(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "DoneMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "DnDMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
 	})
 	q := db.New(d)
-	id := mediaIDByName(t, d, "DoneMovie.mkv")
+	id := mediaIDByName(t, d, "DnDMovie.mkv")
 	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
-		CurrentStatus: "completed_yanko",
+		CurrentStatus: "for_dnd",
 		ID:            id,
 	}))
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=completed_yanko&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on&trans=all"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	newRouter(t, d).ServeHTTP(w, req)
 
 	updated, err := q.GetMediaByID(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, "completed_yanko", updated.CurrentStatus, "completed status must be preserved")
+	assert.Equal(t, "for_dnd", updated.CurrentStatus, "the DnD status must be preserved")
 	assert.GreaterOrEqual(t, startEventCount(t, d, id), 1, "a start event must still be recorded")
 }
 
@@ -917,8 +904,8 @@ func TestIndex_DefaultDelFilter_ShowsBoth(t *testing.T) {
 	assert.Contains(t, body, "Trash.mkv")
 }
 
-// The flag is independent of the watch status: a completed media can also be
-// marked for deletion, so the two filters combine instead of excluding.
+// The flag is independent of the watch status: a DnD media can also be marked
+// for deletion, so the two filters combine instead of excluding.
 func TestIndex_ForDeletionCombinesWithStatus(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
@@ -929,7 +916,7 @@ func TestIndex_ForDeletionCombinesWithStatus(t *testing.T) {
 	q := db.New(d)
 	for _, name := range []string{"DoneTrash.mkv", "DoneKeep.mkv"} {
 		require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
-			CurrentStatus: "completed_both",
+			CurrentStatus: "for_dnd",
 			ID:            mediaIDByName(t, d, name),
 		}))
 	}
@@ -937,7 +924,7 @@ func TestIndex_ForDeletionCombinesWithStatus(t *testing.T) {
 	markForDeletion(t, d, "NewTrash.mkv")
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?status=completed_both&del=yes", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?status=for_dnd&del=yes", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
 	body := w.Body.String()
@@ -1523,4 +1510,111 @@ func TestRandomNew_RedirectCarriesEscapedFolder(t *testing.T) {
 		require.Equal(t, http.StatusSeeOther, w.Code)
 		assert.Contains(t, w.Header().Get("Location"), want)
 	})
+}
+
+// ---------------------------------------------------------------------------
+// Bug 27: без завършени статуси + „За DnD"
+// ---------------------------------------------------------------------------
+
+// setStatus sets a media's status directly, without a status_changes row.
+func setStatus(t *testing.T, d *sql.DB, filename, status string) {
+	t.Helper()
+	require.NoError(t, db.New(d).UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
+		CurrentStatus: status,
+		ID:            mediaIDByName(t, d, filename),
+	}))
+}
+
+func statusChangeCount(t *testing.T, d *sql.DB, id int64) int {
+	t.Helper()
+	var n int
+	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM status_changes WHERE media_id = ?", id).Scan(&n))
+	return n
+}
+
+func TestIndex_FilterForDnD_ShowsOnlyDnD(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Fresh.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Running.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+		{Filename: "Dragons.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+	})
+	setStatus(t, d, "Running.mkv", "started")
+	setStatus(t, d, "Dragons.mkv", "for_dnd")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?status=for_dnd", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "Dragons.mkv")
+	assert.NotContains(t, body, "Fresh.mkv")
+	assert.NotContains(t, body, "Running.mkv")
+}
+
+func TestChangeStatus_ToForDnD(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader("status=for_dnd"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	updated, err := db.New(d).GetMediaByID(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, "for_dnd", updated.CurrentStatus)
+
+	var from, to string
+	require.NoError(t, d.QueryRow("SELECT from_status, to_status FROM status_changes WHERE media_id = ?", id).Scan(&from, &to))
+	assert.Equal(t, "new", from)
+	assert.Equal(t, "for_dnd", to)
+}
+
+// A removed status (an old form, a stale browser tab or a hand-made request)
+// must not get back into the database. The allowlist also replaced the old
+// empty-status check, so an empty value is rejected too.
+func TestChangeStatus_RejectsRemovedStatus(t *testing.T) {
+	for _, status := range []string{"completed_both", "completed_yanko", "completed_liza", "bogus", ""} {
+		name := status
+		if name == "" {
+			name = "empty"
+		}
+		t.Run(name, func(t *testing.T) {
+			d := openTestDB(t)
+			id := seedOne(t, d)
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader("status="+status))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			newRouter(t, d).ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+			updated, err := db.New(d).GetMediaByID(context.Background(), id)
+			require.NoError(t, err)
+			assert.Equal(t, "new", updated.CurrentStatus, "the status must not change")
+			assert.Equal(t, 0, statusChangeCount(t, d, id), "no history row may be written")
+		})
+	}
+}
+
+// Bug 27: "За DnD" is a manual status — "Стартирай" only moves a new media to
+// started, so a DnD media keeps its status and gets no history row.
+func TestStartMedia_KeepsForDnDStatus(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	setStatus(t, d, "Movie.mkv", "for_dnd")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	updated, err := db.New(d).GetMediaByID(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, "for_dnd", updated.CurrentStatus, "the DnD status must be preserved")
+	assert.Equal(t, 1, startEventCount(t, d, id), "a start event must still be recorded")
+	assert.Equal(t, 0, statusChangeCount(t, d, id), "no history row may be written")
 }

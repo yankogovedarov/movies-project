@@ -36,7 +36,7 @@ embedded) · `slog` + `lumberjack` · tests: `testing` + `testify` + `goquery`.
 ## Hard rules
 
 - **Language:** code, comments, identifiers in **English**; UI strings in **Bulgarian**
-  (statuses are feminine relative to "медия", e.g. "Завършена от двамата").
+  (statuses are feminine relative to "медия", e.g. "Стартирана").
 - **Migrations** live in `internal/db/migrations/` (000001+). The top-level `migrations/`
   folder is **DEPRECATED** — never touch it.
 - After changing `.sql` (sqlc) or `.templ` files, run `task generate` to regenerate code.

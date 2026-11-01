@@ -18,7 +18,7 @@ templ TreePage(root *tree.Node) {
 			<style>
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
-				.status-completed { color: var(--pico-color-green-500, #22c55e); }
+				.status-dnd { color: var(--pico-color-green-500, #22c55e); }
 				details { margin-left: 1rem; }
 				details > summary { cursor: pointer; font-weight: bold; list-style: none; padding: 0.3rem 0; }
 				details > summary::before { content: "▶ "; font-size: 0.75rem; }
@@ -97,9 +97,7 @@ templ treeFileRow(m db.Medium) {
 			<select name="status">
 				<option value="new">Нова</option>
 				<option value="started">Стартирана</option>
-				<option value="completed_both">Завършена (двамата)</option>
-				<option value="completed_yanko">Завършена (Янко)</option>
-				<option value="completed_liza">Завършена (Лиза)</option>
+				<option value="for_dnd">За DnD</option>
 			</select>
 			<button type="submit" class="submit-compact">...</button>
 		</form>

@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"database/sql"
 	"path/filepath"
 	"testing"
 
@@ -111,4 +112,101 @@ func TestMigrate_UIPrefsRejectsSecondRow(t *testing.T) {
 
 	_, err = d.Exec("INSERT INTO ui_prefs (id) VALUES (2)")
 	assert.Error(t, err, "ui_prefs must hold a single row (id = 1)")
+}
+
+// openAtSchemaVersion opens a fresh database migrated only up to version — the
+// state an older release left behind.
+func openAtSchemaVersion(t *testing.T, version uint) *sql.DB {
+	t.Helper()
+	d, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = d.Close() })
+
+	m, err := db.NewMigrate(d)
+	require.NoError(t, err)
+	require.NoError(t, m.Migrate(version))
+	return d
+}
+
+// Bug 27: the three completed statuses are removed. Migration 000007 turns every
+// completed media into "started", records that change in the media's history
+// and resets a remembered filter/sort that pointed at the removed statuses.
+func TestMigrate_CompletedStatusesBecomeStarted(t *testing.T) {
+	// The database as the previous version left it (schema version 6).
+	d := openAtSchemaVersion(t, 6)
+
+	_, err := d.Exec(`INSERT INTO media (filename, folder_relative_path, file_size_bytes, current_status) VALUES
+		('Both.mkv', 'Films', 100, 'completed_both'),
+		('Yanko.mkv', 'Films', 200, 'completed_yanko'),
+		('Liza.mkv', 'Films', 300, 'completed_liza'),
+		('Fresh.mkv', 'Films', 400, 'new')`)
+	require.NoError(t, err)
+	_, err = d.Exec(`UPDATE ui_prefs SET status_filter = 'completed_yanko',
+		sort_filter = 'marked', dir_filter = 'desc' WHERE id = 1`)
+	require.NoError(t, err)
+
+	require.NoError(t, db.Migrate(d))
+
+	statuses := map[string]string{}
+	rows, err := d.Query("SELECT filename, current_status FROM media")
+	require.NoError(t, err)
+	for rows.Next() {
+		var name, status string
+		require.NoError(t, rows.Scan(&name, &status))
+		statuses[name] = status
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
+	assert.Equal(t, map[string]string{
+		"Both.mkv":  "started",
+		"Yanko.mkv": "started",
+		"Liza.mkv":  "started",
+		"Fresh.mkv": "new",
+	}, statuses, "completed media become started, a new one is left alone")
+
+	// The history stays consistent with current_status: one completed_* → started
+	// row per formerly completed media, none for the untouched one.
+	var changes []string
+	rows, err = d.Query(`SELECT m.filename, sc.from_status, sc.to_status
+		FROM status_changes sc JOIN media m ON m.id = sc.media_id
+		ORDER BY m.filename`)
+	require.NoError(t, err)
+	for rows.Next() {
+		var name, from, to string
+		require.NoError(t, rows.Scan(&name, &from, &to))
+		changes = append(changes, name+": "+from+" → "+to)
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
+	assert.Equal(t, []string{
+		"Both.mkv: completed_both → started",
+		"Liza.mkv: completed_liza → started",
+		"Yanko.mkv: completed_yanko → started",
+	}, changes)
+
+	// A remembered removed status or the removed "marked" sort would leave the
+	// list empty / without an active sort button after the restart.
+	var status, sortF, dir string
+	row := d.QueryRow("SELECT status_filter, sort_filter, dir_filter FROM ui_prefs WHERE id = 1")
+	require.NoError(t, row.Scan(&status, &sortF, &dir))
+	assert.Equal(t, "all", status)
+	assert.Equal(t, "name", sortF)
+	assert.Equal(t, "asc", dir)
+}
+
+// Bug 27: migration 000007 only resets a remembered filter/sort that points at
+// a removed status or at the removed "marked" sort; any other choice survives.
+func TestMigrate_CompletedStatuses_KeepsValidUIPrefs(t *testing.T) {
+	d := openAtSchemaVersion(t, 6)
+	_, err := d.Exec(`UPDATE ui_prefs SET status_filter = 'started', sort_filter = 'added',
+		dir_filter = 'desc', folder_filter = 'Serials' WHERE id = 1`)
+	require.NoError(t, err)
+
+	require.NoError(t, db.Migrate(d))
+
+	var status, sortF, dir, folder string
+	row := d.QueryRow("SELECT status_filter, sort_filter, dir_filter, folder_filter FROM ui_prefs WHERE id = 1")
+	require.NoError(t, row.Scan(&status, &sortF, &dir, &folder))
+	assert.Equal(t, []string{"started", "added", "desc", "Serials"},
+		[]string{status, sortF, dir, folder}, "valid remembered choices must not be reset")
 }

@@ -10,7 +10,7 @@ BASE_URL = "http://localhost:8080"
 def test_sort_buttons_visible(page: Page):
     page.goto(BASE_URL)
     btns = page.locator("a.sort-btn")
-    expect(btns).to_have_count(6)
+    expect(btns).to_have_count(5)
 
 
 def test_sort_name_button_active_by_default(page: Page):
@@ -37,14 +37,6 @@ def test_sort_added_button_active_when_param(page: Page):
     assert "sort=added" in href
 
 
-def test_sort_marked_button_active_when_param(page: Page):
-    page.goto(f"{BASE_URL}/?sort=marked")
-    active = page.locator("a.sort-btn.filter-active")
-    expect(active).to_have_count(1)
-    href = active.get_attribute("href")
-    assert "sort=marked" in href
-
-
 def test_sort_buttons_preserve_status_filter(page: Page):
     page.goto(f"{BASE_URL}/?status=started&sort=name")
     btns = page.locator("a.sort-btn")
@@ -61,9 +53,9 @@ def test_sort_buttons_preserve_disk_filter(page: Page):
         assert "disk=all" in href, f"sort button {i} should preserve disk=all in href"
 
 
+# Бъг 27: сортът „По дата завършване" е махнат — остава само датата на добавяне.
 @pytest.mark.parametrize("title,key", [
     ("По дата добавяне", "added"),
-    ("По дата завършване", "marked"),
 ])
 def test_date_sort_first_click_is_descending(page: Page, title: str, key: str):
     """Бъг 19: първото натискане на датов сорт бутон сортира низходящо."""
@@ -78,7 +70,6 @@ def test_date_sort_first_click_is_descending(page: Page, title: str, key: str):
 
 @pytest.mark.parametrize("title,key", [
     ("По дата добавяне", "added"),
-    ("По дата завършване", "marked"),
 ])
 def test_date_sort_second_click_is_ascending(page: Page, title: str, key: str):
     """Бъг 19: второто натискане (активен бутон) обръща посоката на възходяща."""
@@ -109,9 +100,4 @@ def test_sort_by_last_started_page_loads(page: Page):
 
 def test_sort_by_added_page_loads(page: Page):
     page.goto(f"{BASE_URL}/?sort=added")
-    expect(page.locator("table")).to_be_visible()
-
-
-def test_sort_by_marked_page_loads(page: Page):
-    page.goto(f"{BASE_URL}/?sort=marked")
     expect(page.locator("table")).to_be_visible()

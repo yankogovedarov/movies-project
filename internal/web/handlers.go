@@ -74,6 +74,14 @@ func isHTMX(c *gin.Context) bool {
 	return c.GetHeader("HX-Request") == "true"
 }
 
+// validStatuses are the statuses a media can be set to. Bug 27 removed the
+// three completed statuses and added the manual "for_dnd" (За DnD).
+var validStatuses = map[string]bool{
+	"new":     true,
+	"started": true,
+	"for_dnd": true,
+}
+
 // topFolder returns the main (top-level) folder of a media's folder path: the
 // first segment before a `\` or `/`. Real scans store Windows paths with `\`,
 // test seeds also use `/`. A file directly in the disk root has no main folder
@@ -296,23 +304,6 @@ func (h *Handlers) Index(c *gin.Context) {
 			}
 			return ti.After(tj)
 		})
-	case "marked":
-		sort.Slice(media, func(i, j int) bool {
-			vi, vj := media[i].MarkedAt, media[j].MarkedAt
-			if !vi.Valid && !vj.Valid {
-				return media[i].Filename < media[j].Filename
-			}
-			if !vi.Valid {
-				return !asc
-			}
-			if !vj.Valid {
-				return asc
-			}
-			if asc {
-				return vi.Time.Before(vj.Time)
-			}
-			return vi.Time.After(vj.Time)
-		})
 	case "path":
 		sort.Slice(media, func(i, j int) bool {
 			if asc {
@@ -401,7 +392,7 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 
 	_ = q.InsertStartEvent(ctx, chosen.ID)
 
-	// Only a brand-new media transitions to "started"; an already-completed
+	// Only a brand-new media transitions to "started"; a "started" or "for_dnd"
 	// media keeps its status so it stays inside the active filter.
 	if chosen.CurrentStatus == "new" {
 		_ = q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
@@ -567,7 +558,9 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 	}
 
 	newStatus := c.PostForm("status")
-	if newStatus == "" {
+	if !validStatuses[newStatus] {
+		// Bug 27: a removed status (an old form, a stale tab or a hand-made
+		// request) must not get back into the database.
 		c.Status(http.StatusBadRequest)
 		return
 	}

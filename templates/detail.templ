@@ -17,7 +17,7 @@ templ DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCh
 			<style>
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
-				.status-completed { color: var(--pico-color-green-500, #22c55e); }
+				.status-dnd { color: var(--pico-color-green-500, #22c55e); }
 				.badge-offline { color: var(--pico-del-color, #e53e3e); font-weight: bold; }
 				form { display: inline; margin: 0; }
 				select { margin: 0 0.3rem 0 0; padding: 0.2rem 0.3rem; }
@@ -62,9 +62,7 @@ templ DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCh
 						<select name="status" if medium.OnDisk == 0 { disabled }>
 							<option value="new">Нова</option>
 							<option value="started">Стартирана</option>
-							<option value="completed_both">Завършена (двамата)</option>
-							<option value="completed_yanko">Завършена (Янко)</option>
-							<option value="completed_liza">Завършена (Лиза)</option>
+							<option value="for_dnd">За DnD</option>
 						</select>
 						<button type="submit" if medium.OnDisk == 0 { disabled }>Смени</button>
 					</form>

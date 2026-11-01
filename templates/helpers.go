@@ -24,36 +24,35 @@ func formatSize(bytes int64) string {
 	return fmt.Sprintf("%.1f MB", mb)
 }
 
+// statusClass returns the CSS class suffix of a status (Bug 27: the statuses
+// are new / started / for_dnd).
 func statusClass(status string) string {
 	switch status {
 	case "started":
 		return "started"
-	case "completed_both", "completed_yanko", "completed_liza":
-		return "completed"
+	case "for_dnd":
+		return "dnd"
 	default:
 		return "new"
 	}
 }
 
+// statusShort returns the short label shown in the "Статус" column.
 func statusShort(status string) string {
 	switch status {
 	case "started":
 		return "Старт"
-	case "completed_both":
-		return "c_Два"
-	case "completed_yanko":
-		return "c_Янко"
-	case "completed_liza":
-		return "c_Лиза"
+	case "for_dnd":
+		return "DnD"
 	default:
 		return "Нова"
 	}
 }
 
 // defaultSortDir returns the direction for the first click on a sort button.
-// Date sorts (added, marked) start descending — most recent first (Bug #19).
+// The date sort (added) starts descending — most recent first (Bug #19).
 func defaultSortDir(btnSort string) string {
-	if btnSort == "added" || btnSort == "marked" {
+	if btnSort == "added" {
 		return "desc"
 	}
 	return "asc"

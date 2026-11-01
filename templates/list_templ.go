@@ -627,14 +627,14 @@ func mediaRowCells(m db.MediaWithStats) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" hx-target=\"closest tr\" hx-swap=\"outerHTML\"><input type=\"hidden\" name=\"status\" value=\"completed_both\"> <button type=\"submit\" class=\"icon-btn\" title=\"Завършена (двамата)\">✓</button></form><form action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" hx-target=\"closest tr\" hx-swap=\"outerHTML\"><input type=\"hidden\" name=\"status\" value=\"for_dnd\"> <button type=\"submit\" class=\"icon-btn\" title=\"За DnD\">D</button></form><form action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var43 templ.SafeURL
-		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status"))
+		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/for-deletion"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 119, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 119, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -645,115 +645,63 @@ func mediaRowCells(m db.MediaWithStats) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var44 string
-		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs("/media/" + strconv.FormatInt(m.ID, 10) + "/status")
+		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs("/media/" + strconv.FormatInt(m.ID, 10) + "/for-deletion")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 121, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 121, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" hx-target=\"closest tr\" hx-swap=\"outerHTML\"><input type=\"hidden\" name=\"status\" value=\"completed_yanko\"> <button type=\"submit\" class=\"icon-btn\" title=\"Завършена (Янко)\">Я</button></form><form action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" hx-target=\"closest tr\" hx-swap=\"outerHTML\"><input type=\"hidden\" name=\"value\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var45 templ.SafeURL
-		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status"))
+		var templ_7745c5c3_Var45 string
+		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(forDeletionToggleValue(m.ForDeletion))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 129, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 125, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" method=\"POST\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\"> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var46 string
-		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs("/media/" + strconv.FormatInt(m.ID, 10) + "/status")
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 131, Col: 66}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
+		var templ_7745c5c3_Var46 = []any{"icon-btn", templ.KV("filter-active", m.ForDeletion == 1)}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var46...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" hx-target=\"closest tr\" hx-swap=\"outerHTML\"><input type=\"hidden\" name=\"status\" value=\"completed_liza\"> <button type=\"submit\" class=\"icon-btn\" title=\"Завършена (Лиза)\">Л</button></form><form action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<button type=\"submit\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var47 templ.SafeURL
-		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/for-deletion"))
+		var templ_7745c5c3_Var47 string
+		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var46).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 139, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" method=\"POST\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" title=\"За изтриване\">🗑</button></form><a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var48 string
-		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs("/media/" + strconv.FormatInt(m.ID, 10) + "/for-deletion")
+		var templ_7745c5c3_Var48 templ.SafeURL
+		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 141, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 128, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" hx-target=\"closest tr\" hx-swap=\"outerHTML\"><input type=\"hidden\" name=\"value\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var49 string
-		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(forDeletionToggleValue(m.ForDeletion))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 145, Col: 84}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\"> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var50 = []any{"icon-btn", templ.KV("filter-active", m.ForDeletion == 1)}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var50...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<button type=\"submit\" class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var51 string
-		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var50).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" title=\"За изтриване\">🗑</button></form><a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var52 templ.SafeURL
-		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 148, Col: 68}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\" class=\"icon-btn\" title=\"Детайли\">ℹ</a></div></td>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" class=\"icon-btn\" title=\"Детайли\">ℹ</a></div></td>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -777,326 +725,363 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var53 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var53 == nil {
-			templ_7745c5c3_Var53 = templ.NopComponent
+		templ_7745c5c3_Var49 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var49 == nil {
+			templ_7745c5c3_Var49 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"/static/pico.min.css\"><script src=\"/static/htmx.min.js\"></script><script>\r\n\t\t\t\t/* Bug 26: picking a folder changes the dropdown before form.submit() leaves the\r\n\t\t\t\t   page, so a back/forward-cache restore would show the new folder over the old\r\n\t\t\t\t   list. Resetting the dropdown to the server-rendered option makes them match\r\n\t\t\t\t   again. No reload: reloading a bare \"/\" would render the newer remembered state\r\n\t\t\t\t   and break Back for every filter. ui_prefs keeps the newer folder until the\r\n\t\t\t\t   next click, like every other filter since Bug 23. */\r\n\t\t\t\taddEventListener(\"pageshow\", function (e) {\r\n\t\t\t\t\tif (!e.persisted) { return; }\r\n\t\t\t\t\tvar s = document.querySelector(\"select[name=folder]\");\r\n\t\t\t\t\tvar rendered = s && s.querySelector(\"option[selected]\");\r\n\t\t\t\t\tif (rendered) { s.value = rendered.value; }\r\n\t\t\t\t});\r\n\t\t\t</script><style>\r\n\t\t\t\t.top-nav { display: flex; align-items: center; gap: 0.6rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; position: sticky; top: 0; z-index: 20; background: var(--pico-background-color, #fff); }\r\n\t\t\t\t.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }\r\n\t\t\t\t.top-nav form { margin: 0; }\r\n\t\t\t\t.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }\r\n\t\t\t\t.top-nav form button[type=\"submit\"] {\r\n\t\t\t\t\tbackground: none !important; border: 1px solid transparent !important; box-shadow: none !important;\r\n\t\t\t\t\tcolor: var(--pico-color, inherit) !important; cursor: pointer; font-family: inherit; width: auto;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav form button[type=\"submit\"]:hover {\r\n\t\t\t\t\tbackground: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;\r\n\t\t\t\t}\r\n\t\t\t\tbutton, [type=submit], [type=button], [type=reset], [role=button],\r\n\t\t\t\tinput, select, textarea { margin-bottom: 0; }\r\n\t\t\t\tfigure { margin-bottom: 0; }\r\n\t\t\t\t.filter-btns, .trans-btns, .sort-btns { display: inline-flex; align-items: center; gap: 0.2rem; }\r\n\t\t\t\t.filter-btn, .sort-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t}\r\n\t\t\t\t.filter-btn:hover, .sort-btn:hover { border-color: var(--pico-primary); color: var(--pico-primary); }\r\n\t\t\t\t.filter-btn.filter-active, .sort-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary);\r\n\t\t\t\t}\r\n\t\t\t\t.sort-btn.filter-active { width: auto; min-width: 1.35rem; padding: 0 0.2rem; }\r\n\t\t\t\t.start-info { display: block; font-size: 0.7rem; color: var(--pico-muted-color); line-height: 1.2; }\r\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\r\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\r\n\t\t\t\t.status-completed { color: var(--pico-color-green-500, #22c55e); }\r\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\r\n\t\t\t\ttd, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }\r\n\t\t\t\tth.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\ttd.filename { overflow: hidden; }\r\n\t\t\t\tth.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\tth.size,     td.size     { width: 4.5rem; white-space: nowrap; }\r\n\t\t\t\tth.status,   td.status   { width: 4rem; white-space: nowrap; }\r\n\t\t\t\tth.actions,  td.actions  { width: 10.4rem; white-space: nowrap; }\r\n\t\t\t\tform { display: inline; margin: 0; }\r\n\t\t\t\tbutton.filename-link {\r\n\t\t\t\t\tbackground: none; border: none; padding: 0;\r\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\r\n\t\t\t\t\ttext-decoration: underline; font: inherit; font-size: 0.85rem;\r\n\t\t\t\t\ttext-align: left; white-space: nowrap;\r\n\t\t\t\t\toverflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t}\r\n\t\t\t\ta.folder-link {\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t\twhite-space: nowrap; overflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tfont-size: 0.85rem;\r\n\t\t\t\t}\r\n\t\t\t\t.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }\r\n\t\t\t\t.actions-grid form { display: contents; }\r\n\t\t\t\tbutton.icon-btn, a.icon-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t}\r\n\t\t\t\ta.icon-btn {\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t}\r\n\t\t\t\t\t/* Translation column: faded inactive types, strongly highlighted active one\r\n\t\t\t\t\t   so the current type (СУБ/БГ/ОРГ) is visible at a glance (Bug 16). */\r\n\t\t\t\ttd.translation .icon-btn {\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-muted-color, #888);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t\topacity: 0.6;\r\n\t\t\t\t}\r\n\t\t\t\t\t/* Bug 22: the raised „за изтриване\" flag is highlighted like an\r\n\t\t\t\t\t   active translation type, so a marked row is spottable at a glance. */\r\n\t\t\t\ttd.actions .icon-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary); opacity: 1;\r\n\t\t\t\t}\r\n\t\t\t\ttd.translation .icon-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary); font-weight: 700; opacity: 1;\r\n\t\t\t\t}\r\n\t\t\t\t@media (max-width: 768px) {\r\n\t\t\t\t\tth.size, td.size, th.folder, td.folder { display: none; }\r\n\t\t\t\t}\r\n\t\t\t\t.nav-label { font-size: 0.7rem; color: var(--pico-muted-color); align-self: center; }\r\n\t\t\t\t/* Bug 18 part 1: plain search field — same height as the rest of the nav bar\r\n\t\t\t\t   and no icons (no native search look / clear ✕ button).\r\n\t\t\t\t   Scoped as `.top-nav input.search-input` (specificity 0,2,1) so it wins over\r\n\t\t\t\t   Pico's tall `input:not([type=checkbox],...)` rule (0,1,1) which otherwise\r\n\t\t\t\t   forces a large height/padding. */\r\n\t\t\t\t.top-nav input.search-input {\r\n\t\t\t\t\tbox-sizing: border-box; height: 1.35rem; min-height: 0; line-height: 1.35rem;\r\n\t\t\t\t\tmargin: 0; padding: 0 0.4rem; padding-inline-start: 0.4rem;\r\n\t\t\t\t\tfont-size: 0.8rem; width: 10rem;\r\n\t\t\t\t\tborder-radius: 4px; --pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t\tbackground-image: none;\r\n\t\t\t\t\t-webkit-appearance: none; appearance: none;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-cancel-button,\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }\r\n\t\t\t\t/* Bug 26: the main-folder dropdown sits among the 1.35rem filter buttons, so it\r\n\t\t\t\t   is shrunk like the search field. `.top-nav select.folder-select` (specificity\r\n\t\t\t\t   0,2,1) wins over Pico's select rules (0,1,1), which otherwise make it a tall,\r\n\t\t\t\t   full-width form control with a large chevron. max-width keeps one long folder\r\n\t\t\t\t   name from wrapping the nav (it still fits \"всички папки\"). */\r\n\t\t\t\t.top-nav select.folder-select {\r\n\t\t\t\t\tbox-sizing: border-box; width: auto; max-width: 7.5rem; height: 1.35rem; min-height: 0;\r\n\t\t\t\t\tmargin: 0; padding: 0 1.2rem 0 0.4rem; padding-inline-start: 0.4rem; padding-inline-end: 1.2rem;\r\n\t\t\t\t\tfont-size: 0.8rem; line-height: 1; border-radius: 4px;\r\n\t\t\t\t\tbackground-position: center right 0.3rem; background-size: 0.7rem auto;\r\n\t\t\t\t\t--pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav select.folder-select.filter-active {\r\n\t\t\t\t\tborder-color: var(--pico-primary); color: var(--pico-primary); font-weight: 600;\r\n\t\t\t\t}\r\n\t\t\t\tth.translation, td.translation { width: 5rem; white-space: nowrap; }\r\n\t\t\t\t.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }\r\n\t\t\t</style></head><body><main class=\"container\"><nav class=\"top-nav\"><h1>Movie Tracker</h1><form method=\"POST\" action=\"/scan\"><button type=\"submit\" class=\"icon-btn\" title=\"Сканирай диска\">↺</button></form><form id=\"search-form\" method=\"GET\" action=\"/\"><input type=\"hidden\" name=\"status\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"/static/pico.min.css\"><script src=\"/static/htmx.min.js\"></script><script>\r\n\t\t\t\t/* Bug 26: picking a folder changes the dropdown before form.submit() leaves the\r\n\t\t\t\t   page, so a back/forward-cache restore would show the new folder over the old\r\n\t\t\t\t   list. Resetting the dropdown to the server-rendered option makes them match\r\n\t\t\t\t   again. No reload: reloading a bare \"/\" would render the newer remembered state\r\n\t\t\t\t   and break Back for every filter. ui_prefs keeps the newer folder until the\r\n\t\t\t\t   next click, like every other filter since Bug 23. */\r\n\t\t\t\taddEventListener(\"pageshow\", function (e) {\r\n\t\t\t\t\tif (!e.persisted) { return; }\r\n\t\t\t\t\tvar s = document.querySelector(\"select[name=folder]\");\r\n\t\t\t\t\tvar rendered = s && s.querySelector(\"option[selected]\");\r\n\t\t\t\t\tif (rendered) { s.value = rendered.value; }\r\n\t\t\t\t});\r\n\t\t\t</script><style>\r\n\t\t\t\t.top-nav { display: flex; align-items: center; gap: 0.6rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; position: sticky; top: 0; z-index: 20; background: var(--pico-background-color, #fff); }\r\n\t\t\t\t.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }\r\n\t\t\t\t.top-nav form { margin: 0; }\r\n\t\t\t\t.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }\r\n\t\t\t\t.top-nav form button[type=\"submit\"] {\r\n\t\t\t\t\tbackground: none !important; border: 1px solid transparent !important; box-shadow: none !important;\r\n\t\t\t\t\tcolor: var(--pico-color, inherit) !important; cursor: pointer; font-family: inherit; width: auto;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav form button[type=\"submit\"]:hover {\r\n\t\t\t\t\tbackground: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;\r\n\t\t\t\t}\r\n\t\t\t\tbutton, [type=submit], [type=button], [type=reset], [role=button],\r\n\t\t\t\tinput, select, textarea { margin-bottom: 0; }\r\n\t\t\t\tfigure { margin-bottom: 0; }\r\n\t\t\t\t.filter-btns, .trans-btns, .sort-btns { display: inline-flex; align-items: center; gap: 0.2rem; }\r\n\t\t\t\t.filter-btn, .sort-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t}\r\n\t\t\t\t.filter-btn:hover, .sort-btn:hover { border-color: var(--pico-primary); color: var(--pico-primary); }\r\n\t\t\t\t.filter-btn.filter-active, .sort-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary);\r\n\t\t\t\t}\r\n\t\t\t\t.sort-btn.filter-active { width: auto; min-width: 1.35rem; padding: 0 0.2rem; }\r\n\t\t\t\t.start-info { display: block; font-size: 0.7rem; color: var(--pico-muted-color); line-height: 1.2; }\r\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\r\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\r\n\t\t\t\t.status-dnd { color: var(--pico-color-green-500, #22c55e); }\r\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\r\n\t\t\t\ttd, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }\r\n\t\t\t\tth.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\ttd.filename { overflow: hidden; }\r\n\t\t\t\tth.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\tth.size,     td.size     { width: 4.5rem; white-space: nowrap; }\r\n\t\t\t\tth.status,   td.status   { width: 4rem; white-space: nowrap; }\r\n\t\t\t\tth.actions,  td.actions  { width: 7.8rem; white-space: nowrap; }\r\n\t\t\t\tform { display: inline; margin: 0; }\r\n\t\t\t\tbutton.filename-link {\r\n\t\t\t\t\tbackground: none; border: none; padding: 0;\r\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\r\n\t\t\t\t\ttext-decoration: underline; font: inherit; font-size: 0.85rem;\r\n\t\t\t\t\ttext-align: left; white-space: nowrap;\r\n\t\t\t\t\toverflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t}\r\n\t\t\t\ta.folder-link {\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t\twhite-space: nowrap; overflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tfont-size: 0.85rem;\r\n\t\t\t\t}\r\n\t\t\t\t.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }\r\n\t\t\t\t.actions-grid form { display: contents; }\r\n\t\t\t\tbutton.icon-btn, a.icon-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t}\r\n\t\t\t\ta.icon-btn {\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t}\r\n\t\t\t\t\t/* Translation column: faded inactive types, strongly highlighted active one\r\n\t\t\t\t\t   so the current type (СУБ/БГ/ОРГ) is visible at a glance (Bug 16). */\r\n\t\t\t\ttd.translation .icon-btn {\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-muted-color, #888);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t\topacity: 0.6;\r\n\t\t\t\t}\r\n\t\t\t\t\t/* Bug 22: the raised „за изтриване\" flag is highlighted like an\r\n\t\t\t\t\t   active translation type, so a marked row is spottable at a glance. */\r\n\t\t\t\ttd.actions .icon-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary); opacity: 1;\r\n\t\t\t\t}\r\n\t\t\t\ttd.translation .icon-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary); font-weight: 700; opacity: 1;\r\n\t\t\t\t}\r\n\t\t\t\t@media (max-width: 768px) {\r\n\t\t\t\t\tth.size, td.size, th.folder, td.folder { display: none; }\r\n\t\t\t\t}\r\n\t\t\t\t.nav-label { font-size: 0.7rem; color: var(--pico-muted-color); align-self: center; }\r\n\t\t\t\t/* Bug 18 part 1: plain search field — same height as the rest of the nav bar\r\n\t\t\t\t   and no icons (no native search look / clear ✕ button).\r\n\t\t\t\t   Scoped as `.top-nav input.search-input` (specificity 0,2,1) so it wins over\r\n\t\t\t\t   Pico's tall `input:not([type=checkbox],...)` rule (0,1,1) which otherwise\r\n\t\t\t\t   forces a large height/padding. */\r\n\t\t\t\t.top-nav input.search-input {\r\n\t\t\t\t\tbox-sizing: border-box; height: 1.35rem; min-height: 0; line-height: 1.35rem;\r\n\t\t\t\t\tmargin: 0; padding: 0 0.4rem; padding-inline-start: 0.4rem;\r\n\t\t\t\t\tfont-size: 0.8rem; width: 10rem;\r\n\t\t\t\t\tborder-radius: 4px; --pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t\tbackground-image: none;\r\n\t\t\t\t\t-webkit-appearance: none; appearance: none;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-cancel-button,\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }\r\n\t\t\t\t/* Bug 26: the main-folder dropdown sits among the 1.35rem filter buttons, so it\r\n\t\t\t\t   is shrunk like the search field. `.top-nav select.folder-select` (specificity\r\n\t\t\t\t   0,2,1) wins over Pico's select rules (0,1,1), which otherwise make it a tall,\r\n\t\t\t\t   full-width form control with a large chevron. max-width keeps one long folder\r\n\t\t\t\t   name from wrapping the nav (it still fits \"всички папки\"). */\r\n\t\t\t\t.top-nav select.folder-select {\r\n\t\t\t\t\tbox-sizing: border-box; width: auto; max-width: 7.5rem; height: 1.35rem; min-height: 0;\r\n\t\t\t\t\tmargin: 0; padding: 0 1.2rem 0 0.4rem; padding-inline-start: 0.4rem; padding-inline-end: 1.2rem;\r\n\t\t\t\t\tfont-size: 0.8rem; line-height: 1; border-radius: 4px;\r\n\t\t\t\t\tbackground-position: center right 0.3rem; background-size: 0.7rem auto;\r\n\t\t\t\t\t--pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav select.folder-select.filter-active {\r\n\t\t\t\t\tborder-color: var(--pico-primary); color: var(--pico-primary); font-weight: 600;\r\n\t\t\t\t}\r\n\t\t\t\tth.translation, td.translation { width: 5rem; white-space: nowrap; }\r\n\t\t\t\t.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }\r\n\t\t\t</style></head><body><main class=\"container\"><nav class=\"top-nav\"><h1>Movie Tracker</h1><form method=\"POST\" action=\"/scan\"><button type=\"submit\" class=\"icon-btn\" title=\"Сканирай диска\">↺</button></form><form id=\"search-form\" method=\"GET\" action=\"/\"><input type=\"hidden\" name=\"status\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var50 string
+		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(statusFilter)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 290, Col: 61}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\"> <input type=\"hidden\" name=\"disk\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var51 string
+		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(diskFilter)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 291, Col: 57}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\"> <input type=\"hidden\" name=\"sort\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var52 string
+		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(sortFilter)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 292, Col: 57}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\"> <input type=\"hidden\" name=\"dir\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var53 string
+		templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(dirFilter)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 293, Col: 55}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "\"> <input type=\"hidden\" name=\"trans\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var54 string
-		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(statusFilter)
+		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(transFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 310, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 294, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\"> <input type=\"hidden\" name=\"disk\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\"> <input type=\"hidden\" name=\"del\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var55 string
-		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(diskFilter)
+		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(delFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 311, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 295, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\"> <input type=\"hidden\" name=\"sort\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\"> <input type=\"search\" name=\"q\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var56 string
-		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(sortFilter)
+		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(qFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 312, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 299, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\"> <input type=\"hidden\" name=\"dir\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\" placeholder=\"търси...\" class=\"search-input\" hx-get=\"/\" hx-trigger=\"keyup changed delay:300ms, search\" hx-target=\"#media-list\" hx-select=\"#media-list\" hx-swap=\"outerHTML\" hx-include=\"closest form\" hx-push-url=\"true\"></form><span class=\"nav-label\">филтър:</span><div class=\"filter-btns\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var57 string
-		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(dirFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 313, Col: 55}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
+		var templ_7745c5c3_Var57 = []any{"folder-select", templ.KV("filter-active", folderFilter != "all")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var57...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\"> <input type=\"hidden\" name=\"trans\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<select name=\"folder\" form=\"search-form\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var58 string
-		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(transFilter)
+		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var57).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 314, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\"> <input type=\"hidden\" name=\"del\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" title=\"Основна папка\" autocomplete=\"off\" onchange=\"this.form.submit()\"><option value=\"all\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var59 string
-		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(delFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 315, Col: 55}
+		if folderFilter == "all" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, " selected")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\"> <input type=\"search\" name=\"q\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, ">всички папки</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var60 string
-		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(qFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 319, Col: 22}
+		for _, f := range folders {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<option value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var59 string
+			templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(f)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 316, Col: 25}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if f == folderFilter {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, " selected")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, ">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var60 string
+			templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(f)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 316, Col: 63}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</option>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</select> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\" placeholder=\"търси...\" class=\"search-input\" hx-get=\"/\" hx-trigger=\"keyup changed delay:300ms, search\" hx-target=\"#media-list\" hx-select=\"#media-list\" hx-swap=\"outerHTML\" hx-include=\"closest form\" hx-push-url=\"true\"></form><span class=\"nav-label\">филтър:</span><div class=\"filter-btns\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var61 = []any{"folder-select", templ.KV("filter-active", folderFilter != "all")}
+		var templ_7745c5c3_Var61 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "all")}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var61...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<select name=\"folder\" form=\"search-form\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var62 string
-		templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var61).String())
+		var templ_7745c5c3_Var62 templ.SafeURL
+		templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=all&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 319, Col: 204}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\" title=\"Основна папка\" autocomplete=\"off\" onchange=\"this.form.submit()\"><option value=\"all\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if folderFilter == "all" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, " selected")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		var templ_7745c5c3_Var63 string
+		templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var61).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, ">всички папки</option> ")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, f := range folders {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<option value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var63 string
-			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(f)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 336, Col: 25}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if f == folderFilter {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, " selected")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, ">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var64 string
-			templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(f)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 336, Col: 63}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</option>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</select> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\" title=\"Всички статуси\">◎</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var65 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "all")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var65...)
+		var templ_7745c5c3_Var64 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "new")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var64...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var66 templ.SafeURL
-		templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=all&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
+		var templ_7745c5c3_Var65 templ.SafeURL
+		templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=new&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 339, Col: 204}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 320, Col: 204}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var66 string
+		templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var64).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "\" title=\"Нова\">○</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var67 string
-		templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var65).String())
+		var templ_7745c5c3_Var67 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "started")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var67...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var68 templ.SafeURL
+		templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=started&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 321, Col: 208}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var69 string
+		templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var67).String())
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "\" title=\"Всички статуси\">◎</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var68 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "new")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var68...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var69 templ.SafeURL
-		templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=new&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 340, Col: 204}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\" title=\"Стартирана\">▶</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var70 string
-		templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var68).String())
+		var templ_7745c5c3_Var70 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "for_dnd")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var70...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var71 templ.SafeURL
+		templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=for_dnd&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 322, Col: 208}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var72 string
+		templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var70).String())
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "\" title=\"Нова\">○</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var71 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "started")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var71...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var72 templ.SafeURL
-		templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=started&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 341, Col: 208}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "\" title=\"За DnD\">D</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var73 string
-		templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var71).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+		if diskFilter == "all" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<a href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var73 templ.SafeURL
+			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=on&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 324, Col: 206}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\" class=\"filter-btn filter-active\" title=\"Показват се всички (вкл. изчезнали) — кликни за само на диска\">↕</a> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<a href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var74 templ.SafeURL
+			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=all&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 326, Col: 207}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\" class=\"filter-btn\" title=\"Само на диска — кликни за всички\">↕</a> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "\" title=\"Стартирана\">▶</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var74 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "completed_both")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var74...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var75 templ.SafeURL
-		templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=completed_both&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 342, Col: 215}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "\" class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var76 string
-		templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var74).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\" title=\"Завършена от двамата\">✓</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var77 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "completed_yanko")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var77...)
+		var templ_7745c5c3_Var75 = []any{"filter-btn", templ.KV("filter-active", delFilter == "yes")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var75...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1104,12 +1089,12 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var78 templ.SafeURL
-		templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=completed_yanko&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
+		var templ_7745c5c3_Var76 templ.SafeURL
+		templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delToggleValue(delFilter) + folderParam(folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 343, Col: 216}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 328, Col: 237}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1117,21 +1102,21 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var79 string
-		templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var77).String())
+		var templ_7745c5c3_Var77 string
+		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var75).String())
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" title=\"Завършена от Янко\">Я</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" title=\"За изтриване\">🗑</a></div><span class=\"nav-label\">превод:</span><div class=\"trans-btns\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var80 = []any{"filter-btn", templ.KV("filter-active", statusFilter == "completed_liza")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var80...)
+		var templ_7745c5c3_Var78 = []any{"filter-btn", templ.KV("filter-active", transFilter == "all")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var78...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1139,12 +1124,12 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var81 templ.SafeURL
-		templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=completed_liza&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
+		var templ_7745c5c3_Var79 templ.SafeURL
+		templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=all&del=" + delFilter + folderParam(folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 344, Col: 215}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 332, Col: 205}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1152,197 +1137,208 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var82 string
-		templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var80).String())
+		var templ_7745c5c3_Var80 string
+		templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var78).String())
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "\" title=\"Всички типове превод\">◉</a> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var81 = []any{"filter-btn", templ.KV("filter-active", transFilter == "none")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var81...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var82 templ.SafeURL
+		templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=none&del=" + delFilter + folderParam(folderFilter)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 333, Col: 206}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "\" title=\"Завършена от Лиза\">Л</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if diskFilter == "all" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<a href=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var83 templ.SafeURL
-			templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=on&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 346, Col: 206}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "\" class=\"filter-btn filter-active\" title=\"Показват се всички (вкл. изчезнали) — кликни за само на диска\">↕</a> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<a href=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var84 templ.SafeURL
-			templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=all&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delFilter + folderParam(folderFilter)))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 348, Col: 207}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\" class=\"filter-btn\" title=\"Само на диска — кликни за всички\">↕</a> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		var templ_7745c5c3_Var83 string
+		templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var81).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
 		}
-		var templ_7745c5c3_Var85 = []any{"filter-btn", templ.KV("filter-active", delFilter == "yes")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var85...)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "\" title=\"Неустановен превод\">?</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var86 templ.SafeURL
-		templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=" + transFilter + "&del=" + delToggleValue(delFilter) + folderParam(folderFilter)))
+		var templ_7745c5c3_Var84 = []any{"filter-btn", templ.KV("filter-active", transFilter == "sub")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var84...)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 350, Col: 237}
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var85 templ.SafeURL
+		templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=sub&del=" + delFilter + folderParam(folderFilter)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 334, Col: 205}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var86 string
+		templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var84).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" title=\"Субтитри\">СУБ</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var87 string
-		templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var85).String())
+		var templ_7745c5c3_Var87 = []any{"filter-btn", templ.KV("filter-active", transFilter == "bg")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var87...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var88 templ.SafeURL
+		templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=bg&del=" + delFilter + folderParam(folderFilter)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 335, Col: 204}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var89 string
+		templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var87).String())
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "\" title=\"За изтриване\">🗑</a></div><span class=\"nav-label\">превод:</span><div class=\"trans-btns\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var88 = []any{"filter-btn", templ.KV("filter-active", transFilter == "all")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var88...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var89 templ.SafeURL
-		templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=all&del=" + delFilter + folderParam(folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 354, Col: 205}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\" title=\"Български говор\">БГ</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var90 string
-		templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var88).String())
+		var templ_7745c5c3_Var90 = []any{"filter-btn", templ.KV("filter-active", transFilter == "orig")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var90...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var91 templ.SafeURL
+		templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=orig&del=" + delFilter + folderParam(folderFilter)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 336, Col: 206}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var92 string
+		templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var90).String())
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\" title=\"Всички типове превод\">◉</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var91 = []any{"filter-btn", templ.KV("filter-active", transFilter == "none")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var91...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var92 templ.SafeURL
-		templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=none&del=" + delFilter + folderParam(folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 355, Col: 206}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" title=\"Оригинал\">ОРГ</a></div><span class=\"nav-label\">сорт:</span><div class=\"sort-btns\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var93 string
-		templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var91).String())
+		var templ_7745c5c3_Var93 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "name")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var93...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var94 templ.SafeURL
+		templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "name", qFilter, transFilter, delFilter, folderFilter)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 340, Col: 146}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var95 string
+		templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var93).String())
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "\" title=\"Неустановен превод\">?</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var94 = []any{"filter-btn", templ.KV("filter-active", transFilter == "sub")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var94...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var95 templ.SafeURL
-		templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=sub&del=" + delFilter + folderParam(folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 356, Col: 205}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "\" title=\"По азбучен ред\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var96 string
-		templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var94).String())
+		templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("АЯ", sortFilter, dirFilter, "name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 340, Col: 309}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "\" title=\"Субтитри\">СУБ</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var97 = []any{"filter-btn", templ.KV("filter-active", transFilter == "bg")}
+		var templ_7745c5c3_Var97 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "path")}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var97...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -1352,9 +1348,9 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var98 templ.SafeURL
-		templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=bg&del=" + delFilter + folderParam(folderFilter)))
+		templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "path", qFilter, transFilter, delFilter, folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 357, Col: 204}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 341, Col: 146}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var98))
 		if templ_7745c5c3_Err != nil {
@@ -1373,418 +1369,252 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "\" title=\"Български говор\">БГ</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "\" title=\"По папка/път\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var100 = []any{"filter-btn", templ.KV("filter-active", transFilter == "orig")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var100...)
+		var templ_7745c5c3_Var100 string
+		templ_7745c5c3_Var100, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("Пт", sortFilter, dirFilter, "path"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 341, Col: 305}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var100))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var101 templ.SafeURL
-		templ_7745c5c3_Var101, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&trans=orig&del=" + delFilter + folderParam(folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 358, Col: 206}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var101))
+		var templ_7745c5c3_Var101 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "size")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var101...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var102 string
-		templ_7745c5c3_Var102, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var100).String())
+		var templ_7745c5c3_Var102 templ.SafeURL
+		templ_7745c5c3_Var102, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "size", qFilter, transFilter, delFilter, folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 342, Col: 146}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var102))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\" title=\"Оригинал\">ОРГ</a></div><span class=\"nav-label\">сорт:</span><div class=\"sort-btns\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var103 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "name")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var103...)
+		var templ_7745c5c3_Var103 string
+		templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var101).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "\" title=\"По размер\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var104 templ.SafeURL
-		templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "name", qFilter, transFilter, delFilter, folderFilter)))
+		var templ_7745c5c3_Var104 string
+		templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("Рз", sortFilter, dirFilter, "size"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 362, Col: 146}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 342, Col: 300}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var105 string
-		templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var103).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var105))
+		var templ_7745c5c3_Var105 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "last_started")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var105...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "\" title=\"По азбучен ред\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var106 string
-		templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("АЯ", sortFilter, dirFilter, "name"))
+		var templ_7745c5c3_Var106 templ.SafeURL
+		templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "last_started", qFilter, transFilter, delFilter, folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 362, Col: 309}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 343, Col: 154}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var106))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var107 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "path")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var107...)
+		var templ_7745c5c3_Var107 string
+		templ_7745c5c3_Var107, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var105).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var107))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "\" title=\"По последно стартиране\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var108 templ.SafeURL
-		templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "path", qFilter, transFilter, delFilter, folderFilter)))
+		var templ_7745c5c3_Var108 string
+		templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("▶", sortFilter, dirFilter, "last_started"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 363, Col: 146}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 343, Col: 348}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var108))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var109 string
-		templ_7745c5c3_Var109, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var107).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var109))
+		var templ_7745c5c3_Var109 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "added")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var109...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "\" title=\"По папка/път\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var110 string
-		templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("Пт", sortFilter, dirFilter, "path"))
+		var templ_7745c5c3_Var110 templ.SafeURL
+		templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "added", qFilter, transFilter, delFilter, folderFilter)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 363, Col: 305}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 344, Col: 147}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var110))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var111 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "size")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var111...)
+		var templ_7745c5c3_Var111 string
+		templ_7745c5c3_Var111, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var109).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var111))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "\" title=\"По дата добавяне\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var112 templ.SafeURL
-		templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "size", qFilter, transFilter, delFilter, folderFilter)))
+		var templ_7745c5c3_Var112 string
+		templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("⊕", sortFilter, dirFilter, "added"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 364, Col: 146}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 344, Col: 315}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "</a></div><form method=\"POST\" action=\"/media/random-new/start\" hx-post=\"/media/random-new/start\" hx-target=\"#flash\" hx-swap=\"innerHTML\"><input type=\"hidden\" name=\"status\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var113 string
-		templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var111).String())
+		templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.JoinStringErrs(statusFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 353, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var113))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "\" title=\"По размер\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "\"> <input type=\"hidden\" name=\"disk\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var114 string
-		templ_7745c5c3_Var114, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("Рз", sortFilter, dirFilter, "size"))
+		templ_7745c5c3_Var114, templ_7745c5c3_Err = templ.JoinStringErrs(diskFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 364, Col: 300}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 354, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var114))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "\"> <input type=\"hidden\" name=\"q\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var115 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "last_started")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var115...)
+		var templ_7745c5c3_Var115 string
+		templ_7745c5c3_Var115, templ_7745c5c3_Err = templ.JoinStringErrs(qFilter)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 355, Col: 51}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var115))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "\"> <input type=\"hidden\" name=\"trans\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var116 templ.SafeURL
-		templ_7745c5c3_Var116, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "last_started", qFilter, transFilter, delFilter, folderFilter)))
+		var templ_7745c5c3_Var116 string
+		templ_7745c5c3_Var116, templ_7745c5c3_Err = templ.JoinStringErrs(transFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 365, Col: 154}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 356, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var116))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "\"> <input type=\"hidden\" name=\"del\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var117 string
-		templ_7745c5c3_Var117, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var115).String())
+		templ_7745c5c3_Var117, templ_7745c5c3_Err = templ.JoinStringErrs(delFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 357, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var117))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "\" title=\"По последно стартиране\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "\"> <input type=\"hidden\" name=\"folder\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var118 string
-		templ_7745c5c3_Var118, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("▶", sortFilter, dirFilter, "last_started"))
+		templ_7745c5c3_Var118, templ_7745c5c3_Err = templ.JoinStringErrs(folderFilter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 365, Col: 348}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 358, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var118))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var119 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "added")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var119...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var120 templ.SafeURL
-		templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "added", qFilter, transFilter, delFilter, folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 366, Col: 147}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var120))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "\" class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var121 string
-		templ_7745c5c3_Var121, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var119).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var121))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "\" title=\"По дата добавяне\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var122 string
-		templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("⊕", sortFilter, dirFilter, "added"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 366, Col: 315}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var122))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var123 = []any{"sort-btn", templ.KV("filter-active", sortFilter == "marked")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var123...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var124 templ.SafeURL
-		templ_7745c5c3_Var124, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "marked", qFilter, transFilter, delFilter, folderFilter)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 367, Col: 148}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var124))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "\" class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var125 string
-		templ_7745c5c3_Var125, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var123).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var125))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "\" title=\"По дата завършване\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var126 string
-		templ_7745c5c3_Var126, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("✓", sortFilter, dirFilter, "marked"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 367, Col: 322}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var126))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "</a></div><form method=\"POST\" action=\"/media/random-new/start\" hx-post=\"/media/random-new/start\" hx-target=\"#flash\" hx-swap=\"innerHTML\"><input type=\"hidden\" name=\"status\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var127 string
-		templ_7745c5c3_Var127, templ_7745c5c3_Err = templ.JoinStringErrs(statusFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 376, Col: 61}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var127))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, "\"> <input type=\"hidden\" name=\"disk\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var128 string
-		templ_7745c5c3_Var128, templ_7745c5c3_Err = templ.JoinStringErrs(diskFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 377, Col: 57}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var128))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "\"> <input type=\"hidden\" name=\"q\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var129 string
-		templ_7745c5c3_Var129, templ_7745c5c3_Err = templ.JoinStringErrs(qFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 378, Col: 51}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var129))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "\"> <input type=\"hidden\" name=\"trans\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var130 string
-		templ_7745c5c3_Var130, templ_7745c5c3_Err = templ.JoinStringErrs(transFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 379, Col: 59}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var130))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 142, "\"> <input type=\"hidden\" name=\"del\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var131 string
-		templ_7745c5c3_Var131, templ_7745c5c3_Err = templ.JoinStringErrs(delFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 380, Col: 55}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var131))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 143, "\"> <input type=\"hidden\" name=\"folder\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var132 string
-		templ_7745c5c3_Var132, templ_7745c5c3_Err = templ.JoinStringErrs(folderFilter)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 381, Col: 61}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var132))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 144, "\"> <button type=\"submit\" class=\"sort-btn\" title=\"Стартирай случаен от филтрираните\">🎲</button></form></nav><div id=\"flash\" class=\"flash\"></div><div id=\"media-list\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "\"> <button type=\"submit\" class=\"sort-btn\" title=\"Стартирай случаен от филтрираните\">🎲</button></form></nav><div id=\"flash\" class=\"flash\"></div><div id=\"media-list\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(media) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 145, "<p>Няма намерени медии.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "<p>Няма намерени медии.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 146, "<figure><table><thead><tr><th class=\"filename\">Файл</th><th class=\"folder\">Папка</th><th class=\"size\">Размер</th><th class=\"status\">Статус</th><th class=\"translation\">Пр</th><th class=\"actions\">Функции</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "<figure><table><thead><tr><th class=\"filename\">Файл</th><th class=\"folder\">Папка</th><th class=\"size\">Размер</th><th class=\"status\">Статус</th><th class=\"translation\">Пр</th><th class=\"actions\">Функции</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1794,12 +1624,12 @@ func ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string,
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 147, "</tbody></table></figure>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "</tbody></table></figure>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 148, "</div></main></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "</div></main></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

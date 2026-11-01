@@ -87,7 +87,7 @@ func TestIndex_ActionForms_HaveHxPost(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	forms := doc.Find("td.actions form")
-	require.Equal(t, 6, forms.Length(), "expected 6 action forms (5 status + 1 за изтриване)")
+	require.Equal(t, 4, forms.Length(), "expected 4 action forms (3 status + 1 за изтриване)")
 	var statusPosts, delPosts int
 	forms.Each(func(_ int, s *goquery.Selection) {
 		hxPost, exists := s.Attr("hx-post")
@@ -103,7 +103,7 @@ func TestIndex_ActionForms_HaveHxPost(t *testing.T) {
 		hxTarget, _ := s.Attr("hx-target")
 		assert.Equal(t, "closest tr", hxTarget)
 	})
-	assert.Equal(t, 5, statusPosts, "expected 5 status forms")
+	assert.Equal(t, 3, statusPosts, "expected 3 status forms")
 	assert.Equal(t, 1, delPosts, "expected 1 за-изтриване form")
 }
 
@@ -195,7 +195,8 @@ func TestDetailPage_ShowsHistoryTables(t *testing.T) {
 	assert.Contains(t, body, "История на статусите")
 }
 
-func TestIndex_Actions_HasFiveStatusButtons(t *testing.T) {
+// Bug 27: the row offers ○ ▶ D — the completed statuses (✓ Я Л) are removed.
+func TestIndex_Actions_HasThreeStatusButtons(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -209,18 +210,18 @@ func TestIndex_Actions_HasFiveStatusButtons(t *testing.T) {
 	statusForms := doc.Find("td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
 		return s.Find("input[name=status]").Length() == 1
 	})
-	assert.Equal(t, 5, statusForms.Length(), "expected 5 status forms in actions column")
+	assert.Equal(t, 3, statusForms.Length(), "expected 3 status forms in actions column")
 
 	var statusValues []string
 	statusForms.Each(func(_ int, s *goquery.Selection) {
 		v, _ := s.Find("input[name=status]").Attr("value")
 		statusValues = append(statusValues, v)
 	})
-	assert.Contains(t, statusValues, "new")
-	assert.Contains(t, statusValues, "started")
-	assert.Contains(t, statusValues, "completed_both")
-	assert.Contains(t, statusValues, "completed_yanko")
-	assert.Contains(t, statusValues, "completed_liza")
+	assert.Equal(t, []string{"new", "started", "for_dnd"}, statusValues)
+
+	dnd := doc.Find("td.actions button.icon-btn[title='За DnD']")
+	require.Equal(t, 1, dnd.Length(), "expected the За DnD row button")
+	assert.Equal(t, "D", strings.TrimSpace(dnd.Text()))
 }
 
 func TestIndex_FilterButtons_Present(t *testing.T) {
@@ -231,7 +232,7 @@ func TestIndex_FilterButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.filter-btn")
-	assert.Equal(t, 13, btns.Length(), "expected 13 filter buttons (6 status + 1 disk toggle + 1 за изтриване + 5 translation)")
+	assert.Equal(t, 11, btns.Length(), "expected 11 filter buttons (4 status + 1 disk toggle + 1 за изтриване + 5 translation)")
 }
 
 func TestIndex_TransFilter_HasLabelAndNoneButton(t *testing.T) {
@@ -274,7 +275,7 @@ func TestIndex_SortButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.sort-btn")
-	assert.Equal(t, 6, btns.Length(), "expected 6 sort buttons (name, path, size, last_started, added, marked)")
+	assert.Equal(t, 5, btns.Length(), "expected 5 sort buttons (name, path, size, last_started, added)")
 }
 
 func TestIndex_SortButton_NameIsActiveByDefault(t *testing.T) {
@@ -304,15 +305,16 @@ func TestIndex_SortButton_LastStartedIsActive_WhenParam(t *testing.T) {
 }
 
 func TestIndex_DateSortButtons_FirstClickIsDescending(t *testing.T) {
-	// Bug #19: hrefs of the date sort buttons (added, marked) must start with
-	// dir=desc when the button is inactive (most recent first on first click).
+	// Bug #19: hrefs of the date sort buttons must start with dir=desc when the
+	// button is inactive (most recent first on first click). Bug 27 removed the
+	// "marked" sort, so "added" is the only date sort left.
 	d := openTestDB(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	for _, title := range []string{"По дата добавяне", "По дата завършване"} {
+	for _, title := range []string{"По дата добавяне"} {
 		btn := doc.Find(fmt.Sprintf("a.sort-btn[title='%s']", title))
 		require.Equal(t, 1, btn.Length(), "expected sort button %q", title)
 		href, _ := btn.Attr("href")
@@ -737,7 +739,7 @@ func TestIndex_FolderSelect_OptionsIgnoreOtherFilters(t *testing.T) {
 	// Neither the chosen folder nor a status that matches nothing may shrink
 	// the dropdown — the user must be able to switch straight to another folder.
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials&status=completed_both", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials&status=for_dnd", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
 	assert.Equal(t, []string{"all", "Movies", "MoviesDnD", "Serials"},
@@ -812,7 +814,7 @@ func TestIndex_FolderFilter_PreservedByOtherFilters(t *testing.T) {
 			// folder (escaped), otherwise clicking one of them silently drops the
 			// filter.
 			links := doc.Find(".filter-btns a.filter-btn, .trans-btns a.filter-btn, .sort-btns a.sort-btn")
-			require.Equal(t, 19, links.Length(), "expected 8 filter + 5 translation + 6 sort links")
+			require.Equal(t, 16, links.Length(), "expected 6 filter + 5 translation + 5 sort links")
 			links.Each(func(_ int, sel *goquery.Selection) {
 				title, _ := sel.Attr("title")
 				href, _ := sel.Attr("href")
@@ -851,4 +853,93 @@ func TestIndex_ResetsFolderSelectOnBackForwardCacheRestore(t *testing.T) {
 	assert.Contains(t, script, "option[selected]", "the dropdown must be reset to the server-rendered option")
 	assert.NotContains(t, script, "location.reload",
 		"a reload would replace the restored view with the newer remembered state")
+}
+
+// ---------------------------------------------------------------------------
+// Bug 27: без завършени статуси + „За DnD"
+// ---------------------------------------------------------------------------
+
+func TestIndex_StatusColumn_ShowsDnD(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Dragons.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	setStatus(t, d, "Dragons.mkv", "for_dnd")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	span := doc.Find("td.status span.status-dnd")
+	require.Equal(t, 1, span.Length(), "expected a span.status-dnd in the status column")
+	assert.Equal(t, "DnD", strings.TrimSpace(span.Text()))
+}
+
+func TestIndex_NoMarkedSortButton(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	doc := parseBody(t, body)
+	assert.Equal(t, 0, doc.Find("a[href*='sort=marked']").Length(), "the sort by completion date is removed")
+	assert.NotContains(t, body, "По дата завършване")
+}
+
+func TestIndex_ForDnDFilterButton(t *testing.T) {
+	d := openTestDB(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	doc := parseBody(t, w.Body.String())
+	// The status buttons of the "филтър:" group are ◎ ○ ▶ D, before ↕ and 🗑.
+	var titles []string
+	doc.Find(".filter-btns a.filter-btn").Each(func(_ int, sel *goquery.Selection) {
+		title, _ := sel.Attr("title")
+		titles = append(titles, title)
+	})
+	require.GreaterOrEqual(t, len(titles), 4)
+	assert.Equal(t, []string{"Всички статуси", "Нова", "Стартирана", "За DnD"}, titles[:4])
+
+	btn := doc.Find(".filter-btns a.filter-btn[title='За DnD']")
+	require.Equal(t, 1, btn.Length(), "expected a single За DnD filter button in .filter-btns")
+	assert.Equal(t, "D", strings.TrimSpace(btn.Text()))
+	href, _ := btn.Attr("href")
+	assert.Contains(t, href, "status=for_dnd")
+	class, _ := btn.Attr("class")
+	assert.NotContains(t, class, "filter-active", "button must be inactive by default")
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/?status=for_dnd", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	class, _ = parseBody(t, w.Body.String()).Find(".filter-btns a.filter-btn[title='За DnD']").Attr("class")
+	assert.Contains(t, class, "filter-active", "button should be active when status=for_dnd")
+}
+
+// Bug 27: the tree's status dropdown offers the same three statuses. The e2e
+// check skips when the scanned disk shows no tree files, so it is pinned here.
+func TestTree_StatusOptions_AreNewStartedForDnD(t *testing.T) {
+	d := openTestDB(t)
+	seedOne(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/tree", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	sel := parseBody(t, w.Body.String()).Find(".tree-file select[name=status]")
+	require.Equal(t, 1, sel.Length(), "expected one status dropdown for the seeded media")
+
+	var values, labels []string
+	sel.Find("option").Each(func(_ int, opt *goquery.Selection) {
+		v, _ := opt.Attr("value")
+		values = append(values, v)
+		labels = append(labels, strings.TrimSpace(opt.Text()))
+	})
+	assert.Equal(t, []string{"new", "started", "for_dnd"}, values)
+	assert.Equal(t, []string{"Нова", "Стартирана", "За DnD"}, labels)
 }

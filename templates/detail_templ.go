@@ -48,7 +48,7 @@ func DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCha
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " — Movie Tracker</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><style>\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\t.status-completed { color: var(--pico-color-green-500, #22c55e); }\n\t\t\t\t.badge-offline { color: var(--pico-del-color, #e53e3e); font-weight: bold; }\n\t\t\t\tform { display: inline; margin: 0; }\n\t\t\t\tselect { margin: 0 0.3rem 0 0; padding: 0.2rem 0.3rem; }\n\t\t\t\t.actions-row { margin: 1rem 0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }\n\t\t\t</style></head><body><main class=\"container\"><nav style=\"margin-bottom: 1rem;\"><a href=\"/\">Списък</a> <span style=\"margin: 0 0.5rem;\">|</span> <a href=\"/tree\">Дърво</a></nav><h1>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " — Movie Tracker</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><style>\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\t.status-dnd { color: var(--pico-color-green-500, #22c55e); }\n\t\t\t\t.badge-offline { color: var(--pico-del-color, #e53e3e); font-weight: bold; }\n\t\t\t\tform { display: inline; margin: 0; }\n\t\t\t\tselect { margin: 0 0.3rem 0 0; padding: 0.2rem 0.3rem; }\n\t\t\t\t.actions-row { margin: 1rem 0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }\n\t\t\t</style></head><body><main class=\"container\"><nav style=\"margin-bottom: 1rem;\"><a href=\"/\">Списък</a> <span style=\"margin: 0 0.5rem;\">|</span> <a href=\"/tree\">Дърво</a></nav><h1>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -178,7 +178,7 @@ func DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCha
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "><option value=\"new\">Нова</option> <option value=\"started\">Стартирана</option> <option value=\"completed_both\">Завършена (двамата)</option> <option value=\"completed_yanko\">Завършена (Янко)</option> <option value=\"completed_liza\">Завършена (Лиза)</option></select> <button type=\"submit\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "><option value=\"new\">Нова</option> <option value=\"started\">Стартирана</option> <option value=\"for_dnd\">За DnD</option></select> <button type=\"submit\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -210,7 +210,7 @@ func DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCha
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(s.StartedAt.Format("2006-01-02 15:04:05"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 83, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 81, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -248,7 +248,7 @@ func DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCha
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(ch.FromStatus.String)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 101, Col: 36}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 99, Col: 36}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -261,7 +261,7 @@ func DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCha
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(ch.ToStatus)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 102, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 100, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -274,7 +274,7 @@ func DetailPage(medium db.Medium, starts []db.StartEvent, changes []db.StatusCha
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(ch.ChangedAt.Format("2006-01-02 15:04:05"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 103, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/detail.templ`, Line: 101, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {

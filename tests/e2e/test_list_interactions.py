@@ -40,12 +40,12 @@ def test_list_has_scan_button_in_navbar(page: Page):
 
 
 def test_actions_has_status_and_deletion_buttons(page: Page):
-    # 5 статус бутона + 1 „за изтриване" (Бъг 22).
+    # 3 статус бутона (○ ▶ D, Бъг 27) + 1 „за изтриване" (Бъг 22).
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
     row = page.locator("tbody tr").first
-    assert row.locator("td.actions button.icon-btn").count() == 6
+    assert row.locator("td.actions button.icon-btn").count() == 4
     assert row.locator("td.actions button.icon-btn[title='За изтриване']").count() == 1
 
 
@@ -105,12 +105,14 @@ def test_status_change_started_redirects_to_list(page: Page):
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
 
 
-def test_status_change_completed_both_redirects_to_list(page: Page):
+def test_status_change_for_dnd_redirects_to_list(page: Page):
+    # Бъг 27: D в реда прави статуса „DnD".
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    page.locator("button.icon-btn[title='Завършена (двамата)']").first.click()
+    page.locator("button.icon-btn[title='За DnD']").first.click()
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
+    expect(page.locator("tbody tr").first.locator("td.status")).to_have_text("DnD")
 
 
 def test_status_change_to_new_redirects_to_list(page: Page):
