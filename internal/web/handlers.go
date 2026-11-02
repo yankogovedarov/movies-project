@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -75,11 +76,10 @@ func isHTMX(c *gin.Context) bool {
 }
 
 // validStatuses are the statuses a media can be set to. Bug 27 removed the
-// three completed statuses and added the manual "for_dnd" (За DnD).
+// three completed statuses; Bug 30 turned "for_dnd" (За DnD) into a flag.
 var validStatuses = map[string]bool{
 	"new":     true,
 	"started": true,
-	"for_dnd": true,
 }
 
 // topFolder returns the main (top-level) folder of a media's folder path: the
@@ -115,7 +115,24 @@ func folderOptions(raw []db.Medium, current string) []string {
 	return folders
 }
 
-func filterMedia(raw []db.Medium, statusFilter, qFilter, delFilter, folderFilter string) []db.Medium {
+// keepFlagged narrows media to those with a raised flag when the flag's filter
+// is "yes". The three flags (👍 За DnD, 👎 за изтриване, ⚠ грешни субтитри) are
+// independent of the status and of each other, so each one narrows whatever
+// the other filters already selected.
+func keepFlagged(media []db.Medium, filter string, flag func(db.Medium) int64) []db.Medium {
+	if filter != "yes" {
+		return media
+	}
+	f := make([]db.Medium, 0, len(media))
+	for _, m := range media {
+		if flag(m) == 1 {
+			f = append(f, m)
+		}
+	}
+	return f
+}
+
+func filterMedia(raw []db.Medium, statusFilter, qFilter, delFilter, dndFilter, subsFilter, folderFilter string) []db.Medium {
 	result := raw
 	if statusFilter != "all" {
 		f := make([]db.Medium, 0, len(result))
@@ -137,17 +154,9 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, delFilter, folderFilter
 		}
 		result = f
 	}
-	if delFilter == "yes" {
-		// The "за изтриване" flag is independent of the watch status, so this
-		// narrows whatever the other filters already selected.
-		f := make([]db.Medium, 0, len(result))
-		for _, m := range result {
-			if m.ForDeletion == 1 {
-				f = append(f, m)
-			}
-		}
-		result = f
-	}
+	result = keepFlagged(result, dndFilter, func(m db.Medium) int64 { return m.ForDnd })
+	result = keepFlagged(result, delFilter, func(m db.Medium) int64 { return m.ForDeletion })
+	result = keepFlagged(result, subsFilter, func(m db.Medium) int64 { return m.WrongSubs })
 	if folderFilter != "all" {
 		// Exact match on the main folder, so "Movies" does not also catch
 		// "MoviesDnD"; root files only show under "all".
@@ -162,9 +171,9 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, delFilter, folderFilter
 	return result
 }
 
-// defaultPrefs mirrors the ui_prefs row as migrations 000005–000008 leave it
-// (000006 adds folder_filter, 000008 drops trans_filter) — the fallback whenever
-// the remembered state cannot be read.
+// defaultPrefs mirrors the ui_prefs row as migrations 000005–000009 leave it
+// (000006 adds folder_filter, 000008 drops trans_filter, 000009 adds dnd_filter
+// and subs_filter) — the fallback whenever the remembered state cannot be read.
 func defaultPrefs() db.GetUIPrefsRow {
 	return db.GetUIPrefsRow{
 		StatusFilter: "all",
@@ -173,6 +182,8 @@ func defaultPrefs() db.GetUIPrefsRow {
 		DirFilter:    "asc",
 		QFilter:      "",
 		DelFilter:    "all",
+		DndFilter:    "all",
+		SubsFilter:   "all",
 		FolderFilter: "all",
 	}
 }
@@ -199,6 +210,8 @@ func (h *Handlers) Index(c *gin.Context) {
 	dirFilter := c.DefaultQuery("dir", prefs.DirFilter)
 	qFilter := c.DefaultQuery("q", prefs.QFilter)
 	delFilter := c.DefaultQuery("del", prefs.DelFilter)
+	dndFilter := c.DefaultQuery("dnd", prefs.DndFilter)
+	subsFilter := c.DefaultQuery("subs", prefs.SubsFilter)
 	folderFilter := c.DefaultQuery("folder", prefs.FolderFilter)
 	if folderFilter == "" {
 		// An explicit empty "folder=" means all folders, not "only the files in
@@ -216,6 +229,8 @@ func (h *Handlers) Index(c *gin.Context) {
 		DirFilter:    dirFilter,
 		QFilter:      qFilter,
 		DelFilter:    delFilter,
+		DndFilter:    dndFilter,
+		SubsFilter:   subsFilter,
 		FolderFilter: folderFilter,
 	}); err != nil {
 		h.log().Error("save ui prefs failed", "err", err)
@@ -235,11 +250,11 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	// The dropdown offers every main folder of the current ↕ mode. It is built
-	// before the other filters narrow the list, so picking a status, the 🗑
+	// before the other filters narrow the list, so picking a status, a flag
 	// filter or a search text never hides folders from it.
 	folders := folderOptions(raw, folderFilter)
 
-	raw = filterMedia(raw, statusFilter, qFilter, delFilter, folderFilter)
+	raw = filterMedia(raw, statusFilter, qFilter, delFilter, dndFilter, subsFilter, folderFilter)
 
 	stats, err := db.FetchMediaStats(ctx, h.DB)
 	if err != nil {
@@ -311,7 +326,17 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	_ = templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, delFilter, folderFilter, folders).Render(ctx, c.Writer)
+	_ = templates.ListPage(media, templates.Filters{
+		Status: statusFilter,
+		Disk:   diskFilter,
+		Sort:   sortFilter,
+		Dir:    dirFilter,
+		Q:      qFilter,
+		Del:    delFilter,
+		Dnd:    dndFilter,
+		Subs:   subsFilter,
+		Folder: folderFilter,
+	}, folders).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) RandomNew(c *gin.Context) {
@@ -322,6 +347,8 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	diskFilter := c.PostForm("disk")
 	qFilter := c.PostForm("q")
 	delFilter := c.PostForm("del")
+	dndFilter := c.PostForm("dnd")
+	subsFilter := c.PostForm("subs")
 	folderFilter := c.PostForm("folder")
 	if statusFilter == "" {
 		statusFilter = "all"
@@ -331,6 +358,12 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	}
 	if delFilter == "" {
 		delFilter = "all"
+	}
+	if dndFilter == "" {
+		dndFilter = "all"
+	}
+	if subsFilter == "" {
+		subsFilter = "all"
 	}
 	if folderFilter == "" {
 		folderFilter = "all"
@@ -349,12 +382,12 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		return
 	}
 
-	candidates := filterMedia(all, statusFilter, qFilter, delFilter, folderFilter)
+	candidates := filterMedia(all, statusFilter, qFilter, delFilter, dndFilter, subsFilter, folderFilter)
 
 	// Without HTMX the browser is sent back to the list with the same filters.
 	// Folder names may contain spaces, Cyrillic or "&", hence the escaping.
-	listURL := fmt.Sprintf("/?status=%s&disk=%s&q=%s&del=%s&folder=%s",
-		statusFilter, diskFilter, qFilter, delFilter, url.QueryEscape(folderFilter))
+	listURL := fmt.Sprintf("/?status=%s&disk=%s&q=%s&del=%s&dnd=%s&subs=%s&folder=%s",
+		statusFilter, diskFilter, qFilter, delFilter, dndFilter, subsFilter, url.QueryEscape(folderFilter))
 
 	if len(candidates) == 0 {
 		if isHTMX(c) {
@@ -371,8 +404,9 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 
 	_ = q.InsertStartEvent(ctx, chosen.ID)
 
-	// Only a brand-new media transitions to "started"; a "started" or "for_dnd"
-	// media keeps its status so it stays inside the active filter.
+	// Only a brand-new media transitions to "started"; a started one keeps its
+	// status. The 👍 👎 ⚠ flags are never touched, so the media stays inside the
+	// active flag filters.
 	if chosen.CurrentStatus == "new" {
 		_ = q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
 			MediaID:    chosen.ID,
@@ -417,9 +451,31 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, listURL)
 }
 
-// SetForDeletion toggles the "за изтриване" flag (Bug 22). The submitted value
-// is "1" to raise it and "0" to clear it; the template decides which one to send.
+// SetForDnd toggles the 👍 „За DnD" flag (Bug 30).
+func (h *Handlers) SetForDnd(c *gin.Context) {
+	h.setFlag(c, func(ctx context.Context, q *db.Queries, id, value int64) error {
+		return q.UpdateForDnd(ctx, db.UpdateForDndParams{ForDnd: value, ID: id})
+	})
+}
+
+// SetForDeletion toggles the 👎 „за изтриване" flag (Bug 22).
 func (h *Handlers) SetForDeletion(c *gin.Context) {
+	h.setFlag(c, func(ctx context.Context, q *db.Queries, id, value int64) error {
+		return q.UpdateForDeletion(ctx, db.UpdateForDeletionParams{ForDeletion: value, ID: id})
+	})
+}
+
+// SetWrongSubs toggles the ⚠ „Грешни субтитри" flag (Bug 30).
+func (h *Handlers) SetWrongSubs(c *gin.Context) {
+	h.setFlag(c, func(ctx context.Context, q *db.Queries, id, value int64) error {
+		return q.UpdateWrongSubs(ctx, db.UpdateWrongSubsParams{WrongSubs: value, ID: id})
+	})
+}
+
+// setFlag raises or clears one of the three independent flags of a media
+// through update. The submitted value is "1" to raise it and "0" to clear it;
+// the template decides which one to send.
+func (h *Handlers) setFlag(c *gin.Context, update func(ctx context.Context, q *db.Queries, id, value int64) error) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.Status(http.StatusNotFound)
@@ -429,14 +485,13 @@ func (h *Handlers) SetForDeletion(c *gin.Context) {
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
 
-	var forDeletion int64
+	var value int64
 	if c.PostForm("value") == "1" {
-		forDeletion = 1
+		value = 1
 	}
-	_ = q.UpdateForDeletion(ctx, db.UpdateForDeletionParams{
-		ForDeletion: forDeletion,
-		ID:          id,
-	})
+	if err := update(ctx, q, id, value); err != nil {
+		h.log().Error("set flag failed", "id", id, "route", c.FullPath(), "err", err)
+	}
 
 	if isHTMX(c) {
 		media, err := q.GetMediaByID(ctx, id)

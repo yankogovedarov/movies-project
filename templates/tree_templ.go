@@ -36,7 +36,7 @@ func TreePage(root *tree.Node) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker — Дърво</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><style>\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\t.status-dnd { color: var(--pico-color-green-500, #22c55e); }\n\t\t\t\tdetails { margin-left: 1rem; }\n\t\t\t\tdetails > summary { cursor: pointer; font-weight: bold; list-style: none; padding: 0.3rem 0; }\n\t\t\t\tdetails > summary::before { content: \"▶ \"; font-size: 0.75rem; }\n\t\t\t\tdetails[open] > summary::before { content: \"▼ \"; }\n\t\t\t\t.tree-file { display: flex; align-items: center; gap: 0.75rem; padding: 0.2rem 0 0.2rem 1.5rem; }\n\t\t\t\t.tree-file form { display: inline; margin: 0; }\n\t\t\t\tbutton.filename-link {\n\t\t\t\t\tbackground: none; border: none; padding: 0;\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\n\t\t\t\t\ttext-decoration: underline; font: inherit;\n\t\t\t\t}\n\t\t\t\tselect { margin: 0; padding: 0.15rem 0.3rem; font-size: 0.85rem; }\n\t\t\t\tbutton.submit-compact { padding: 0.15rem 0.4rem; margin: 0 0 0 0.2rem; font-size: 0.85rem; }\n\t\t\t\tnav.view-toggle { margin-bottom: 1rem; }\n\t\t\t\tnav.view-toggle a { margin-right: 1rem; }\n\t\t\t</style></head><body><main class=\"container\"><h1>Movie Tracker</h1><nav class=\"view-toggle\"><a href=\"/\">Списък</a> <strong>Дърво</strong></nav><form method=\"POST\" action=\"/scan\" style=\"margin-bottom: 1rem;\"><button type=\"submit\">Сканирай</button></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker — Дърво</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><style>\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\n\t\t\t\tdetails { margin-left: 1rem; }\n\t\t\t\tdetails > summary { cursor: pointer; font-weight: bold; list-style: none; padding: 0.3rem 0; }\n\t\t\t\tdetails > summary::before { content: \"▶ \"; font-size: 0.75rem; }\n\t\t\t\tdetails[open] > summary::before { content: \"▼ \"; }\n\t\t\t\t.tree-file { display: flex; align-items: center; gap: 0.75rem; padding: 0.2rem 0 0.2rem 1.5rem; }\n\t\t\t\t.tree-file form { display: inline; margin: 0; }\n\t\t\t\tbutton.filename-link {\n\t\t\t\t\tbackground: none; border: none; padding: 0;\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\n\t\t\t\t\ttext-decoration: underline; font: inherit;\n\t\t\t\t}\n\t\t\t\tselect { margin: 0; padding: 0.15rem 0.3rem; font-size: 0.85rem; }\n\t\t\t\tbutton.submit-compact { padding: 0.15rem 0.4rem; margin: 0 0 0 0.2rem; font-size: 0.85rem; }\n\t\t\t\tnav.view-toggle { margin-bottom: 1rem; }\n\t\t\t\tnav.view-toggle a { margin-right: 1rem; }\n\t\t\t</style></head><body><main class=\"container\"><h1>Movie Tracker</h1><nav class=\"view-toggle\"><a href=\"/\">Списък</a> <strong>Дърво</strong></nav><form method=\"POST\" action=\"/scan\" style=\"margin-bottom: 1rem;\"><button type=\"submit\">Сканирай</button></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -101,7 +101,7 @@ func treeNodeComponent(node *tree.Node, depth int) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(node.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 69, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 68, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -114,7 +114,7 @@ func treeNodeComponent(node *tree.Node, depth int) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(countFiles(node)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 69, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 68, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -148,7 +148,7 @@ func treeNodeComponent(node *tree.Node, depth int) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(node.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 79, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 78, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -161,7 +161,7 @@ func treeNodeComponent(node *tree.Node, depth int) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(countFiles(node)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 79, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 78, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -220,7 +220,7 @@ func treeFileRow(m db.Medium) templ.Component {
 		var templ_7745c5c3_Var8 templ.SafeURL
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/start"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 92, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 91, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -233,7 +233,7 @@ func treeFileRow(m db.Medium) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(m.Filename)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 93, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 92, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -246,7 +246,7 @@ func treeFileRow(m db.Medium) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(m.Filename)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 93, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 92, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -281,7 +281,7 @@ func treeFileRow(m db.Medium) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(m.CurrentStatus)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 95, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 94, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -294,13 +294,13 @@ func treeFileRow(m db.Medium) templ.Component {
 		var templ_7745c5c3_Var14 templ.SafeURL
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 96, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/tree.templ`, Line: 95, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><select name=\"status\"><option value=\"new\">Нова</option> <option value=\"started\">Стартирана</option> <option value=\"for_dnd\">За DnD</option></select> <button type=\"submit\" class=\"submit-compact\">...</button></form></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><select name=\"status\"><option value=\"new\">Нова</option> <option value=\"started\">Стартирана</option></select> <button type=\"submit\" class=\"submit-compact\">...</button></form></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

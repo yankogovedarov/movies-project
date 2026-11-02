@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -122,10 +123,17 @@ func openAtSchemaVersion(t *testing.T, version uint) *sql.DB {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
 
+	migrateTo(t, d, version)
+	return d
+}
+
+// migrateTo runs the migrations of d up to version and no further, so a test
+// of one migration does not also see what the later ones change.
+func migrateTo(t *testing.T, d *sql.DB, version uint) {
+	t.Helper()
 	m, err := db.NewMigrate(d)
 	require.NoError(t, err)
 	require.NoError(t, m.Migrate(version))
-	return d
 }
 
 // Bug 27: the three completed statuses are removed. Migration 000007 turns every
@@ -247,8 +255,8 @@ func TestMigrate_DropsTranslationColumns(t *testing.T) {
 
 // Bug 30: SQLite rewrites both tables to drop a column; nothing else may change.
 // A characterization test — it passes before migration 000008 too — that
-// guards the rewrite: the status, the 🗑 flag, the history and the other
-// remembered filters survive.
+// guards the rewrite: the status, the „за изтриване" flag, the history and the
+// other remembered filters survive.
 func TestMigrate_DropTranslation_KeepsOtherData(t *testing.T) {
 	// The database as the previous version left it (schema version 7).
 	d := openAtSchemaVersion(t, 7)
@@ -268,7 +276,9 @@ func TestMigrate_DropTranslation_KeepsOtherData(t *testing.T) {
 		del_filter = 'yes', folder_filter = 'MoviesDnD' WHERE id = 1`)
 	require.NoError(t, err)
 
-	require.NoError(t, db.Migrate(d))
+	// Only 000008: 000009 turns the for_dnd status into a flag (see
+	// TestMigrate_ForDnDStatusBecomesFlag).
+	migrateTo(t, d, 8)
 
 	var (
 		gotID, size, onDisk, forDeletion int64
@@ -287,7 +297,7 @@ func TestMigrate_DropTranslation_KeepsOtherData(t *testing.T) {
 	assert.True(t, fileCreated.Valid, "the file date must survive")
 	assert.True(t, fileCreated.Time.Equal(time.Date(2025, 3, 14, 15, 9, 26, 0, time.UTC)),
 		"the file date must survive, got %v", fileCreated.Time)
-	assert.Equal(t, int64(1), forDeletion, "the raised 🗑 flag must survive")
+	assert.Equal(t, int64(1), forDeletion, "the raised „за изтриване\" flag must survive")
 
 	var starts int
 	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM start_events WHERE media_id = ?", id).Scan(&starts))
@@ -303,4 +313,95 @@ func TestMigrate_DropTranslation_KeepsOtherData(t *testing.T) {
 		Scan(&prefs[0], &prefs[1], &prefs[2], &prefs[3], &prefs[4], &prefs[5], &prefs[6]))
 	assert.Equal(t, [7]string{"for_dnd", "all", "size", "desc", "drag", "yes", "MoviesDnD"}, prefs,
 		"the other remembered filters must survive")
+}
+
+// Bug 30: „За DnD" stops being a status and becomes the 👍 flag. Migration
+// 000009 raises the flag on every former DnD media and gives it the automatic
+// status it would have had — "started" once it has been started, else "new" —,
+// records that change in the media's history and turns a remembered DnD status
+// filter into the flag filter. Every other media keeps its status.
+func TestMigrate_ForDnDStatusBecomesFlag(t *testing.T) {
+	// The database as the previous version left it (schema version 8).
+	d := openAtSchemaVersion(t, 8)
+
+	_, err := d.Exec(`INSERT INTO media (filename, folder_relative_path, file_size_bytes, current_status) VALUES
+		('DnDWatched.mkv', 'MoviesDnD', 100, 'for_dnd'),
+		('DnDUnseen.mkv', 'MoviesDnD', 200, 'for_dnd'),
+		('StartedByHand.mkv', 'Movies', 300, 'started'),
+		('BackToNew.mkv', 'Movies', 400, 'new')`)
+	require.NoError(t, err)
+	// ▶ sets „Стартирана" without a start and ○ sets „Нова" after one, so only
+	// the former DnD media may take their status from the starts.
+	_, err = d.Exec(`INSERT INTO start_events (media_id) SELECT id FROM media
+		WHERE filename IN ('DnDWatched.mkv', 'BackToNew.mkv')`)
+	require.NoError(t, err)
+	_, err = d.Exec("UPDATE ui_prefs SET status_filter = 'for_dnd' WHERE id = 1")
+	require.NoError(t, err)
+
+	require.NoError(t, db.Migrate(d))
+
+	media := map[string]string{}
+	rows, err := d.Query("SELECT filename, current_status, for_dnd FROM media")
+	require.NoError(t, err)
+	for rows.Next() {
+		var name, status string
+		var forDnd int64
+		require.NoError(t, rows.Scan(&name, &status, &forDnd))
+		media[name] = fmt.Sprintf("%s, for_dnd=%d", status, forDnd)
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
+	assert.Equal(t, map[string]string{
+		"DnDWatched.mkv":    "started, for_dnd=1",
+		"DnDUnseen.mkv":     "new, for_dnd=1",
+		"StartedByHand.mkv": "started, for_dnd=0",
+		"BackToNew.mkv":     "new, for_dnd=0",
+	}, media, "a former DnD media keeps the mark as the flag and takes the status of its starts")
+
+	// The history stays consistent with current_status: one for_dnd → … row per
+	// former DnD media, none for the others.
+	var changes []string
+	rows, err = d.Query(`SELECT m.filename, sc.from_status, sc.to_status
+		FROM status_changes sc JOIN media m ON m.id = sc.media_id
+		ORDER BY m.filename`)
+	require.NoError(t, err)
+	for rows.Next() {
+		var name, from, to string
+		require.NoError(t, rows.Scan(&name, &from, &to))
+		changes = append(changes, name+": "+from+" → "+to)
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
+	assert.Equal(t, []string{
+		"DnDUnseen.mkv: for_dnd → new",
+		"DnDWatched.mkv: for_dnd → started",
+	}, changes)
+
+	// A remembered DnD status filter shows the same media through the flag.
+	var status, dnd string
+	require.NoError(t, d.QueryRow("SELECT status_filter, dnd_filter FROM ui_prefs WHERE id = 1").
+		Scan(&status, &dnd))
+	assert.Equal(t, "all", status)
+	assert.Equal(t, "yes", dnd)
+}
+
+// Bug 30: the 👍 „За DnD" and ⚠ „Грешни субтитри" flags start lowered, and
+// their filters are remembered next to the others, showing every media by
+// default.
+func TestMigrate_HasFlagColumns(t *testing.T) {
+	d := openTestDB(t)
+	_, err := d.Exec(`INSERT INTO media (filename, folder_relative_path, file_size_bytes)
+		VALUES ('Film.mkv', 'Films', 100)`)
+	require.NoError(t, err)
+
+	var forDnd, wrongSubs int64
+	require.NoError(t, d.QueryRow("SELECT for_dnd, wrong_subs FROM media WHERE filename = 'Film.mkv'").
+		Scan(&forDnd, &wrongSubs))
+	assert.Equal(t, int64(0), forDnd, "for_dnd must default to 0")
+	assert.Equal(t, int64(0), wrongSubs, "wrong_subs must default to 0")
+
+	var dnd, subs string
+	require.NoError(t, d.QueryRow("SELECT dnd_filter, subs_filter FROM ui_prefs WHERE id = 1").Scan(&dnd, &subs))
+	assert.Equal(t, "all", dnd, "dnd_filter must default to all")
+	assert.Equal(t, "all", subs, "subs_filter must default to all")
 }

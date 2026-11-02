@@ -71,31 +71,31 @@ templ mediaRowCells(m db.MediaWithStats) {
 					<input type="hidden" name="status" value="started"/>
 					<button type="submit" class="icon-btn" title="Стартирана">▶</button>
 				</form>
-				<form
-					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/status") }
-					method="POST"
-					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/status" }
-					hx-target="closest tr"
-					hx-swap="outerHTML"
-				>
-					<input type="hidden" name="status" value="for_dnd"/>
-					<button type="submit" class="icon-btn" title="За DnD">D</button>
-				</form>
-				<form
-					action={ templ.SafeURL("/media/" + strconv.FormatInt(m.ID, 10) + "/for-deletion") }
-					method="POST"
-					hx-post={ "/media/" + strconv.FormatInt(m.ID, 10) + "/for-deletion" }
-					hx-target="closest tr"
-					hx-swap="outerHTML"
-				>
-					<input type="hidden" name="value" value={ forDeletionToggleValue(m.ForDeletion) }/>
-					<button type="submit" class={ "icon-btn", templ.KV("filter-active", m.ForDeletion == 1) } title="За изтриване">🗑</button>
-				</form>
+				@flagButton(m.ID, "for-dnd", m.ForDnd, "За DnD", "👍")
+				@flagButton(m.ID, "for-deletion", m.ForDeletion, "За изтриване", "👎")
+				// Bug 30: ⚠️ is U+26A0 + U+FE0F, so it renders as a colour emoji like 👍 👎.
+				@flagButton(m.ID, "wrong-subs", m.WrongSubs, "Грешни субтитри", "⚠️")
 			</div>
 		</td>
 }
 
-templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string, sortFilter string, dirFilter string, qFilter string, delFilter string, folderFilter string, folders []string) {
+// flagButton renders a row's toggle for one of the three independent flags
+// (Bug 30): a form that posts value 1 (raise) or 0 (clear) to the flag's route
+// and swaps the row in place. A raised flag is highlighted.
+templ flagButton(id int64, route string, raised int64, title string, icon string) {
+	<form
+		action={ templ.SafeURL("/media/" + strconv.FormatInt(id, 10) + "/" + route) }
+		method="POST"
+		hx-post={ "/media/" + strconv.FormatInt(id, 10) + "/" + route }
+		hx-target="closest tr"
+		hx-swap="outerHTML"
+	>
+		<input type="hidden" name="value" value={ toggleFlag(raised) }/>
+		<button type="submit" class={ "icon-btn", templ.KV("filter-active", raised == 1) } title={ title }>{ icon }</button>
+	</form>
+}
+
+templ ListPage(media []db.MediaWithStats, f Filters, folders []string) {
 	<!DOCTYPE html>
 	<html lang="bg">
 		<head>
@@ -155,7 +155,6 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				.start-info { display: block; font-size: 0.7rem; color: var(--pico-muted-color); line-height: 1.2; }
 				.status-new { color: var(--pico-muted-color); }
 				.status-started { color: var(--pico-color-amber-500, #f59e0b); }
-				.status-dnd { color: var(--pico-color-green-500, #22c55e); }
 				table { width: 100%; table-layout: fixed; }
 				td, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }
 				th.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -163,7 +162,8 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 				th.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 				th.size,     td.size     { width: 4.5rem; white-space: nowrap; }
 				th.status,   td.status   { width: 4rem; white-space: nowrap; }
-				th.actions,  td.actions  { width: 6.35rem; white-space: nowrap; }
+				/* Bug 30: room for the five row buttons ○ ▶ 👍 👎 ⚠ (1.35rem each, 0.1rem gaps). */
+				th.actions,  td.actions  { width: 7.8rem; white-space: nowrap; }
 				form { display: inline; margin: 0; }
 				button.filename-link {
 					background: none; border: none; padding: 0;
@@ -186,7 +186,7 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 					font-size: 0.8rem; border-radius: 3px; cursor: pointer;
 					text-decoration: none; line-height: 1; flex-shrink: 0;
 				}
-					/* Bug 22: the raised „за изтриване" flag is highlighted, so a marked
+					/* Bug 22, Bug 30: a raised flag (👍 👎 ⚠) is highlighted, so a flagged
 					   row is spottable at a glance. */
 				td.actions .icon-btn.filter-active {
 					background: var(--pico-primary); color: var(--pico-primary-inverse, #fff);
@@ -237,15 +237,17 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						<button type="submit" class="icon-btn" title="Сканирай диска">↺</button>
 					</form>
 					<form id="search-form" method="GET" action="/">
-						<input type="hidden" name="status" value={ statusFilter }/>
-						<input type="hidden" name="disk" value={ diskFilter }/>
-						<input type="hidden" name="sort" value={ sortFilter }/>
-						<input type="hidden" name="dir" value={ dirFilter }/>
-						<input type="hidden" name="del" value={ delFilter }/>
+						<input type="hidden" name="status" value={ f.Status }/>
+						<input type="hidden" name="disk" value={ f.Disk }/>
+						<input type="hidden" name="sort" value={ f.Sort }/>
+						<input type="hidden" name="dir" value={ f.Dir }/>
+						<input type="hidden" name="del" value={ f.Del }/>
+						<input type="hidden" name="dnd" value={ f.Dnd }/>
+						<input type="hidden" name="subs" value={ f.Subs }/>
 						<input
 							type="search"
 							name="q"
-							value={ qFilter }
+							value={ f.Q }
 							placeholder="търси..."
 							class="search-input"
 							hx-get="/"
@@ -259,30 +261,31 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 					</form>
 					<span class="nav-label">филтър:</span>
 					<div class="filter-btns">
-						<select name="folder" form="search-form" class={ "folder-select", templ.KV("filter-active", folderFilter != "all") } title="Основна папка" autocomplete="off" onchange="this.form.submit()">
-							<option value="all" selected?={ folderFilter == "all" }>всички папки</option>
-							for _, f := range folders {
-								<option value={ f } selected?={ f == folderFilter }>{ f }</option>
+						<select name="folder" form="search-form" class={ "folder-select", templ.KV("filter-active", f.Folder != "all") } title="Основна папка" autocomplete="off" onchange="this.form.submit()">
+							<option value="all" selected?={ f.Folder == "all" }>всички папки</option>
+							for _, folder := range folders {
+								<option value={ folder } selected?={ folder == f.Folder }>{ folder }</option>
 							}
 						</select>
-						<a href={ templ.SafeURL("/?status=all&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "all") } title="Всички статуси">◎</a>
-						<a href={ templ.SafeURL("/?status=new&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "new") } title="Нова">○</a>
-						<a href={ templ.SafeURL("/?status=started&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "started") } title="Стартирана">▶</a>
-						<a href={ templ.SafeURL("/?status=for_dnd&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&del=" + delFilter + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", statusFilter == "for_dnd") } title="За DnD">D</a>
-						if diskFilter == "all" {
-							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=on&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&del=" + delFilter + folderParam(folderFilter)) } class="filter-btn filter-active" title="Показват се всички (вкл. изчезнали) — кликни за само на диска">↕</a>
+						<a href={ templ.SafeURL(f.WithStatus("all").Href()) } class={ "filter-btn", templ.KV("filter-active", f.Status == "all") } title="Всички статуси">◎</a>
+						<a href={ templ.SafeURL(f.WithStatus("new").Href()) } class={ "filter-btn", templ.KV("filter-active", f.Status == "new") } title="Нова">○</a>
+						<a href={ templ.SafeURL(f.WithStatus("started").Href()) } class={ "filter-btn", templ.KV("filter-active", f.Status == "started") } title="Стартирана">▶</a>
+						if f.Disk == "all" {
+							<a href={ templ.SafeURL(f.WithDisk("on").Href()) } class="filter-btn filter-active" title="Показват се всички (вкл. изчезнали) — кликни за само на диска">↕</a>
 						} else {
-							<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=all&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&del=" + delFilter + folderParam(folderFilter)) } class="filter-btn" title="Само на диска — кликни за всички">↕</a>
+							<a href={ templ.SafeURL(f.WithDisk("all").Href()) } class="filter-btn" title="Само на диска — кликни за всички">↕</a>
 						}
-						<a href={ templ.SafeURL("/?status=" + statusFilter + "&disk=" + diskFilter + "&sort=" + sortFilter + "&dir=" + dirFilter + "&q=" + qFilter + "&del=" + delToggleValue(delFilter) + folderParam(folderFilter)) } class={ "filter-btn", templ.KV("filter-active", delFilter == "yes") } title="За изтриване">🗑</a>
+						<a href={ templ.SafeURL(f.WithDnd(toggleFilter(f.Dnd)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Dnd == "yes") } title="За DnD">👍</a>
+						<a href={ templ.SafeURL(f.WithDel(toggleFilter(f.Del)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Del == "yes") } title="За изтриване">👎</a>
+						<a href={ templ.SafeURL(f.WithSubs(toggleFilter(f.Subs)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Subs == "yes") } title="Грешни субтитри">⚠️</a>
 					</div>
 					<span class="nav-label">сорт:</span>
 					<div class="sort-btns">
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "name", qFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "name") } title="По азбучен ред">{ sortBtnContent("АЯ", sortFilter, dirFilter, "name") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "path", qFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "path") } title="По папка/път">{ sortBtnContent("Пт", sortFilter, dirFilter, "path") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "size", qFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "size") } title="По размер">{ sortBtnContent("Рз", sortFilter, dirFilter, "size") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "last_started", qFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "last_started") } title="По последно стартиране">{ sortBtnContent("▶", sortFilter, dirFilter, "last_started") }</a>
-						<a href={ templ.SafeURL(sortBtnHref(statusFilter, diskFilter, sortFilter, dirFilter, "added", qFilter, delFilter, folderFilter)) } class={ "sort-btn", templ.KV("filter-active", sortFilter == "added") } title="По дата добавяне">{ sortBtnContent("⊕", sortFilter, dirFilter, "added") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(f, "name")) } class={ "sort-btn", templ.KV("filter-active", f.Sort == "name") } title="По азбучен ред">{ sortBtnContent("АЯ", f.Sort, f.Dir, "name") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(f, "path")) } class={ "sort-btn", templ.KV("filter-active", f.Sort == "path") } title="По папка/път">{ sortBtnContent("Пт", f.Sort, f.Dir, "path") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(f, "size")) } class={ "sort-btn", templ.KV("filter-active", f.Sort == "size") } title="По размер">{ sortBtnContent("Рз", f.Sort, f.Dir, "size") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(f, "last_started")) } class={ "sort-btn", templ.KV("filter-active", f.Sort == "last_started") } title="По последно стартиране">{ sortBtnContent("▶", f.Sort, f.Dir, "last_started") }</a>
+						<a href={ templ.SafeURL(sortBtnHref(f, "added")) } class={ "sort-btn", templ.KV("filter-active", f.Sort == "added") } title="По дата добавяне">{ sortBtnContent("⊕", f.Sort, f.Dir, "added") }</a>
 					</div>
 					<form
 						method="POST"
@@ -291,11 +294,13 @@ templ ListPage(media []db.MediaWithStats, statusFilter string, diskFilter string
 						hx-target="#flash"
 						hx-swap="innerHTML"
 					>
-						<input type="hidden" name="status" value={ statusFilter }/>
-						<input type="hidden" name="disk" value={ diskFilter }/>
-						<input type="hidden" name="q" value={ qFilter }/>
-						<input type="hidden" name="del" value={ delFilter }/>
-						<input type="hidden" name="folder" value={ folderFilter }/>
+						<input type="hidden" name="status" value={ f.Status }/>
+						<input type="hidden" name="disk" value={ f.Disk }/>
+						<input type="hidden" name="q" value={ f.Q }/>
+						<input type="hidden" name="del" value={ f.Del }/>
+						<input type="hidden" name="dnd" value={ f.Dnd }/>
+						<input type="hidden" name="subs" value={ f.Subs }/>
+						<input type="hidden" name="folder" value={ f.Folder }/>
 						<button type="submit" class="sort-btn" title="Стартирай случаен от филтрираните">🎲</button>
 					</form>
 				</nav>

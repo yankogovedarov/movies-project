@@ -30,7 +30,7 @@ func TestMediaStats_StartCountIgnoresStatusChanges(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		require.NoError(t, q.InsertStartEvent(ctx, id))
 	}
-	for _, ch := range []struct{ from, to string }{{"new", "started"}, {"started", "for_dnd"}} {
+	for _, ch := range []struct{ from, to string }{{"new", "started"}, {"started", "new"}} {
 		require.NoError(t, q.InsertStatusChange(ctx, db.InsertStatusChangeParams{
 			MediaID:    id,
 			FromStatus: sql.NullString{String: ch.from, Valid: true},

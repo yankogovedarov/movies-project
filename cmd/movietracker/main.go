@@ -142,7 +142,9 @@ func main() {
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/media/random-new/start", h.RandomNew)
+	r.POST("/media/:id/for-dnd", h.SetForDnd)
 	r.POST("/media/:id/for-deletion", h.SetForDeletion)
+	r.POST("/media/:id/wrong-subs", h.SetWrongSubs)
 	r.POST("/scan", h.Scan)
 	r.GET("/static/*filepath", h.StaticFile)
 

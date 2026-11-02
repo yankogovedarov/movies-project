@@ -88,24 +88,28 @@ func TestIndex_ActionForms_HaveHxPost(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	forms := doc.Find("td.actions form")
-	require.Equal(t, 4, forms.Length(), "expected 4 action forms (3 status + 1 за изтриване)")
-	var statusPosts, delPosts int
+	require.Equal(t, 5, forms.Length(), "expected 5 action forms (2 status + 3 flags)")
+	posts := map[string]int{}
 	forms.Each(func(_ int, s *goquery.Selection) {
 		hxPost, exists := s.Attr("hx-post")
 		assert.True(t, exists, "expected hx-post on action form")
 		switch {
 		case strings.Contains(hxPost, "/status"):
-			statusPosts++
+			posts["status"]++
+		case strings.Contains(hxPost, "/for-dnd"):
+			posts["for-dnd"]++
 		case strings.Contains(hxPost, "/for-deletion"):
-			delPosts++
+			posts["for-deletion"]++
+		case strings.Contains(hxPost, "/wrong-subs"):
+			posts["wrong-subs"]++
 		default:
 			t.Errorf("unexpected hx-post %q in actions column", hxPost)
 		}
 		hxTarget, _ := s.Attr("hx-target")
 		assert.Equal(t, "closest tr", hxTarget)
 	})
-	assert.Equal(t, 3, statusPosts, "expected 3 status forms")
-	assert.Equal(t, 1, delPosts, "expected 1 за-изтриване form")
+	assert.Equal(t, map[string]int{"status": 2, "for-dnd": 1, "for-deletion": 1, "wrong-subs": 1}, posts,
+		"expected 2 status forms and one form per flag")
 }
 
 func TestIndex_FolderCell_ShowsPath(t *testing.T) {
@@ -156,8 +160,9 @@ func TestIndex_StatusFormAction(t *testing.T) {
 	assert.Contains(t, action, "/status", "status form action should contain /status")
 }
 
-// Bug 27: the row offers ○ ▶ D — the completed statuses (✓ Я Л) are removed.
-func TestIndex_Actions_HasThreeStatusButtons(t *testing.T) {
+// Bug 30: the row offers the statuses ○ ▶ and the three flags 👍 👎 ⚠ — „За DnD"
+// (the D status of Bug 27) is a flag now.
+func TestIndex_Actions_HasTwoStatusAndThreeFlagForms(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -171,18 +176,19 @@ func TestIndex_Actions_HasThreeStatusButtons(t *testing.T) {
 	statusForms := doc.Find("td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
 		return s.Find("input[name=status]").Length() == 1
 	})
-	assert.Equal(t, 3, statusForms.Length(), "expected 3 status forms in actions column")
+	assert.Equal(t, 2, statusForms.Length(), "expected 2 status forms in actions column")
 
 	var statusValues []string
 	statusForms.Each(func(_ int, s *goquery.Selection) {
 		v, _ := s.Find("input[name=status]").Attr("value")
 		statusValues = append(statusValues, v)
 	})
-	assert.Equal(t, []string{"new", "started", "for_dnd"}, statusValues)
+	assert.Equal(t, []string{"new", "started"}, statusValues)
 
-	dnd := doc.Find("td.actions button.icon-btn[title='За DnD']")
-	require.Equal(t, 1, dnd.Length(), "expected the За DnD row button")
-	assert.Equal(t, "D", strings.TrimSpace(dnd.Text()))
+	flagForms := doc.Find("td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
+		return s.Find("input[name=value]").Length() == 1
+	})
+	assert.Equal(t, 3, flagForms.Length(), "expected 3 flag forms in actions column")
 }
 
 func TestIndex_FilterButtons_Present(t *testing.T) {
@@ -193,7 +199,7 @@ func TestIndex_FilterButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.filter-btn")
-	assert.Equal(t, 6, btns.Length(), "expected 6 filter buttons (4 status + 1 disk toggle + 1 за изтриване)")
+	assert.Equal(t, 7, btns.Length(), "expected 7 filter buttons (3 status + 1 disk toggle + 3 flags)")
 }
 
 func TestIndex_SortButtons_Present(t *testing.T) {
@@ -511,7 +517,7 @@ func TestIndex_RowHasForDeletionButton(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("td.actions button.icon-btn[title='За изтриване']")
-	require.Equal(t, 2, btns.Length(), "expected one 🗑 button per row")
+	require.Equal(t, 2, btns.Length(), "expected one 👎 button per row")
 
 	byFile := map[string]*goquery.Selection{}
 	doc.Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
@@ -519,16 +525,18 @@ func TestIndex_RowHasForDeletionButton(t *testing.T) {
 		byFile[name] = row
 	})
 
+	// Every flag has its own form in the row (Bug 30), so the value is read
+	// from the 👎 button's form.
 	marked := byFile["Trash.mkv"].Find("td.actions button.icon-btn[title='За изтриване']")
 	markedClass, _ := marked.Attr("class")
-	assert.Contains(t, markedClass, "filter-active", "marked media must show a highlighted 🗑")
-	markedValue, _ := byFile["Trash.mkv"].Find("td.actions input[name=value]").Attr("value")
+	assert.Contains(t, markedClass, "filter-active", "marked media must show a highlighted 👎")
+	markedValue, _ := marked.Closest("form").Find("input[name=value]").Attr("value")
 	assert.Equal(t, "0", markedValue, "clicking a marked media must clear the flag")
 
 	plain := byFile["Keep.mkv"].Find("td.actions button.icon-btn[title='За изтриване']")
 	plainClass, _ := plain.Attr("class")
 	assert.NotContains(t, plainClass, "filter-active")
-	plainValue, _ := byFile["Keep.mkv"].Find("td.actions input[name=value]").Attr("value")
+	plainValue, _ := plain.Closest("form").Find("input[name=value]").Attr("value")
 	assert.Equal(t, "1", plainValue, "clicking an unmarked media must raise the flag")
 }
 
@@ -660,10 +668,11 @@ func TestIndex_FolderSelect_OptionsIgnoreOtherFilters(t *testing.T) {
 	d := openTestDB(t)
 	seedMainFolders(t, d)
 
-	// Neither the chosen folder nor a status that matches nothing may shrink
-	// the dropdown — the user must be able to switch straight to another folder.
+	// Neither the chosen folder nor a status that matches nothing (every seeded
+	// media is new) may shrink the dropdown — the user must be able to switch
+	// straight to another folder.
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials&status=for_dnd", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?folder=Serials&status=started", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
 	assert.Equal(t, []string{"all", "Movies", "MoviesDnD", "Serials"},
@@ -734,10 +743,10 @@ func TestIndex_FolderFilter_PreservedByOtherFilters(t *testing.T) {
 			newRouter(t, d).ServeHTTP(w, req)
 
 			doc := parseBody(t, w.Body.String())
-			// Every status/↕/🗑 link and every sort link carries the folder
+			// Every status/↕/flag link and every sort link carries the folder
 			// (escaped), otherwise clicking one of them silently drops the filter.
 			links := doc.Find(".filter-btns a.filter-btn, .sort-btns a.sort-btn")
-			require.Equal(t, 11, links.Length(), "expected 6 filter + 5 sort links")
+			require.Equal(t, 12, links.Length(), "expected 7 filter + 5 sort links")
 			links.Each(func(_ int, sel *goquery.Selection) {
 				title, _ := sel.Attr("title")
 				href, _ := sel.Attr("href")
@@ -782,23 +791,6 @@ func TestIndex_ResetsFolderSelectOnBackForwardCacheRestore(t *testing.T) {
 // Bug 27: без завършени статуси + „За DnD"
 // ---------------------------------------------------------------------------
 
-func TestIndex_StatusColumn_ShowsDnD(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Dragons.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-	})
-	setStatus(t, d, "Dragons.mkv", "for_dnd")
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	doc := parseBody(t, w.Body.String())
-	span := doc.Find("td.status span.status-dnd")
-	require.Equal(t, 1, span.Length(), "expected a span.status-dnd in the status column")
-	assert.Equal(t, "DnD", strings.TrimSpace(span.Text()))
-}
-
 func TestIndex_NoMarkedSortButton(t *testing.T) {
 	d := openTestDB(t)
 	w := httptest.NewRecorder()
@@ -811,41 +803,10 @@ func TestIndex_NoMarkedSortButton(t *testing.T) {
 	assert.NotContains(t, body, "По дата завършване")
 }
 
-func TestIndex_ForDnDFilterButton(t *testing.T) {
-	d := openTestDB(t)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	doc := parseBody(t, w.Body.String())
-	// The status buttons of the "филтър:" group are ◎ ○ ▶ D, before ↕ and 🗑.
-	var titles []string
-	doc.Find(".filter-btns a.filter-btn").Each(func(_ int, sel *goquery.Selection) {
-		title, _ := sel.Attr("title")
-		titles = append(titles, title)
-	})
-	require.GreaterOrEqual(t, len(titles), 4)
-	assert.Equal(t, []string{"Всички статуси", "Нова", "Стартирана", "За DnD"}, titles[:4])
-
-	btn := doc.Find(".filter-btns a.filter-btn[title='За DnD']")
-	require.Equal(t, 1, btn.Length(), "expected a single За DnD filter button in .filter-btns")
-	assert.Equal(t, "D", strings.TrimSpace(btn.Text()))
-	href, _ := btn.Attr("href")
-	assert.Contains(t, href, "status=for_dnd")
-	class, _ := btn.Attr("class")
-	assert.NotContains(t, class, "filter-active", "button must be inactive by default")
-
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/?status=for_dnd", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	class, _ = parseBody(t, w.Body.String()).Find(".filter-btns a.filter-btn[title='За DnD']").Attr("class")
-	assert.Contains(t, class, "filter-active", "button should be active when status=for_dnd")
-}
-
-// Bug 27: the tree's status dropdown offers the same three statuses. The e2e
-// check skips when the scanned disk shows no tree files, so it is pinned here.
-func TestTree_StatusOptions_AreNewStartedForDnD(t *testing.T) {
+// Bug 30: the tree's status dropdown offers the same two statuses — „За DnD"
+// is a flag now. The e2e check skips when the scanned disk shows no tree
+// files, so it is pinned here.
+func TestTree_StatusOptions_AreNewStarted(t *testing.T) {
 	d := openTestDB(t)
 	seedOne(t, d)
 
@@ -863,8 +824,8 @@ func TestTree_StatusOptions_AreNewStartedForDnD(t *testing.T) {
 		values = append(values, v)
 		labels = append(labels, strings.TrimSpace(opt.Text()))
 	})
-	assert.Equal(t, []string{"new", "started", "for_dnd"}, values)
-	assert.Equal(t, []string{"Нова", "Стартирана", "За DnD"}, labels)
+	assert.Equal(t, []string{"new", "started"}, values)
+	assert.Equal(t, []string{"Нова", "Стартирана"}, labels)
 }
 
 // ---------------------------------------------------------------------------
@@ -928,4 +889,185 @@ func TestIndex_NoTranslationUI(t *testing.T) {
 	assert.Equal(t, 0, doc.Find("input[name=trans]").Length(), "no form may re-send the removed trans parameter")
 	assert.NotContains(t, body, "td.translation", "no CSS may be left for the removed column")
 	assert.NotContains(t, body, ".trans-btns", "no CSS may be left for the removed group")
+}
+
+// ---------------------------------------------------------------------------
+// Bug 30: три независими флага 👍 👎 ⚠
+// ---------------------------------------------------------------------------
+
+// Next to ○ ▶ the row offers the three independent flags 👍 👎 ⚠, each a form
+// that posts to its own route and swaps the row in place. A raised flag is
+// highlighted and its button clears it (value 0); a lowered one raises it.
+func TestIndex_RowFlagButtons(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Flagged.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Plain.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	for _, column := range []string{"for_dnd", "for_deletion", "wrong_subs"} {
+		raiseFlag(t, d, column, "Flagged.mkv")
+	}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	rows := map[string]*goquery.Selection{}
+	parseBody(t, w.Body.String()).Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
+		rows[strings.TrimSpace(row.Find("td.filename button.filename-link").Text())] = row
+	})
+	require.Len(t, rows, 2, "expected both seeded rows")
+
+	var icons []string
+	rows["Plain.mkv"].Find("td.actions button.icon-btn").Each(func(_ int, btn *goquery.Selection) {
+		icons = append(icons, strings.TrimSpace(btn.Text()))
+	})
+	assert.Equal(t, []string{"○", "▶", "👍", "👎", "⚠️"}, icons, "the row reads ○ ▶ 👍 👎 ⚠️")
+
+	for _, flag := range []struct{ title, icon, route string }{
+		{"За DnD", "👍", "for-dnd"},
+		{"За изтриване", "👎", "for-deletion"},
+		{"Грешни субтитри", "⚠️", "wrong-subs"},
+	} {
+		for _, tc := range []struct {
+			file, value string
+			raised      bool
+		}{
+			{"Flagged.mkv", "0", true},
+			{"Plain.mkv", "1", false},
+		} {
+			btn := rows[tc.file].Find(fmt.Sprintf("td.actions button.icon-btn[title='%s']", flag.title))
+			require.Equal(t, 1, btn.Length(), "%s: expected one %s button", tc.file, flag.title)
+			assert.Equal(t, flag.icon, strings.TrimSpace(btn.Text()))
+
+			form := btn.Closest("form")
+			route := fmt.Sprintf("/media/%d/%s", mediaIDByName(t, d, tc.file), flag.route)
+			assert.Equal(t, route, form.AttrOr("hx-post", ""), "%s: %s", tc.file, flag.title)
+			assert.Equal(t, route, form.AttrOr("action", ""), "the form must also work without HTMX")
+			assert.Equal(t, "closest tr", form.AttrOr("hx-target", ""))
+			assert.Equal(t, "outerHTML", form.AttrOr("hx-swap", ""))
+
+			value, _ := form.Find("input[type=hidden][name=value]").Attr("value")
+			assert.Equal(t, tc.value, value, "%s: %s must toggle the flag", tc.file, flag.title)
+			class, _ := btn.Attr("class")
+			if tc.raised {
+				assert.Contains(t, class, "filter-active", "%s: a raised %s is highlighted", tc.file, flag.title)
+			} else {
+				assert.NotContains(t, class, "filter-active", "%s: a lowered %s is not highlighted", tc.file, flag.title)
+			}
+		}
+	}
+}
+
+// The "филтър:" group reads [folder] ◎ ○ ▶ ↕ 👍 👎 ⚠ — the flag filters gather
+// after ↕. Each toggles its own parameter (yes ⇄ all) and is highlighted while
+// it narrows the list.
+func TestIndex_FilterBar_FlagButtons(t *testing.T) {
+	// Every page comes from a fresh database, so no request inherits a filter
+	// another one remembered.
+	get := func(t *testing.T, target string) *goquery.Document {
+		t.Helper()
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		newRouter(t, openTestDB(t)).ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+		return parseBody(t, w.Body.String())
+	}
+
+	var icons []string
+	get(t, "/").Find(".filter-btns a.filter-btn").Each(func(_ int, sel *goquery.Selection) {
+		icons = append(icons, strings.TrimSpace(sel.Text()))
+	})
+	assert.Equal(t, []string{"◎", "○", "▶", "↕", "👍", "👎", "⚠️"}, icons)
+
+	for _, tc := range []struct{ param, title, icon string }{
+		{"dnd", "За DnD", "👍"},
+		{"del", "За изтриване", "👎"},
+		{"subs", "Грешни субтитри", "⚠️"},
+	} {
+		t.Run(tc.param, func(t *testing.T) {
+			sel := fmt.Sprintf(".filter-btns a.filter-btn[title='%s']", tc.title)
+
+			btn := get(t, "/").Find(sel)
+			require.Equal(t, 1, btn.Length(), "expected one %s filter button", tc.title)
+			assert.Equal(t, tc.icon, strings.TrimSpace(btn.Text()))
+			assert.Contains(t, btn.AttrOr("href", ""), tc.param+"=yes", "an inactive button narrows the list")
+			assert.NotContains(t, btn.AttrOr("class", ""), "filter-active", "the button is inactive by default")
+
+			btn = get(t, "/?"+tc.param+"=yes").Find(sel)
+			require.Equal(t, 1, btn.Length(), "expected one %s filter button", tc.title)
+			assert.Contains(t, btn.AttrOr("href", ""), tc.param+"=all", "an active button links back to all")
+			assert.Contains(t, btn.AttrOr("class", ""), "filter-active", "the button is active while %s=yes", tc.param)
+		})
+	}
+}
+
+// Every link of the nav bar and both forms carry the flag filters, otherwise
+// clicking one of them silently drops 👍 or ⚠.
+func TestIndex_FlagFilters_PreservedByOtherFilters(t *testing.T) {
+	d := openTestDB(t)
+	// Both ↕ variants, because the disk toggle renders a different link for each.
+	for _, tc := range []struct{ name, target string }{
+		{"on disk", "/?dnd=yes&subs=yes"},
+		{"all", "/?disk=all&dnd=yes&subs=yes"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+			newRouter(t, d).ServeHTTP(w, req)
+
+			doc := parseBody(t, w.Body.String())
+			links := doc.Find(".filter-btns a.filter-btn, .sort-btns a.sort-btn")
+			require.Equal(t, 12, links.Length(), "expected 7 filter + 5 sort links")
+			links.Each(func(_ int, sel *goquery.Selection) {
+				title, _ := sel.Attr("title")
+				href, _ := sel.Attr("href")
+				// A flag's own button intentionally toggles back to all.
+				if title != "За DnD" {
+					assert.Contains(t, href, "dnd=yes", "link %q must preserve the 👍 filter", title)
+				}
+				if title != "Грешни субтитри" {
+					assert.Contains(t, href, "subs=yes", "link %q must preserve the ⚠ filter", title)
+				}
+			})
+
+			// The search form (live search and the folder dropdown) and the 🎲 form
+			// re-send both filters as hidden fields.
+			for _, form := range []string{"form#search-form", "form[action='/media/random-new/start']"} {
+				for _, name := range []string{"dnd", "subs"} {
+					value, ok := doc.Find(form + " input[type=hidden][name=" + name + "]").Attr("value")
+					require.True(t, ok, "%s: expected a hidden %s input", form, name)
+					assert.Equal(t, "yes", value, "%s must re-send %s=yes", form, name)
+				}
+			}
+		})
+	}
+}
+
+// „За DnD" is a flag now: the status column shows only „Нова" or „Старт", also
+// for a media with 👍 raised, and the green DnD label is gone.
+func TestIndex_StatusColumn_NewOrStarted(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "DnDNew.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "DnDStarted.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	raiseFlag(t, d, "for_dnd", "DnDNew.mkv")
+	raiseFlag(t, d, "for_dnd", "DnDStarted.mkv")
+	setStatus(t, d, "DnDStarted.mkv", "started")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	doc := parseBody(t, body)
+	statuses := map[string]string{}
+	doc.Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
+		name := strings.TrimSpace(row.Find("td.filename button.filename-link").Text())
+		statuses[name] = strings.TrimSpace(row.Find("td.status").Text())
+	})
+	assert.Equal(t, map[string]string{"DnDNew.mkv": "Нова", "DnDStarted.mkv": "Старт"}, statuses)
+	assert.Equal(t, 0, doc.Find("span.status-dnd").Length(), "the DnD status label must be gone")
+	assert.NotContains(t, body, ".status-dnd", "no CSS may be left for the removed label")
 }

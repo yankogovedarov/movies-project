@@ -67,11 +67,11 @@ def test_tree_file_has_status_dropdown(page: Page):
     _open_first_subfolder(page)
     if not _has_visible_tree_files(page):
         pytest.skip("No visible files in tree view")
-    # Бъг 27: Нова / Стартирана / За DnD.
+    # Бъг 30: Нова / Стартирана — „За DnD" вече е флаг, а не статус.
     options = page.locator(".tree-file select[name=status]").filter(visible=True).first.locator("option")
-    assert options.count() == 3
+    assert options.count() == 2
     values = options.evaluate_all("els => els.map(e => e.value)")
-    assert values == ["new", "started", "for_dnd"]
+    assert values == ["new", "started"]
 
 
 # ---------------------------------------------------------------------------

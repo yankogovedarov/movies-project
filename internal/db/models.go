@@ -19,6 +19,8 @@ type Medium struct {
 	CreatedAt          time.Time
 	FileCreatedAt      sql.NullTime
 	ForDeletion        int64
+	ForDnd             int64
+	WrongSubs          int64
 }
 
 type StartEvent struct {
@@ -50,4 +52,6 @@ type UiPref struct {
 	DelFilter    string
 	UpdatedAt    time.Time
 	FolderFilter string
+	DndFilter    string
+	SubsFilter   string
 }

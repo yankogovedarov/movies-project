@@ -59,6 +59,27 @@ func TestSyncScanResults_UpsertUpdatesFolder(t *testing.T) {
 	assert.Equal(t, "Drama", folder)
 }
 
+// Bug 30: a rescan keeps the three manual flags — UpsertMedia does not write
+// them — also when the file has moved to another folder.
+func TestSyncScanResults_KeepsFlags(t *testing.T) {
+	d := openTestDB(t)
+
+	files := []scanner.VideoFile{
+		{Filename: "movie.mkv", FolderRelativePath: "ActionMovies", SizeBytes: 1024000},
+	}
+	require.NoError(t, db.SyncScanResults(d, files))
+	_, err := d.Exec("UPDATE media SET for_dnd = 1, for_deletion = 1, wrong_subs = 1 WHERE filename = 'movie.mkv'")
+	require.NoError(t, err)
+
+	files[0].FolderRelativePath = "Drama"
+	require.NoError(t, db.SyncScanResults(d, files))
+
+	var forDnd, forDeletion, wrongSubs int
+	row := d.QueryRow("SELECT for_dnd, for_deletion, wrong_subs FROM media WHERE filename = 'movie.mkv'")
+	require.NoError(t, row.Scan(&forDnd, &forDeletion, &wrongSubs))
+	assert.Equal(t, []int{1, 1, 1}, []int{forDnd, forDeletion, wrongSubs}, "a rescan must keep the manual flags")
+}
+
 func TestSyncScanResults_MarksRemovedFilesOffDisk(t *testing.T) {
 	d := openTestDB(t)
 

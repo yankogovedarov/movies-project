@@ -17,15 +17,15 @@ def test_filter_controls_visible(page: Page):
 
 def test_filter_status_buttons_cover_all_statuses(page: Page):
     # Таргетираме конкретните статус бутони по title, за да е сигурно, че
-    # status=all идва уникално от „Всички статуси", а не от ↕ или 🗑 бутона,
+    # status=all идва уникално от „Всички статуси", а не от ↕ или флаг бутоните,
     # които носят текущия статус.
-    # Бъг 27: статусите са три — ◎ ○ ▶ + D („За DnD"); завършените (✓ Я Л) са махнати.
+    # Бъг 30: статусите са два — ◎ ○ ▶; „За DnD" е флаг (👍), а завършените
+    # (✓ Я Л) са махнати още в Бъг 27.
     page.goto(BASE_URL)
     title_to_status = {
         "Всички статуси": "all",
         "Нова": "new",
         "Стартирана": "started",
-        "За DnD": "for_dnd",
     }
     for title, status in title_to_status.items():
         href = page.locator(f"a.filter-btn[title='{title}']").get_attribute("href")
@@ -33,6 +33,7 @@ def test_filter_status_buttons_cover_all_statuses(page: Page):
             f"Expected button '{title}' to point to status={status}, got href={href}"
         )
     expect(page.locator("a.filter-btn[href*='status=completed']")).to_have_count(0)
+    expect(page.locator("a.filter-btn[href*='status=for_dnd']")).to_have_count(0)
 
 
 def test_filter_disk_toggle_has_both_directions(page: Page):
@@ -124,16 +125,38 @@ def test_for_deletion_filter_survives_status_click(page: Page):
     assert "status=started" in page.url
 
 
+def test_flag_filter_buttons_present(page: Page):
+    # Бъг 30: трите независими флага 👍 👎 ⚠ са в групата .filter-btns и всеки
+    # стеснява списъка чрез своя параметър.
+    page.goto(BASE_URL)
+    for title, icon, param in (
+        ("За DnD", "👍", "dnd"),
+        ("За изтриване", "👎", "del"),
+        ("Грешни субтитри", "⚠️", "subs"),
+    ):
+        btn = page.locator(f".filter-btns a.filter-btn[title='{title}']")
+        expect(btn).to_have_count(1)
+        expect(btn).to_have_text(icon)
+        href = btn.get_attribute("href")
+        assert f"{param}=yes" in href, (
+            f"Expected button '{title}' to point to {param}=yes, got href={href}"
+        )
+
+
 def test_filters_persist_after_reopen(page: Page):
     # Бъг 23: избраните филтри и сорт се пазят в базата, така че ново отваряне на
     # голо "/" (както след рестарт на .exe-то) ги възстановява.
-    page.goto(f"{BASE_URL}/?status=started&sort=size&dir=desc&del=yes")
+    page.goto(f"{BASE_URL}/?status=started&sort=size&dir=desc&del=yes&dnd=yes")
 
     page.goto(BASE_URL)
     expect(page.locator("a.filter-btn[title='Стартирана']")).to_have_class(
         re.compile(r"\bfilter-active\b")
     )
     expect(page.locator(".filter-btns a.filter-btn[title='За изтриване']")).to_have_class(
+        re.compile(r"\bfilter-active\b")
+    )
+    # Бъг 30: флагът 👍 се помни като 👎.
+    expect(page.locator(".filter-btns a.filter-btn[title='За DnD']")).to_have_class(
         re.compile(r"\bfilter-active\b")
     )
     sort_btn = page.locator("a.sort-btn[title='По размер']")

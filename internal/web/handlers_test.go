@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -46,7 +47,9 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/media/random-new/start", h.RandomNew)
+	r.POST("/media/:id/for-dnd", h.SetForDnd)
 	r.POST("/media/:id/for-deletion", h.SetForDeletion)
+	r.POST("/media/:id/wrong-subs", h.SetWrongSubs)
 	r.POST("/scan", h.Scan)
 	return r
 }
@@ -178,6 +181,7 @@ func TestStartMedia_RecordsEvent_WhenAlreadyStarted(t *testing.T) {
 	var eventCount int
 	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM start_events WHERE media_id = ?", id).Scan(&eventCount))
 	assert.Equal(t, 1, eventCount)
+	assert.Equal(t, 0, statusChangeCount(t, d, id), "only new → started writes a history row")
 }
 
 func TestStartMedia_Returns404_ForUnknownID(t *testing.T) {
@@ -220,7 +224,7 @@ func TestChangeStatus_UpdatesAndRecordsChange(t *testing.T) {
 
 func TestChangeStatus_Returns404_ForUnknownID(t *testing.T) {
 	d := openTestDB(t)
-	body := "status=for_dnd"
+	body := "status=started"
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/media/999999/status", nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -268,7 +272,8 @@ func TestIndex_ShowsStatusIconButtons(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	body := w.Body.String()
-	assert.Contains(t, body, `value="for_dnd"`)
+	assert.Contains(t, body, `value="started"`)
+	assert.NotContains(t, body, `value="for_dnd"`, "Bug 30: „За DnD\" is a flag, not a status")
 	assert.Contains(t, body, `class="icon-btn"`)
 }
 
@@ -353,7 +358,7 @@ func TestHandlers_WorkWithNilLogger(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, w.Code)
 
 	// ChangeStatus
-	body := "status=for_dnd"
+	body := "status=new"
 	w = httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -397,7 +402,7 @@ func TestChangeStatus_HTMX_ReturnsRow(t *testing.T) {
 	require.NoError(t, err)
 	id := media[0].ID
 
-	body := "status=for_dnd"
+	body := "status=started"
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -632,35 +637,32 @@ func mediaIDByName(t *testing.T, d *sql.DB, name string) int64 {
 func TestRandomNew_PicksFromFilteredStatus(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "DnDPick.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "StartedPick.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
 		{Filename: "Other1.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
 		{Filename: "Other2.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
 	})
 	q := db.New(d)
 
-	dndID := mediaIDByName(t, d, "DnDPick.mkv")
+	startedID := mediaIDByName(t, d, "StartedPick.mkv")
 	other1ID := mediaIDByName(t, d, "Other1.mkv")
 	other2ID := mediaIDByName(t, d, "Other2.mkv")
 
 	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
-		CurrentStatus: "for_dnd",
-		ID:            dndID,
-	}))
-	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
 		CurrentStatus: "started",
-		ID:            other1ID,
+		ID:            startedID,
 	}))
-	// other2 stays "new"
+	// other1 and other2 stay "new"
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=started&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	newRouter(t, d).ServeHTTP(w, req)
 
-	// Only the DnD media is a candidate, so the pick is deterministic.
-	assert.GreaterOrEqual(t, startEventCount(t, d, dndID), 1, "filtered (DnD) media should have a start event")
+	// Only the started media is a candidate, so the pick is deterministic.
+	assert.GreaterOrEqual(t, startEventCount(t, d, startedID), 1, "filtered (started) media should have a start event")
 	assert.Equal(t, 0, startEventCount(t, d, other1ID), "non-matching media should not be started")
 	assert.Equal(t, 0, startEventCount(t, d, other2ID), "non-matching media should not be started")
+	assert.Equal(t, 0, statusChangeCount(t, d, startedID), "🎲 must not record a status change for an already started media")
 }
 
 func TestRandomNew_NewBecomesStarted(t *testing.T) {
@@ -680,30 +682,6 @@ func TestRandomNew_NewBecomesStarted(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "started", updated.CurrentStatus)
 	assert.GreaterOrEqual(t, startEventCount(t, d, id), 1)
-}
-
-// Bug 27: "За DnD" is a manual status — 🎲 only moves a new media to started.
-func TestRandomNew_KeepsForDnDStatus(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "DnDMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-	})
-	q := db.New(d)
-	id := mediaIDByName(t, d, "DnDMovie.mkv")
-	require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
-		CurrentStatus: "for_dnd",
-		ID:            id,
-	}))
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	newRouter(t, d).ServeHTTP(w, req)
-
-	updated, err := q.GetMediaByID(context.Background(), id)
-	require.NoError(t, err)
-	assert.Equal(t, "for_dnd", updated.CurrentStatus, "the DnD status must be preserved")
-	assert.GreaterOrEqual(t, startEventCount(t, d, id), 1, "a start event must still be recorded")
 }
 
 func TestRandomNew_HTMX_ReturnsOOBRow(t *testing.T) {
@@ -839,8 +817,8 @@ func TestIndex_DefaultDelFilter_ShowsBoth(t *testing.T) {
 	assert.Contains(t, body, "Trash.mkv")
 }
 
-// The flag is independent of the watch status: a DnD media can also be marked
-// for deletion, so the two filters combine instead of excluding.
+// The flag is independent of the watch status: a started media can also be
+// marked for deletion, so the two filters combine instead of excluding.
 func TestIndex_ForDeletionCombinesWithStatus(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
@@ -851,7 +829,7 @@ func TestIndex_ForDeletionCombinesWithStatus(t *testing.T) {
 	q := db.New(d)
 	for _, name := range []string{"DoneTrash.mkv", "DoneKeep.mkv"} {
 		require.NoError(t, q.UpdateMediaStatus(context.Background(), db.UpdateMediaStatusParams{
-			CurrentStatus: "for_dnd",
+			CurrentStatus: "started",
 			ID:            mediaIDByName(t, d, name),
 		}))
 	}
@@ -859,7 +837,7 @@ func TestIndex_ForDeletionCombinesWithStatus(t *testing.T) {
 	markForDeletion(t, d, "NewTrash.mkv")
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?status=for_dnd&del=yes", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?status=started&del=yes", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 
 	body := w.Body.String()
@@ -961,7 +939,7 @@ func TestIndex_SavesFiltersToDB(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet,
-		"/?status=new&disk=all&sort=size&dir=desc&q=alp&del=yes", nil)
+		"/?status=new&disk=all&sort=size&dir=desc&q=alp&del=yes&dnd=yes&subs=yes", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
 
@@ -972,31 +950,45 @@ func TestIndex_SavesFiltersToDB(t *testing.T) {
 	assert.Equal(t, "desc", dir)
 	assert.Equal(t, "alp", q)
 	assert.Equal(t, "yes", del)
+
+	dnd, subs := readFlagPrefs(t, d)
+	assert.Equal(t, "yes", dnd)
+	assert.Equal(t, "yes", subs)
 }
 
+// Each of the three flag filters (👎 del, Bug 22; 👍 dnd and ⚠ subs, Bug 30)
+// is remembered on its own.
 func TestIndex_RestoresSavedFilters(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-		{Filename: "Trash.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
-	})
-	markForDeletion(t, d, "Trash.mkv")
+	for _, tc := range []struct{ param, column string }{
+		{"del", "for_deletion"},
+		{"dnd", "for_dnd"},
+		{"subs", "wrong_subs"},
+	} {
+		t.Run(tc.param, func(t *testing.T) {
+			d := openTestDB(t)
+			seedMedia(t, d, []scanner.VideoFile{
+				{Filename: "Keep.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+				{Filename: "Flagged.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+			})
+			raiseFlag(t, d, tc.column, "Flagged.mkv")
 
-	// The user filters down to the media marked for deletion...
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?del=yes", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code)
+			// The user filters down to the flagged media...
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/?"+tc.param+"=yes", nil)
+			newRouter(t, d).ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Code)
 
-	// ...restarts the backend, and lands on a bare "/" again.
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	newRouter(t, d).ServeHTTP(w, req)
+			// ...restarts the backend, and lands on a bare "/" again.
+			w = httptest.NewRecorder()
+			req = httptest.NewRequest(http.MethodGet, "/", nil)
+			newRouter(t, d).ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	body := w.Body.String()
-	assert.Contains(t, body, "Trash.mkv")
-	assert.NotContains(t, body, "Keep.mkv", "the remembered del=yes filter must still apply")
+			assert.Equal(t, http.StatusOK, w.Code)
+			body := w.Body.String()
+			assert.Contains(t, body, "Flagged.mkv")
+			assert.NotContains(t, body, "Keep.mkv", "the remembered %s=yes filter must still apply", tc.param)
+		})
+	}
 }
 
 func TestIndex_RestoresSavedSortAndDirection(t *testing.T) {
@@ -1087,6 +1079,8 @@ func TestIndex_FreshDB_UsesDefaultFilters(t *testing.T) {
 	assert.Equal(t, []string{"all", "on", "name", "asc", "", "all"},
 		[]string{status, disk, sortF, dir, q, del})
 	assert.Equal(t, "all", readFolderPref(t, d), "the folder filter defaults to all folders")
+	dnd, subs := readFlagPrefs(t, d)
+	assert.Equal(t, []string{"all", "all"}, []string{dnd, subs}, "the 👍 and ⚠ filters default to all")
 }
 
 // ---------------------------------------------------------------------------
@@ -1465,52 +1459,12 @@ func statusChangeCount(t *testing.T, d *sql.DB, id int64) int {
 	return n
 }
 
-func TestIndex_FilterForDnD_ShowsOnlyDnD(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Fresh.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-		{Filename: "Running.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
-		{Filename: "Dragons.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
-	})
-	setStatus(t, d, "Running.mkv", "started")
-	setStatus(t, d, "Dragons.mkv", "for_dnd")
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?status=for_dnd", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	body := w.Body.String()
-	assert.Contains(t, body, "Dragons.mkv")
-	assert.NotContains(t, body, "Fresh.mkv")
-	assert.NotContains(t, body, "Running.mkv")
-}
-
-func TestChangeStatus_ToForDnD(t *testing.T) {
-	d := openTestDB(t)
-	id := seedOne(t, d)
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/status", id), strings.NewReader("status=for_dnd"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusSeeOther, w.Code)
-	updated, err := db.New(d).GetMediaByID(context.Background(), id)
-	require.NoError(t, err)
-	assert.Equal(t, "for_dnd", updated.CurrentStatus)
-
-	var from, to string
-	require.NoError(t, d.QueryRow("SELECT from_status, to_status FROM status_changes WHERE media_id = ?", id).Scan(&from, &to))
-	assert.Equal(t, "new", from)
-	assert.Equal(t, "for_dnd", to)
-}
-
 // A removed status (an old form, a stale browser tab or a hand-made request)
-// must not get back into the database. The allowlist also replaced the old
-// empty-status check, so an empty value is rejected too.
+// must not get back into the database: the completed statuses (Bug 27) and
+// „За DnD", which became the 👍 flag (Bug 30). The allowlist also replaced the
+// old empty-status check, so an empty value is rejected too.
 func TestChangeStatus_RejectsRemovedStatus(t *testing.T) {
-	for _, status := range []string{"completed_both", "completed_yanko", "completed_liza", "bogus", ""} {
+	for _, status := range []string{"completed_both", "completed_yanko", "completed_liza", "for_dnd", "bogus", ""} {
 		name := status
 		if name == "" {
 			name = "empty"
@@ -1531,25 +1485,6 @@ func TestChangeStatus_RejectsRemovedStatus(t *testing.T) {
 			assert.Equal(t, 0, statusChangeCount(t, d, id), "no history row may be written")
 		})
 	}
-}
-
-// Bug 27: "За DnD" is a manual status — "Стартирай" only moves a new media to
-// started, so a DnD media keeps its status and gets no history row.
-func TestStartMedia_KeepsForDnDStatus(t *testing.T) {
-	d := openTestDB(t)
-	id := seedOne(t, d)
-	setStatus(t, d, "Movie.mkv", "for_dnd")
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusSeeOther, w.Code)
-	updated, err := db.New(d).GetMediaByID(context.Background(), id)
-	require.NoError(t, err)
-	assert.Equal(t, "for_dnd", updated.CurrentStatus, "the DnD status must be preserved")
-	assert.Equal(t, 1, startEventCount(t, d, id), "a start event must still be recorded")
-	assert.Equal(t, 0, statusChangeCount(t, d, id), "no history row may be written")
 }
 
 // ---------------------------------------------------------------------------
@@ -1662,4 +1597,240 @@ func TestRandomNew_IgnoresTransParam(t *testing.T) {
 	assert.NotContains(t, w.Header().Get("Location"), "trans=", "the redirect must not carry the removed parameter")
 
 	assert.Equal(t, 2, startEventCount(t, d, mediaIDByName(t, d, "Pick.mkv")), "both requests must start the media")
+}
+
+// ---------------------------------------------------------------------------
+// Bug 30: три независими флага 👍 👎 ⚠
+// ---------------------------------------------------------------------------
+
+// raiseFlag raises one of the three independent flags (for_dnd, for_deletion,
+// wrong_subs) directly in the DB, like markForDeletion.
+func raiseFlag(t *testing.T, d *sql.DB, column, filename string) {
+	t.Helper()
+	_, err := d.Exec("UPDATE media SET "+column+" = 1 WHERE filename = ?", filename)
+	require.NoError(t, err)
+}
+
+// flagValue returns one of the three flags of a media straight from the DB.
+func flagValue(t *testing.T, d *sql.DB, column string, id int64) int64 {
+	t.Helper()
+	var v int64
+	require.NoError(t, d.QueryRow("SELECT "+column+" FROM media WHERE id = ?", id).Scan(&v))
+	return v
+}
+
+// readFlagPrefs returns the remembered 👍 and ⚠ filters. Like readFolderPref it
+// is kept apart from readPrefs, so the Bug 23 tests keep their six-value shape.
+func readFlagPrefs(t *testing.T, d *sql.DB) (dnd, subs string) {
+	t.Helper()
+	require.NoError(t, d.QueryRow("SELECT dnd_filter, subs_filter FROM ui_prefs WHERE id = 1").Scan(&dnd, &subs))
+	return
+}
+
+// dnd=yes and subs=yes narrow the list to the media with the 👍 / ⚠ flag
+// raised, like del=yes does for 👎; "all" shows every media again.
+func TestIndex_FlagFilters(t *testing.T) {
+	for _, tc := range []struct{ param, column string }{
+		{"dnd", "for_dnd"},
+		{"subs", "wrong_subs"},
+	} {
+		t.Run(tc.param, func(t *testing.T) {
+			d := openTestDB(t)
+			seedMedia(t, d, []scanner.VideoFile{
+				{Filename: "Flagged.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+				{Filename: "Plain.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+			})
+			raiseFlag(t, d, tc.column, "Flagged.mkv")
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/?"+tc.param+"=yes", nil)
+			newRouter(t, d).ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Code)
+			body := w.Body.String()
+			assert.Contains(t, body, "Flagged.mkv")
+			assert.NotContains(t, body, "Plain.mkv", "%s=yes must hide the media without the flag", tc.param)
+
+			w = httptest.NewRecorder()
+			req = httptest.NewRequest(http.MethodGet, "/?"+tc.param+"=all", nil)
+			newRouter(t, d).ServeHTTP(w, req)
+
+			body = w.Body.String()
+			assert.Contains(t, body, "Flagged.mkv")
+			assert.Contains(t, body, "Plain.mkv", "%s=all must show every media", tc.param)
+		})
+	}
+}
+
+// The flags are independent: a media can carry 👍 and 👎 at once and shows up
+// under either filter; flag filters combine with each other and with the status.
+func TestIndex_FlagsAreIndependent(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Both.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "OnlyDnd.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+		{Filename: "OnlyDel.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+	})
+	raiseFlag(t, d, "for_dnd", "Both.mkv")
+	raiseFlag(t, d, "for_deletion", "Both.mkv")
+	raiseFlag(t, d, "for_dnd", "OnlyDnd.mkv")
+	raiseFlag(t, d, "for_deletion", "OnlyDel.mkv")
+	setStatus(t, d, "OnlyDnd.mkv", "started")
+
+	// Every request names status, dnd and del: a missing one would fall back to
+	// the value the previous request remembered.
+	for _, tc := range []struct {
+		target string
+		want   []string
+	}{
+		{"/?status=all&dnd=yes&del=all", []string{"Both.mkv", "OnlyDnd.mkv"}},
+		{"/?status=all&dnd=all&del=yes", []string{"Both.mkv", "OnlyDel.mkv"}},
+		{"/?status=all&dnd=yes&del=yes", []string{"Both.mkv"}},
+		{"/?status=started&dnd=yes&del=all", []string{"OnlyDnd.mkv"}},
+	} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+		newRouter(t, d).ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		body := w.Body.String()
+		for _, name := range []string{"Both.mkv", "OnlyDnd.mkv", "OnlyDel.mkv"} {
+			if slices.Contains(tc.want, name) {
+				assert.Contains(t, body, name, "GET %s", tc.target)
+			} else {
+				assert.NotContains(t, body, name, "GET %s", tc.target)
+			}
+		}
+	}
+}
+
+// The three flags share one handler: value=1 raises the flag, value=0 clears
+// it; with HTMX only the updated row comes back, with the button highlighted;
+// a bad id is a 404.
+func TestSetFlag_TogglesAndReturnsRow(t *testing.T) {
+	for _, tc := range []struct{ route, column, title string }{
+		{"for-dnd", "for_dnd", "За DnD"},
+		{"for-deletion", "for_deletion", "За изтриване"},
+		{"wrong-subs", "wrong_subs", "Грешни субтитри"},
+	} {
+		t.Run(tc.route, func(t *testing.T) {
+			d := openTestDB(t)
+			id := seedOne(t, d)
+			r := newRouter(t, d)
+			post := func(target, value string, htmx bool) *httptest.ResponseRecorder {
+				w := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, target, strings.NewReader("value="+value))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				if htmx {
+					req.Header.Set("HX-Request", "true")
+				}
+				r.ServeHTTP(w, req)
+				return w
+			}
+			target := fmt.Sprintf("/media/%d/%s", id, tc.route)
+
+			w := post(target, "1", false)
+			assert.Equal(t, http.StatusSeeOther, w.Code)
+			assert.Equal(t, int64(1), flagValue(t, d, tc.column, id), "value=1 must raise the flag")
+
+			w = post(target, "0", false)
+			assert.Equal(t, http.StatusSeeOther, w.Code)
+			assert.Equal(t, int64(0), flagValue(t, d, tc.column, id), "value=0 must clear the flag")
+
+			w = post(target, "1", true)
+			assert.Equal(t, http.StatusOK, w.Code)
+			body := w.Body.String()
+			assert.True(t, strings.HasPrefix(strings.TrimSpace(body), fmt.Sprintf(`<tr id="media-%d"`, id)),
+				"the HTMX response must be the media's row, got %.80q", body)
+			assert.NotContains(t, body, "<html", "HTMX response must be the row only")
+			assert.Equal(t, int64(1), flagValue(t, d, tc.column, id))
+			// The HTML parser drops a bare <tr> outside a table, hence the wrapper.
+			class := parseBody(t, "<table>"+body+"</table>").
+				Find(fmt.Sprintf("td.actions button[title='%s']", tc.title)).AttrOr("class", "")
+			assert.Contains(t, class, "filter-active", "the returned row must show the raised flag")
+
+			w = post("/media/abc/"+tc.route, "1", false)
+			assert.Equal(t, http.StatusNotFound, w.Code, "a bad id must be a 404")
+		})
+	}
+}
+
+// Starting a media only moves new → started; the flags stay as they are.
+func TestStartMedia_KeepsFlags(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	raiseFlag(t, d, "for_dnd", "Movie.mkv")
+	raiseFlag(t, d, "wrong_subs", "Movie.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	updated, err := db.New(d).GetMediaByID(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, "started", updated.CurrentStatus)
+	assert.Equal(t, 1, startEventCount(t, d, id), "a start event must be recorded")
+	assert.Equal(t, int64(1), flagValue(t, d, "for_dnd", id), "👍 must stay raised")
+	assert.Equal(t, int64(0), flagValue(t, d, "for_deletion", id), "👎 must stay lowered")
+	assert.Equal(t, int64(1), flagValue(t, d, "wrong_subs", id), "⚠ must stay raised")
+}
+
+// 🎲 follows the same rule as "Стартирай": new → started, the flags untouched.
+func TestRandomNew_KeepsFlags(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	raiseFlag(t, d, "for_dnd", "Movie.mkv")
+	raiseFlag(t, d, "wrong_subs", "Movie.mkv")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	newRouter(t, d).ServeHTTP(w, req)
+
+	updated, err := db.New(d).GetMediaByID(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, "started", updated.CurrentStatus)
+	assert.Equal(t, 1, startEventCount(t, d, id), "a start event must be recorded")
+	assert.Equal(t, int64(1), flagValue(t, d, "for_dnd", id), "👍 must stay raised")
+	assert.Equal(t, int64(0), flagValue(t, d, "for_deletion", id), "👎 must stay lowered")
+	assert.Equal(t, int64(1), flagValue(t, d, "wrong_subs", id), "⚠ must stay raised")
+}
+
+// 🎲 picks from the list the 👍 / ⚠ filters show, and without HTMX it leads
+// back to that same list.
+func TestRandomNew_RespectsFlagFilters(t *testing.T) {
+	for _, tc := range []struct{ param, column string }{
+		{"dnd", "for_dnd"},
+		{"subs", "wrong_subs"},
+	} {
+		t.Run(tc.param, func(t *testing.T) {
+			d := openTestDB(t)
+			seedMedia(t, d, []scanner.VideoFile{
+				{Filename: "Flagged.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+				{Filename: "Other1.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+				{Filename: "Other2.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+			})
+			raiseFlag(t, d, tc.column, "Flagged.mkv")
+			r := newRouter(t, d)
+
+			var w *httptest.ResponseRecorder
+			for i := 0; i < 10; i++ {
+				w = httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/media/random-new/start",
+					strings.NewReader("status=all&disk=on&"+tc.param+"=yes"))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				r.ServeHTTP(w, req)
+			}
+
+			assert.Equal(t, 10, startEventCount(t, d, mediaIDByName(t, d, "Flagged.mkv")),
+				"only the flagged media may be picked")
+			assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Other1.mkv")))
+			assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, "Other2.mkv")))
+
+			require.Equal(t, http.StatusSeeOther, w.Code)
+			assert.Contains(t, w.Header().Get("Location"), tc.param+"=yes",
+				"the redirect must lead back to the same flag filter")
+		})
+	}
 }

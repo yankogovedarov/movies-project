@@ -41,14 +41,17 @@ def test_list_has_scan_button_in_navbar(page: Page):
     expect(page.locator("button.icon-btn[title='Сканирай диска']")).to_be_visible()
 
 
-def test_actions_has_status_and_deletion_buttons(page: Page):
-    # 3 статус бутона (○ ▶ D, Бъг 27) + 1 „за изтриване" (Бъг 22).
+def test_actions_has_status_and_flag_buttons(page: Page):
+    # 2 статус бутона (○ ▶) + 3 независими флага 👍 👎 ⚠ (Бъг 30).
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
     row = page.locator("tbody tr").first
-    assert row.locator("td.actions button.icon-btn").count() == 4
-    assert row.locator("td.actions button.icon-btn[title='За изтриване']").count() == 1
+    assert row.locator("td.actions button.icon-btn").count() == 5
+    for title in ("За DnD", "За изтриване", "Грешни субтитри"):
+        assert row.locator(f"td.actions button.icon-btn[title='{title}']").count() == 1, (
+            f"expected the '{title}' flag button in the row"
+        )
 
 
 def test_filename_cell_is_button_styled_as_link(page: Page):
@@ -120,22 +123,62 @@ def test_status_change_started_redirects_to_list(page: Page):
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
 
 
-def test_status_change_for_dnd_redirects_to_list(page: Page):
-    # Бъг 27: D в реда прави статуса „DnD".
-    page.goto(BASE_URL)
-    if not _has_media(page):
-        pytest.skip("No media available")
-    page.locator("button.icon-btn[title='За DnD']").first.click()
-    expect(page.locator("h1")).to_contain_text("Movie Tracker")
-    expect(page.locator("tbody tr").first.locator("td.status")).to_have_text("DnD")
-
-
 def test_status_change_to_new_redirects_to_list(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
     page.locator("button.icon-btn[title='Нова']").first.click()
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
+
+
+# ---------------------------------------------------------------------------
+# Флагове 👍 👎 ⚠ (Бъг 30)
+# ---------------------------------------------------------------------------
+
+def test_dnd_flag_toggles_row_in_place(page: Page):
+    # Бъг 30: „За DnD" вече е флаг, а не статус. Кликът на 👍 го вдига на място —
+    # HTMX сменя само реда, без презареждане — и колоната „Статус" не се променя;
+    # след презареждане бутонът остава подчертан, защото флагът е записан.
+    # Вторият клик го сваля: сървърът и базата са общи за цялата e2e сесия.
+    page.goto(BASE_URL)
+    if not _has_media(page):
+        pytest.skip("No media available")
+    # Реалните данни може вече да имат вдигнат 👍 (бившите „За DnD" медии),
+    # затова се взима първият ред със свален флаг.
+    lowered = page.locator("tbody tr").filter(
+        has=page.locator("td.actions button.icon-btn[title='За DnD']:not(.filter-active)")
+    )
+    if lowered.count() == 0:
+        pytest.skip("No media without the 👍 flag")
+    row_id = lowered.first.get_attribute("id")
+    row = page.locator(f"tr#{row_id}")
+    button = row.locator("td.actions button.icon-btn[title='За DnD']")
+    status = row.locator("td.status").inner_text()
+    active = re.compile(r"\bfilter-active\b")
+
+    try:
+        # Маркер на window: пълно презареждане на страницата би го изтрил.
+        page.evaluate("window.__noReload = 1")
+        button.click()
+        expect(button).to_have_class(active)
+        assert page.evaluate("window.__noReload") == 1, (
+            "clicking 👍 reloaded the page instead of swapping the row in place"
+        )
+        expect(row.locator("td.status")).to_have_text(status)
+
+        page.reload()
+        expect(button).to_have_class(active)
+
+        button.click()
+        expect(button).not_to_have_class(active)
+    finally:
+        # Флагът се сваля и при провал по средата — иначе 👍 остава вдигнат в
+        # общата dev база и следващите пускания тихо взимат друг ред. value=0
+        # винаги сваля, затова повторното сваляне е безопасно.
+        page.request.post(
+            f"{BASE_URL}/media/{row_id.removeprefix('media-')}/for-dnd",
+            form={"value": "0"},
+        )
 
 
 # ---------------------------------------------------------------------------
