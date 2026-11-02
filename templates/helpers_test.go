@@ -9,14 +9,14 @@ import (
 func TestSortBtnHref_InactiveDateSort_StartsDescending(t *testing.T) {
 	// Bug #19: first click on a date sort button must show most recent first.
 	// Bug 27: "added" is the only date sort left ("marked" is removed).
-	href := sortBtnHref("all", "on_disk", "name", "asc", "added", "", "all", "all", "all")
+	href := sortBtnHref("all", "on_disk", "name", "asc", "added", "", "all", "all")
 	assert.Contains(t, href, "sort=added")
 	assert.Contains(t, href, "dir=desc", "first click on added should sort descending")
 }
 
 func TestSortBtnHref_InactiveNonDateSort_StartsAscending(t *testing.T) {
 	for _, btn := range []string{"name", "path", "size", "last_started"} {
-		href := sortBtnHref("all", "on_disk", "added", "desc", btn, "", "all", "all", "all")
+		href := sortBtnHref("all", "on_disk", "added", "desc", btn, "", "all", "all")
 		assert.Contains(t, href, "sort="+btn)
 		assert.Contains(t, href, "dir=asc", "first click on %q should sort ascending", btn)
 	}
@@ -32,18 +32,17 @@ func TestSortBtnHref_ActiveButton_TogglesDirection(t *testing.T) {
 		{"name", "desc", "asc"},
 	}
 	for _, tc := range cases {
-		href := sortBtnHref("all", "on_disk", tc.btn, tc.currentDir, tc.btn, "", "all", "all", "all")
+		href := sortBtnHref("all", "on_disk", tc.btn, tc.currentDir, tc.btn, "", "all", "all")
 		assert.Contains(t, href, "dir="+tc.wantDir,
 			"active %q with dir=%s should toggle to %s", tc.btn, tc.currentDir, tc.wantDir)
 	}
 }
 
 func TestSortBtnHref_PreservesFilters(t *testing.T) {
-	href := sortBtnHref("started", "all", "name", "asc", "added", "matrix", "sub", "yes", "Serials")
+	href := sortBtnHref("started", "all", "name", "asc", "added", "matrix", "yes", "Serials")
 	assert.Contains(t, href, "status=started")
 	assert.Contains(t, href, "disk=all")
 	assert.Contains(t, href, "q=matrix")
-	assert.Contains(t, href, "trans=sub")
 	assert.Contains(t, href, "del=yes")
 	assert.Contains(t, href, "folder=Serials")
 }

@@ -46,7 +46,6 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 	r.POST("/media/:id/start", h.StartMedia)
 	r.POST("/media/:id/status", h.ChangeStatus)
 	r.POST("/media/random-new/start", h.RandomNew)
-	r.POST("/media/:id/translation-type", h.SetTranslationType)
 	r.POST("/media/:id/for-deletion", h.SetForDeletion)
 	r.POST("/scan", h.Scan)
 	return r
@@ -483,25 +482,6 @@ func TestIndex_FilterByStatus_ReturnsOnlyMatching(t *testing.T) {
 	assert.NotContains(t, w.Body.String(), "Started.mkv")
 }
 
-func TestIndex_FilterTransNone_ShowsOnlyUnset(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Unset.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000, TranslationType: ""},
-		{Filename: "Subbed.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000, TranslationType: "sub"},
-		{Filename: "Dubbed.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000, TranslationType: "bg"},
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?trans=none", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	body := w.Body.String()
-	assert.Contains(t, body, "Unset.mkv")
-	assert.NotContains(t, body, "Subbed.mkv")
-	assert.NotContains(t, body, "Dubbed.mkv")
-}
-
 func TestIndex_FilterDisk_All_IncludesOffDisk(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
@@ -673,7 +653,7 @@ func TestRandomNew_PicksFromFilteredStatus(t *testing.T) {
 	// other2 stays "new"
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	newRouter(t, d).ServeHTTP(w, req)
 
@@ -692,7 +672,7 @@ func TestRandomNew_NewBecomesStarted(t *testing.T) {
 	id := mediaIDByName(t, d, "FreshMovie.mkv")
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=new&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=new&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	newRouter(t, d).ServeHTTP(w, req)
 
@@ -716,7 +696,7 @@ func TestRandomNew_KeepsForDnDStatus(t *testing.T) {
 	}))
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=for_dnd&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	newRouter(t, d).ServeHTTP(w, req)
 
@@ -733,7 +713,7 @@ func TestRandomNew_HTMX_ReturnsOOBRow(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	newRouter(t, d).ServeHTTP(w, req)
@@ -754,7 +734,7 @@ func TestRandomNew_HTMX_DoesNotRedirect(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	newRouter(t, d).ServeHTTP(w, req)
@@ -767,7 +747,7 @@ func TestRandomNew_NoCandidates_HTMX(t *testing.T) {
 	d := openTestDB(t)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	newRouter(t, d).ServeHTTP(w, req)
@@ -794,7 +774,7 @@ func TestRandomNew_LogsIndexAndPoolSize(t *testing.T) {
 	r.POST("/media/random-new/start", h.RandomNew)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.ServeHTTP(w, req)
 
@@ -953,7 +933,7 @@ func TestRandomNew_RespectsForDeletionFilter(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/media/random-new/start",
-			strings.NewReader("status=all&disk=on&trans=all&del=yes"))
+			strings.NewReader("status=all&disk=on&del=yes"))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.ServeHTTP(w, req)
 	}
@@ -965,11 +945,11 @@ func TestRandomNew_RespectsForDeletionFilter(t *testing.T) {
 
 // --- Bug 23: filters and sorting are remembered in the database ---
 
-func readPrefs(t *testing.T, d *sql.DB) (status, disk, sortF, dir, q, trans, del string) {
+func readPrefs(t *testing.T, d *sql.DB) (status, disk, sortF, dir, q, del string) {
 	t.Helper()
 	row := d.QueryRow(`SELECT status_filter, disk_filter, sort_filter, dir_filter,
-		q_filter, trans_filter, del_filter FROM ui_prefs WHERE id = 1`)
-	require.NoError(t, row.Scan(&status, &disk, &sortF, &dir, &q, &trans, &del))
+		q_filter, del_filter FROM ui_prefs WHERE id = 1`)
+	require.NoError(t, row.Scan(&status, &disk, &sortF, &dir, &q, &del))
 	return
 }
 
@@ -981,17 +961,16 @@ func TestIndex_SavesFiltersToDB(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet,
-		"/?status=new&disk=all&sort=size&dir=desc&q=alp&trans=bg&del=yes", nil)
+		"/?status=new&disk=all&sort=size&dir=desc&q=alp&del=yes", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
 
-	status, disk, sortF, dir, q, trans, del := readPrefs(t, d)
+	status, disk, sortF, dir, q, del := readPrefs(t, d)
 	assert.Equal(t, "new", status)
 	assert.Equal(t, "all", disk)
 	assert.Equal(t, "size", sortF)
 	assert.Equal(t, "desc", dir)
 	assert.Equal(t, "alp", q)
-	assert.Equal(t, "bg", trans)
 	assert.Equal(t, "yes", del)
 }
 
@@ -1084,7 +1063,7 @@ func TestIndex_ExplicitParamOverridesSavedPref(t *testing.T) {
 	assert.Contains(t, body, "Keep.mkv")
 	assert.Contains(t, body, "Trash.mkv")
 
-	_, _, _, _, _, _, del := readPrefs(t, d)
+	_, _, _, _, _, del := readPrefs(t, d)
 	assert.Equal(t, "all", del, "the explicit value must be the new remembered one")
 }
 
@@ -1104,9 +1083,9 @@ func TestIndex_FreshDB_UsesDefaultFilters(t *testing.T) {
 	assert.Contains(t, body, "Keep.mkv")
 	assert.Contains(t, body, "Trash.mkv")
 
-	status, disk, sortF, dir, q, trans, del := readPrefs(t, d)
-	assert.Equal(t, []string{"all", "on", "name", "asc", "", "all", "all"},
-		[]string{status, disk, sortF, dir, q, trans, del})
+	status, disk, sortF, dir, q, del := readPrefs(t, d)
+	assert.Equal(t, []string{"all", "on", "name", "asc", "", "all"},
+		[]string{status, disk, sortF, dir, q, del})
 	assert.Equal(t, "all", readFolderPref(t, d), "the folder filter defaults to all folders")
 }
 
@@ -1208,7 +1187,7 @@ func TestRandomNew_LaunchesVLCThroughLauncher(t *testing.T) {
 	h := &web.Handlers{DB: d, DiskRoot: root, VLCPath: `C:\fake\vlc.exe`, Launcher: rec.launch}
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	newRouterWithHandlers(t, h).ServeHTTP(w, req)
 
@@ -1240,7 +1219,7 @@ func TestNoopLauncher_DoesNothing(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // readFolderPref returns the remembered main-folder filter. It is kept apart
-// from readPrefs so the Bug 23 tests keep their seven-value shape.
+// from readPrefs so the Bug 23 tests keep their six-value shape.
 func readFolderPref(t *testing.T, d *sql.DB) string {
 	t.Helper()
 	var folder string
@@ -1410,7 +1389,7 @@ func TestRandomNew_RespectsFolderFilter(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/media/random-new/start",
-			strings.NewReader("status=all&disk=on&trans=all&del=all&folder=Serials"))
+			strings.NewReader("status=all&disk=on&del=all&folder=Serials"))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.ServeHTTP(w, req)
 	}
@@ -1432,7 +1411,6 @@ func TestRandomNew_RedirectCarriesEscapedFolder(t *testing.T) {
 		form := url.Values{
 			"status": {"all"},
 			"disk":   {"on"},
-			"trans":  {"all"},
 			"del":    {"all"},
 			"folder": {folder},
 		}
@@ -1582,7 +1560,7 @@ func TestStartMedia_KeepsForDnDStatus(t *testing.T) {
 func postRandomHTMX(t *testing.T, d *sql.DB) *httptest.ResponseRecorder {
 	t.Helper()
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=all"))
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	newRouter(t, d).ServeHTTP(w, req)
@@ -1632,4 +1610,56 @@ func TestMediaDetail_RouteRemoved(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// ---------------------------------------------------------------------------
+// Bug 30: без превод
+// ---------------------------------------------------------------------------
+
+// The translation filter is removed: an old bookmark or a hand-made request
+// with trans=… must not narrow the list, and a bare "/" afterwards (as after a
+// restart) must not bring the old value back either.
+func TestIndex_IgnoresTransParam(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Alpha.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Beta.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+
+	for _, target := range []string{"/?trans=bg", "/"} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		newRouter(t, d).ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		body := w.Body.String()
+		assert.Contains(t, body, "Alpha.mkv", "GET %s must show every media", target)
+		assert.Contains(t, body, "Beta.mkv", "GET %s must show every media", target)
+	}
+}
+
+// trans=… must not narrow the 🎲 pool either, and the redirect back to the list
+// (without HTMX) must not carry it on.
+func TestRandomNew_IgnoresTransParam(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Pick.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+	})
+	r := newRouter(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=bg"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	r.ServeHTTP(w, req)
+	assert.Contains(t, w.Body.String(), "🎲 Стартирах: Pick.mkv", "trans=bg must not empty the pool")
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=bg"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.ServeHTTP(w, req)
+	require.Equal(t, http.StatusSeeOther, w.Code)
+	assert.NotContains(t, w.Header().Get("Location"), "trans=", "the redirect must not carry the removed parameter")
+
+	assert.Equal(t, 2, startEventCount(t, d, mediaIDByName(t, d, "Pick.mkv")), "both requests must start the media")
 }

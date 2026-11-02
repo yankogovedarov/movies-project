@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,10 +70,10 @@ func TestMigrate_HasUIPrefsRow(t *testing.T) {
 	defer d.Close()
 	require.NoError(t, db.Migrate(d))
 
-	var status, disk, sortF, dir, q, trans, del string
+	var status, disk, sortF, dir, q, del string
 	row := d.QueryRow(`SELECT status_filter, disk_filter, sort_filter, dir_filter,
-		q_filter, trans_filter, del_filter FROM ui_prefs WHERE id = 1`)
-	require.NoError(t, row.Scan(&status, &disk, &sortF, &dir, &q, &trans, &del))
+		q_filter, del_filter FROM ui_prefs WHERE id = 1`)
+	require.NoError(t, row.Scan(&status, &disk, &sortF, &dir, &q, &del))
 
 	// The defaults mirror the handler's c.DefaultQuery values.
 	assert.Equal(t, "all", status)
@@ -80,7 +81,6 @@ func TestMigrate_HasUIPrefsRow(t *testing.T) {
 	assert.Equal(t, "name", sortF)
 	assert.Equal(t, "asc", dir)
 	assert.Equal(t, "", q)
-	assert.Equal(t, "all", trans)
 	assert.Equal(t, "all", del)
 }
 
@@ -209,4 +209,98 @@ func TestMigrate_CompletedStatuses_KeepsValidUIPrefs(t *testing.T) {
 	require.NoError(t, row.Scan(&status, &sortF, &dir, &folder))
 	assert.Equal(t, []string{"started", "added", "desc", "Serials"},
 		[]string{status, sortF, dir, folder}, "valid remembered choices must not be reset")
+}
+
+// tableColumns returns the column names of table, in table order (PRAGMA
+// table_info). A missing table yields no columns.
+func tableColumns(t *testing.T, d *sql.DB, table string) []string {
+	t.Helper()
+	rows, err := d.Query("SELECT name FROM pragma_table_info(?) ORDER BY cid", table)
+	require.NoError(t, err)
+
+	var cols []string
+	for rows.Next() {
+		var name string
+		require.NoError(t, rows.Scan(&name))
+		cols = append(cols, name)
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
+	return cols
+}
+
+// Bug 30: the translation type is removed together with its data — migration
+// 000008 drops the media's translation type and the remembered translation
+// filter.
+func TestMigrate_DropsTranslationColumns(t *testing.T) {
+	d := openTestDB(t)
+
+	for table, column := range map[string]string{
+		"media":    "translation_type",
+		"ui_prefs": "trans_filter",
+	} {
+		cols := tableColumns(t, d, table)
+		require.NotEmpty(t, cols, "table %s must exist", table)
+		assert.NotContains(t, cols, column, "%s.%s must be dropped", table, column)
+	}
+}
+
+// Bug 30: SQLite rewrites both tables to drop a column; nothing else may change.
+// A characterization test — it passes before migration 000008 too — that
+// guards the rewrite: the status, the 🗑 flag, the history and the other
+// remembered filters survive.
+func TestMigrate_DropTranslation_KeepsOtherData(t *testing.T) {
+	// The database as the previous version left it (schema version 7).
+	d := openAtSchemaVersion(t, 7)
+
+	res, err := d.Exec(`INSERT INTO media (filename, folder_relative_path, file_size_bytes,
+		current_status, file_created_at, translation_type, for_deletion)
+		VALUES ('Dragons.mkv', 'MoviesDnD\Dragons', 4000000000, 'for_dnd', '2025-03-14 15:09:26', 'bg', 1)`)
+	require.NoError(t, err)
+	id, err := res.LastInsertId()
+	require.NoError(t, err)
+	_, err = d.Exec("INSERT INTO start_events (media_id) VALUES (?), (?)", id, id)
+	require.NoError(t, err)
+	_, err = d.Exec("INSERT INTO status_changes (media_id, from_status, to_status) VALUES (?, 'new', 'for_dnd')", id)
+	require.NoError(t, err)
+	_, err = d.Exec(`UPDATE ui_prefs SET status_filter = 'for_dnd', disk_filter = 'all',
+		sort_filter = 'size', dir_filter = 'desc', q_filter = 'drag', trans_filter = 'bg',
+		del_filter = 'yes', folder_filter = 'MoviesDnD' WHERE id = 1`)
+	require.NoError(t, err)
+
+	require.NoError(t, db.Migrate(d))
+
+	var (
+		gotID, size, onDisk, forDeletion int64
+		name, folder, status             string
+		fileCreated                      sql.NullTime
+	)
+	require.NoError(t, d.QueryRow(`SELECT id, filename, folder_relative_path, file_size_bytes,
+		current_status, on_disk, file_created_at, for_deletion FROM media`).
+		Scan(&gotID, &name, &folder, &size, &status, &onDisk, &fileCreated, &forDeletion))
+	assert.Equal(t, id, gotID, "the id must survive — the history refers to it")
+	assert.Equal(t, "Dragons.mkv", name)
+	assert.Equal(t, `MoviesDnD\Dragons`, folder)
+	assert.Equal(t, int64(4_000_000_000), size)
+	assert.Equal(t, "for_dnd", status, "the status must survive")
+	assert.Equal(t, int64(1), onDisk)
+	assert.True(t, fileCreated.Valid, "the file date must survive")
+	assert.True(t, fileCreated.Time.Equal(time.Date(2025, 3, 14, 15, 9, 26, 0, time.UTC)),
+		"the file date must survive, got %v", fileCreated.Time)
+	assert.Equal(t, int64(1), forDeletion, "the raised 🗑 flag must survive")
+
+	var starts int
+	require.NoError(t, d.QueryRow("SELECT COUNT(*) FROM start_events WHERE media_id = ?", id).Scan(&starts))
+	assert.Equal(t, 2, starts, "the start history must survive")
+	var from, to string
+	require.NoError(t, d.QueryRow("SELECT from_status, to_status FROM status_changes WHERE media_id = ?", id).
+		Scan(&from, &to))
+	assert.Equal(t, []string{"new", "for_dnd"}, []string{from, to}, "the status history must survive")
+
+	var prefs [7]string
+	require.NoError(t, d.QueryRow(`SELECT status_filter, disk_filter, sort_filter, dir_filter,
+		q_filter, del_filter, folder_filter FROM ui_prefs WHERE id = 1`).
+		Scan(&prefs[0], &prefs[1], &prefs[2], &prefs[3], &prefs[4], &prefs[5], &prefs[6]))
+	assert.Equal(t, [7]string{"for_dnd", "all", "size", "desc", "drag", "yes", "MoviesDnD"}, prefs,
+		"the other remembered filters must survive")
 }

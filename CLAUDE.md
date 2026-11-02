@@ -45,7 +45,7 @@ movie-tracker/
 ├── internal/
 │   ├── config/                 # TOML loading
 │   ├── db/                     # sqlc генериран + queries.sql
-│   │   └── migrations/         # SQL миграции — embedded оттук чрез //go:embed (000001-000007)
+│   │   └── migrations/         # SQL миграции — embedded оттук чрез //go:embed (000001-000008)
 │   ├── scanner/                # Сканиране на диска
 │   ├── media/                  # Модел, статуси
 │   ├── vlc/                    # VLC интеграция

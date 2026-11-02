@@ -22,7 +22,7 @@ func (q *Queries) CountOnDisk(ctx context.Context) (int64, error) {
 }
 
 const getMediaByID = `-- name: GetMediaByID :one
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, for_deletion
 FROM media WHERE id = ?
 `
 
@@ -38,14 +38,13 @@ func (q *Queries) GetMediaByID(ctx context.Context, id int64) (Medium, error) {
 		&i.OnDisk,
 		&i.CreatedAt,
 		&i.FileCreatedAt,
-		&i.TranslationType,
 		&i.ForDeletion,
 	)
 	return i, err
 }
 
 const getUIPrefs = `-- name: GetUIPrefs :one
-SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter
+SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, del_filter, folder_filter
 FROM ui_prefs WHERE id = 1
 `
 
@@ -55,7 +54,6 @@ type GetUIPrefsRow struct {
 	SortFilter   string
 	DirFilter    string
 	QFilter      string
-	TransFilter  string
 	DelFilter    string
 	FolderFilter string
 }
@@ -69,7 +67,6 @@ func (q *Queries) GetUIPrefs(ctx context.Context) (GetUIPrefsRow, error) {
 		&i.SortFilter,
 		&i.DirFilter,
 		&i.QFilter,
-		&i.TransFilter,
 		&i.DelFilter,
 		&i.FolderFilter,
 	)
@@ -101,7 +98,7 @@ func (q *Queries) InsertStatusChange(ctx context.Context, arg InsertStatusChange
 }
 
 const listAllMedia = `-- name: ListAllMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, for_deletion
 FROM media
 ORDER BY folder_relative_path, filename
 `
@@ -124,7 +121,6 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 			&i.OnDisk,
 			&i.CreatedAt,
 			&i.FileCreatedAt,
-			&i.TranslationType,
 			&i.ForDeletion,
 		); err != nil {
 			return nil, err
@@ -141,7 +137,7 @@ func (q *Queries) ListAllMedia(ctx context.Context) ([]Medium, error) {
 }
 
 const listOnDiskMedia = `-- name: ListOnDiskMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, for_deletion
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename
@@ -165,7 +161,6 @@ func (q *Queries) ListOnDiskMedia(ctx context.Context) ([]Medium, error) {
 			&i.OnDisk,
 			&i.CreatedAt,
 			&i.FileCreatedAt,
-			&i.TranslationType,
 			&i.ForDeletion,
 		); err != nil {
 			return nil, err
@@ -191,15 +186,14 @@ func (q *Queries) MarkAllOffDisk(ctx context.Context) error {
 }
 
 const saveUIPrefs = `-- name: SaveUIPrefs :exec
-INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter, updated_at)
-VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, del_filter, folder_filter, updated_at)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 ON CONFLICT(id) DO UPDATE SET
     status_filter = excluded.status_filter,
     disk_filter = excluded.disk_filter,
     sort_filter = excluded.sort_filter,
     dir_filter = excluded.dir_filter,
     q_filter = excluded.q_filter,
-    trans_filter = excluded.trans_filter,
     del_filter = excluded.del_filter,
     folder_filter = excluded.folder_filter,
     updated_at = CURRENT_TIMESTAMP
@@ -211,7 +205,6 @@ type SaveUIPrefsParams struct {
 	SortFilter   string
 	DirFilter    string
 	QFilter      string
-	TransFilter  string
 	DelFilter    string
 	FolderFilter string
 }
@@ -223,7 +216,6 @@ func (q *Queries) SaveUIPrefs(ctx context.Context, arg SaveUIPrefsParams) error 
 		arg.SortFilter,
 		arg.DirFilter,
 		arg.QFilter,
-		arg.TransFilter,
 		arg.DelFilter,
 		arg.FolderFilter,
 	)
@@ -258,30 +250,13 @@ func (q *Queries) UpdateMediaStatus(ctx context.Context, arg UpdateMediaStatusPa
 	return err
 }
 
-const updateTranslationType = `-- name: UpdateTranslationType :exec
-UPDATE media SET translation_type = ? WHERE id = ?
-`
-
-type UpdateTranslationTypeParams struct {
-	TranslationType string
-	ID              int64
-}
-
-func (q *Queries) UpdateTranslationType(ctx context.Context, arg UpdateTranslationTypeParams) error {
-	_, err := q.db.ExecContext(ctx, updateTranslationType, arg.TranslationType, arg.ID)
-	return err
-}
-
 const upsertMedia = `-- name: UpsertMedia :one
-INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at, translation_type)
-VALUES (?, ?, ?, 1, ?, ?)
+INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at)
+VALUES (?, ?, ?, 1, ?)
 ON CONFLICT(filename, file_size_bytes) DO UPDATE SET
     folder_relative_path = excluded.folder_relative_path,
     on_disk = 1,
-    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at),
-    -- Keep an existing (manually set or previously detected) translation type;
-    -- only fill in the detected hint when the current value is still empty.
-    translation_type = CASE WHEN media.translation_type != '' THEN media.translation_type ELSE excluded.translation_type END
+    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at)
 RETURNING id
 `
 
@@ -290,7 +265,6 @@ type UpsertMediaParams struct {
 	FolderRelativePath string
 	FileSizeBytes      int64
 	FileCreatedAt      sql.NullTime
-	TranslationType    string
 }
 
 func (q *Queries) UpsertMedia(ctx context.Context, arg UpsertMediaParams) (int64, error) {
@@ -299,7 +273,6 @@ func (q *Queries) UpsertMedia(ctx context.Context, arg UpsertMediaParams) (int64
 		arg.FolderRelativePath,
 		arg.FileSizeBytes,
 		arg.FileCreatedAt,
-		arg.TranslationType,
 	)
 	var id int64
 	err := row.Scan(&id)

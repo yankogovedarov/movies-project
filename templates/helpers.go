@@ -61,7 +61,7 @@ func defaultSortDir(btnSort string) string {
 // sortBtnHref returns the URL for a sort button click.
 // Clicking an active button toggles the direction; clicking an inactive button
 // resets to that button's default direction.
-func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans, del, folder string) string {
+func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, del, folder string) string {
 	newDir := defaultSortDir(btnSort)
 	if currentSort == btnSort {
 		if currentDir == "desc" {
@@ -70,7 +70,7 @@ func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans, del, 
 			newDir = "desc"
 		}
 	}
-	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&trans=" + trans + "&del=" + del + folderParam(folder)
+	return "/?status=" + status + "&disk=" + disk + "&sort=" + btnSort + "&dir=" + newDir + "&q=" + q + "&del=" + del + folderParam(folder)
 }
 
 // folderParam returns the query-string fragment that carries the main-folder
@@ -78,14 +78,6 @@ func sortBtnHref(status, disk, currentSort, currentDir, btnSort, q, trans, del, 
 // value is always query-escaped.
 func folderParam(folder string) string {
 	return "&folder=" + url.QueryEscape(folder)
-}
-
-// translationToggleValue returns "" (unset) if current==target, else target.
-func translationToggleValue(current, target string) string {
-	if current == target {
-		return ""
-	}
-	return target
 }
 
 // delToggleValue returns the value the "за изтриване" filter button links to:

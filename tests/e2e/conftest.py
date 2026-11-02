@@ -79,7 +79,7 @@ def live_server():
 # стойностите по подразбиране — иначе филтър, оставен от предишен тест, би текъл
 # в следващия, който отваря голо "/".
 DEFAULT_STATE_URL = (
-    BASE_URL + "/?status=all&disk=on&sort=name&dir=asc&q=&trans=all&del=all&folder=all"
+    BASE_URL + "/?status=all&disk=on&sort=name&dir=asc&q=&del=all&folder=all"
 )
 
 

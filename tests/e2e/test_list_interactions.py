@@ -75,6 +75,18 @@ def test_list_has_no_details_button(page: Page):
     expect(page.locator("[title='Детайли']")).to_have_count(0)
 
 
+def test_list_has_no_translation_ui(page: Page):
+    # Бъг 30: преводът е махнат — няма група „превод:" в лентата и колона „Пр".
+    page.goto(BASE_URL)
+    # Лентата не зависи от данните, затова тази част не се пропуска.
+    expect(page.locator("nav.top-nav")).not_to_contain_text("превод:")
+    expect(page.locator(".trans-btns")).to_have_count(0)
+    # Колоната се вижда само в таблицата, т.е. когато има редове.
+    if _has_media(page):
+        expect(page.locator("th.translation")).to_have_count(0)
+        expect(page.locator("td.translation")).to_have_count(0)
+
+
 # ---------------------------------------------------------------------------
 # Стартиране на медия
 # ---------------------------------------------------------------------------

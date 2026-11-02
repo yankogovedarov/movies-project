@@ -115,7 +115,7 @@ func folderOptions(raw []db.Medium, current string) []string {
 	return folders
 }
 
-func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter, folderFilter string) []db.Medium {
+func filterMedia(raw []db.Medium, statusFilter, qFilter, delFilter, folderFilter string) []db.Medium {
 	result := raw
 	if statusFilter != "all" {
 		f := make([]db.Medium, 0, len(result))
@@ -132,20 +132,6 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter,
 		for _, m := range result {
 			if strings.Contains(strings.ToLower(m.Filename), q) ||
 				strings.Contains(strings.ToLower(m.FolderRelativePath), q) {
-				f = append(f, m)
-			}
-		}
-		result = f
-	}
-	if transFilter != "all" {
-		// "none" matches media with no translation type set yet.
-		want := transFilter
-		if transFilter == "none" {
-			want = ""
-		}
-		f := make([]db.Medium, 0, len(result))
-		for _, m := range result {
-			if m.TranslationType == want {
 				f = append(f, m)
 			}
 		}
@@ -176,9 +162,9 @@ func filterMedia(raw []db.Medium, statusFilter, qFilter, transFilter, delFilter,
 	return result
 }
 
-// defaultPrefs mirrors the ui_prefs row created by migration 000005, plus the
-// folder_filter column added by 000006 — the fallback whenever the remembered
-// state cannot be read.
+// defaultPrefs mirrors the ui_prefs row as migrations 000005–000008 leave it
+// (000006 adds folder_filter, 000008 drops trans_filter) — the fallback whenever
+// the remembered state cannot be read.
 func defaultPrefs() db.GetUIPrefsRow {
 	return db.GetUIPrefsRow{
 		StatusFilter: "all",
@@ -186,7 +172,6 @@ func defaultPrefs() db.GetUIPrefsRow {
 		SortFilter:   "name",
 		DirFilter:    "asc",
 		QFilter:      "",
-		TransFilter:  "all",
 		DelFilter:    "all",
 		FolderFilter: "all",
 	}
@@ -213,7 +198,6 @@ func (h *Handlers) Index(c *gin.Context) {
 	sortFilter := c.DefaultQuery("sort", prefs.SortFilter)
 	dirFilter := c.DefaultQuery("dir", prefs.DirFilter)
 	qFilter := c.DefaultQuery("q", prefs.QFilter)
-	transFilter := c.DefaultQuery("trans", prefs.TransFilter)
 	delFilter := c.DefaultQuery("del", prefs.DelFilter)
 	folderFilter := c.DefaultQuery("folder", prefs.FolderFilter)
 	if folderFilter == "" {
@@ -231,7 +215,6 @@ func (h *Handlers) Index(c *gin.Context) {
 		SortFilter:   sortFilter,
 		DirFilter:    dirFilter,
 		QFilter:      qFilter,
-		TransFilter:  transFilter,
 		DelFilter:    delFilter,
 		FolderFilter: folderFilter,
 	}); err != nil {
@@ -252,11 +235,11 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	// The dropdown offers every main folder of the current ↕ mode. It is built
-	// before the other filters narrow the list, so picking a status, a
-	// translation or a search text never hides folders from it.
+	// before the other filters narrow the list, so picking a status, the 🗑
+	// filter or a search text never hides folders from it.
 	folders := folderOptions(raw, folderFilter)
 
-	raw = filterMedia(raw, statusFilter, qFilter, transFilter, delFilter, folderFilter)
+	raw = filterMedia(raw, statusFilter, qFilter, delFilter, folderFilter)
 
 	stats, err := db.FetchMediaStats(ctx, h.DB)
 	if err != nil {
@@ -328,7 +311,7 @@ func (h *Handlers) Index(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, transFilter, delFilter, folderFilter, folders).Render(ctx, c.Writer)
+	_ = templates.ListPage(media, statusFilter, diskFilter, sortFilter, dirFilter, qFilter, delFilter, folderFilter, folders).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) RandomNew(c *gin.Context) {
@@ -338,7 +321,6 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	statusFilter := c.PostForm("status")
 	diskFilter := c.PostForm("disk")
 	qFilter := c.PostForm("q")
-	transFilter := c.PostForm("trans")
 	delFilter := c.PostForm("del")
 	folderFilter := c.PostForm("folder")
 	if statusFilter == "" {
@@ -346,9 +328,6 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	}
 	if diskFilter == "" {
 		diskFilter = "on"
-	}
-	if transFilter == "" {
-		transFilter = "all"
 	}
 	if delFilter == "" {
 		delFilter = "all"
@@ -370,12 +349,12 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 		return
 	}
 
-	candidates := filterMedia(all, statusFilter, qFilter, transFilter, delFilter, folderFilter)
+	candidates := filterMedia(all, statusFilter, qFilter, delFilter, folderFilter)
 
 	// Without HTMX the browser is sent back to the list with the same filters.
 	// Folder names may contain spaces, Cyrillic or "&", hence the escaping.
-	listURL := fmt.Sprintf("/?status=%s&disk=%s&q=%s&trans=%s&del=%s&folder=%s",
-		statusFilter, diskFilter, qFilter, transFilter, delFilter, url.QueryEscape(folderFilter))
+	listURL := fmt.Sprintf("/?status=%s&disk=%s&q=%s&del=%s&folder=%s",
+		statusFilter, diskFilter, qFilter, delFilter, url.QueryEscape(folderFilter))
 
 	if len(candidates) == 0 {
 		if isHTMX(c) {
@@ -436,36 +415,6 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusSeeOther, listURL)
-}
-
-func (h *Handlers) SetTranslationType(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.Status(http.StatusNotFound)
-		return
-	}
-
-	ctx := c.Request.Context()
-	q := db.New(h.DB)
-
-	translationType := c.PostForm("type")
-	_ = q.UpdateTranslationType(ctx, db.UpdateTranslationTypeParams{
-		TranslationType: translationType,
-		ID:              id,
-	})
-
-	if isHTMX(c) {
-		media, err := q.GetMediaByID(ctx, id)
-		if err != nil {
-			c.Status(http.StatusNotFound)
-			return
-		}
-		stats, _ := db.FetchMediaStats(ctx, h.DB)
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		templates.MediaRow(db.MediaWithStats{Medium: media, MediaStats: stats[id]}).Render(ctx, c.Writer)
-		return
-	}
-	c.Redirect(http.StatusSeeOther, "/")
 }
 
 // SetForDeletion toggles the "за изтриване" flag (Bug 22). The submitted value

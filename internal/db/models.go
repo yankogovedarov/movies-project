@@ -18,7 +18,6 @@ type Medium struct {
 	OnDisk             int64
 	CreatedAt          time.Time
 	FileCreatedAt      sql.NullTime
-	TranslationType    string
 	ForDeletion        int64
 }
 
@@ -48,7 +47,6 @@ type UiPref struct {
 	SortFilter   string
 	DirFilter    string
 	QFilter      string
-	TransFilter  string
 	DelFilter    string
 	UpdatedAt    time.Time
 	FolderFilter string

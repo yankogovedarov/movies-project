@@ -193,39 +193,7 @@ func TestIndex_FilterButtons_Present(t *testing.T) {
 
 	doc := parseBody(t, w.Body.String())
 	btns := doc.Find("a.filter-btn")
-	assert.Equal(t, 11, btns.Length(), "expected 11 filter buttons (4 status + 1 disk toggle + 1 за изтриване + 5 translation)")
-}
-
-func TestIndex_TransFilter_HasLabelAndNoneButton(t *testing.T) {
-	d := openTestDB(t)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	body := w.Body.String()
-	assert.Contains(t, body, "превод:", "expected a 'превод:' label separating translation filters")
-
-	doc := parseBody(t, body)
-	// The translation group is its own container.
-	assert.Equal(t, 1, doc.Find(".trans-btns").Length(), "expected a single .trans-btns group")
-	// The "неустановено" (unset) filter button points to trans=none.
-	none := doc.Find(".trans-btns a.filter-btn[title='Неустановен превод']")
-	require.Equal(t, 1, none.Length(), "expected a single 'неустановено' button")
-	href, _ := none.Attr("href")
-	assert.Contains(t, href, "trans=none")
-}
-
-func TestIndex_TransNoneButton_ActiveWhenParam(t *testing.T) {
-	d := openTestDB(t)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?trans=none", nil)
-	newRouter(t, d).ServeHTTP(w, req)
-
-	doc := parseBody(t, w.Body.String())
-	none := doc.Find(".trans-btns a.filter-btn[title='Неустановен превод']")
-	require.Equal(t, 1, none.Length())
-	class, _ := none.Attr("class")
-	assert.Contains(t, class, "filter-active", "trans=none button should be active when trans=none")
+	assert.Equal(t, 6, btns.Length(), "expected 6 filter buttons (4 status + 1 disk toggle + 1 за изтриване)")
 }
 
 func TestIndex_SortButtons_Present(t *testing.T) {
@@ -347,13 +315,13 @@ func TestIndex_RandomForm_HasHxPost(t *testing.T) {
 	require.True(t, exists, "expected hx-post on random form")
 	assert.Contains(t, hxPost, "random-new/start")
 
-	for _, name := range []string{"status", "disk", "q", "trans", "del", "folder"} {
+	for _, name := range []string{"status", "disk", "q", "del", "folder"} {
 		assert.Equal(t, 1, randomForm.Find(fmt.Sprintf("input[name=%s]", name)).Length(),
 			"expected hidden input %q in random form", name)
 	}
 }
 
-func TestIndex_StickyNavAndTranslationHighlight_CSS(t *testing.T) {
+func TestIndex_StickyNav_CSS(t *testing.T) {
 	d := openTestDB(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -362,9 +330,6 @@ func TestIndex_StickyNavAndTranslationHighlight_CSS(t *testing.T) {
 	body := w.Body.String()
 	// Bug 16 part 5: filter bar stays visible while scrolling.
 	assert.Contains(t, body, "position: sticky", "expected sticky .top-nav CSS")
-	// Bug 16 part 3: active translation type is visibly highlighted.
-	assert.Contains(t, body, "td.translation .icon-btn.filter-active",
-		"expected highlight CSS for active translation button")
 }
 
 func TestIndex_SearchInput_IsLive(t *testing.T) {
@@ -511,9 +476,9 @@ func TestIndex_ForDeletionFilter_PreservedByOtherFilters(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	// Every status/translation link and every sort link must carry del=yes,
-	// otherwise clicking one of them silently drops the flag filter.
-	doc.Find(".filter-btns a.filter-btn, .trans-btns a.filter-btn, .sort-btns a.sort-btn").
+	// Every status/↕ link and every sort link must carry del=yes, otherwise
+	// clicking one of them silently drops the flag filter.
+	doc.Find(".filter-btns a.filter-btn, .sort-btns a.sort-btn").
 		Each(func(_ int, sel *goquery.Selection) {
 			title, _ := sel.Attr("title")
 			if title == "За изтриване" {
@@ -576,7 +541,7 @@ func TestIndex_RestoredFilters_MarkActiveButtons(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?status=new&sort=size&dir=desc&q=god&trans=bg&del=yes", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?status=new&sort=size&dir=desc&q=god&del=yes", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
 
@@ -588,8 +553,6 @@ func TestIndex_RestoredFilters_MarkActiveButtons(t *testing.T) {
 
 	statusClass, _ := doc.Find("a.filter-btn[title='Нова']").Attr("class")
 	assert.Contains(t, statusClass, "filter-active")
-	transClass, _ := doc.Find("a.filter-btn[title='Български говор']").Attr("class")
-	assert.Contains(t, transClass, "filter-active")
 	delClass, _ := doc.Find("a.filter-btn[title='За изтриване']").Attr("class")
 	assert.Contains(t, delClass, "filter-active")
 
@@ -771,11 +734,10 @@ func TestIndex_FolderFilter_PreservedByOtherFilters(t *testing.T) {
 			newRouter(t, d).ServeHTTP(w, req)
 
 			doc := parseBody(t, w.Body.String())
-			// Every status/↕/🗑 link, translation link and sort link carries the
-			// folder (escaped), otherwise clicking one of them silently drops the
-			// filter.
-			links := doc.Find(".filter-btns a.filter-btn, .trans-btns a.filter-btn, .sort-btns a.sort-btn")
-			require.Equal(t, 16, links.Length(), "expected 6 filter + 5 translation + 5 sort links")
+			// Every status/↕/🗑 link and every sort link carries the folder
+			// (escaped), otherwise clicking one of them silently drops the filter.
+			links := doc.Find(".filter-btns a.filter-btn, .sort-btns a.sort-btn")
+			require.Equal(t, 11, links.Length(), "expected 6 filter + 5 sort links")
 			links.Each(func(_ int, sel *goquery.Selection) {
 				title, _ := sel.Attr("title")
 				href, _ := sel.Attr("href")
@@ -938,4 +900,32 @@ func TestIndex_NoDetailsButton(t *testing.T) {
 	assert.Equal(t, 0, doc.Find("[title='Детайли']").Length(), "the ℹ „Детайли\" button must be gone")
 	assert.Equal(t, 0, doc.Find(fmt.Sprintf("[href='/media/%d']", id)).Length(),
 		"no link may lead to the removed details view")
+}
+
+// ---------------------------------------------------------------------------
+// Bug 30: без превод
+// ---------------------------------------------------------------------------
+
+// The translation feature is removed: no „Пр" column with СУБ/БГ/ОРГ in the
+// row, no „превод:" group in the nav bar and no trans parameter in any link or
+// form.
+func TestIndex_NoTranslationUI(t *testing.T) {
+	d := openTestDB(t)
+	seedOne(t, d)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	newRouter(t, d).ServeHTTP(w, req)
+
+	body := w.Body.String()
+	doc := parseBody(t, body)
+	require.Equal(t, 1, doc.Find("tbody tr").Length(), "expected the seeded media row")
+	assert.Equal(t, 0, doc.Find("th.translation, td.translation").Length(), "the „Пр\" column must be gone")
+	assert.NotContains(t, body, "превод:", "the „превод:\" label must be gone")
+	assert.Equal(t, 0, doc.Find(".trans-btns").Length(), "the translation filter group must be gone")
+	assert.NotContains(t, body, "/translation-type", "nothing may post to the removed route")
+	assert.Equal(t, 0, doc.Find("a[href*='trans=']").Length(), "no link may carry the removed trans parameter")
+	assert.Equal(t, 0, doc.Find("input[name=trans]").Length(), "no form may re-send the removed trans parameter")
+	assert.NotContains(t, body, "td.translation", "no CSS may be left for the removed column")
+	assert.NotContains(t, body, ".trans-btns", "no CSS may be left for the removed group")
 }

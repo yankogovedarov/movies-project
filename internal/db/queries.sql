@@ -1,13 +1,10 @@
 -- name: UpsertMedia :one
-INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at, translation_type)
-VALUES (?, ?, ?, 1, ?, ?)
+INSERT INTO media (filename, folder_relative_path, file_size_bytes, on_disk, file_created_at)
+VALUES (?, ?, ?, 1, ?)
 ON CONFLICT(filename, file_size_bytes) DO UPDATE SET
     folder_relative_path = excluded.folder_relative_path,
     on_disk = 1,
-    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at),
-    -- Keep an existing (manually set or previously detected) translation type;
-    -- only fill in the detected hint when the current value is still empty.
-    translation_type = CASE WHEN media.translation_type != '' THEN media.translation_type ELSE excluded.translation_type END
+    file_created_at = COALESCE(media.file_created_at, excluded.file_created_at)
 RETURNING id;
 
 -- name: MarkAllOffDisk :exec
@@ -17,13 +14,13 @@ UPDATE media SET on_disk = 0;
 SELECT COUNT(*) FROM media WHERE on_disk = 1;
 
 -- name: ListOnDiskMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, for_deletion
 FROM media
 WHERE on_disk = 1
 ORDER BY folder_relative_path, filename;
 
 -- name: GetMediaByID :one
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, for_deletion
 FROM media WHERE id = ?;
 
 -- name: InsertStartEvent :exec
@@ -36,30 +33,26 @@ UPDATE media SET current_status = ? WHERE id = ?;
 INSERT INTO status_changes (media_id, from_status, to_status) VALUES (?, ?, ?);
 
 -- name: ListAllMedia :many
-SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, translation_type, for_deletion
+SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, for_deletion
 FROM media
 ORDER BY folder_relative_path, filename;
-
--- name: UpdateTranslationType :exec
-UPDATE media SET translation_type = ? WHERE id = ?;
 
 -- name: UpdateForDeletion :exec
 UPDATE media SET for_deletion = ? WHERE id = ?;
 
 -- name: GetUIPrefs :one
-SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter
+SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, del_filter, folder_filter
 FROM ui_prefs WHERE id = 1;
 
 -- name: SaveUIPrefs :exec
-INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, trans_filter, del_filter, folder_filter, updated_at)
-VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, del_filter, folder_filter, updated_at)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 ON CONFLICT(id) DO UPDATE SET
     status_filter = excluded.status_filter,
     disk_filter = excluded.disk_filter,
     sort_filter = excluded.sort_filter,
     dir_filter = excluded.dir_filter,
     q_filter = excluded.q_filter,
-    trans_filter = excluded.trans_filter,
     del_filter = excluded.del_filter,
     folder_filter = excluded.folder_filter,
     updated_at = CURRENT_TIMESTAMP;

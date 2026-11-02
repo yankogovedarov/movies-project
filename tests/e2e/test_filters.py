@@ -17,8 +17,8 @@ def test_filter_controls_visible(page: Page):
 
 def test_filter_status_buttons_cover_all_statuses(page: Page):
     # Таргетираме конкретните статус бутони по title, за да е сигурно, че
-    # status=all идва уникално от „Всички статуси", а не от disk-toggle/превод
-    # бутон, който носи текущия статус.
+    # status=all идва уникално от „Всички статуси", а не от ↕ или 🗑 бутона,
+    # които носят текущия статус.
     # Бъг 27: статусите са три — ◎ ○ ▶ + D („За DnD"); завършените (✓ Я Л) са махнати.
     page.goto(BASE_URL)
     title_to_status = {
@@ -127,13 +127,10 @@ def test_for_deletion_filter_survives_status_click(page: Page):
 def test_filters_persist_after_reopen(page: Page):
     # Бъг 23: избраните филтри и сорт се пазят в базата, така че ново отваряне на
     # голо "/" (както след рестарт на .exe-то) ги възстановява.
-    page.goto(f"{BASE_URL}/?status=started&sort=size&dir=desc&trans=bg&del=yes")
+    page.goto(f"{BASE_URL}/?status=started&sort=size&dir=desc&del=yes")
 
     page.goto(BASE_URL)
     expect(page.locator("a.filter-btn[title='Стартирана']")).to_have_class(
-        re.compile(r"\bfilter-active\b")
-    )
-    expect(page.locator("a.filter-btn[title='Български говор']")).to_have_class(
         re.compile(r"\bfilter-active\b")
     )
     expect(page.locator(".filter-btns a.filter-btn[title='За изтриване']")).to_have_class(
