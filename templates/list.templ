@@ -18,6 +18,31 @@ templ MediaRowOOB(m db.MediaWithStats) {
 	</tr>
 }
 
+// LastStartedRow renders the row above the list with the most recently started
+// media (Bug 32): the cells of its list row, made larger by the
+// table.last-started CSS. With nothing started yet (nil) it is an empty hidden
+// row, so the first start still has an element to swap.
+templ LastStartedRow(m *db.MediaWithStats) {
+	if m == nil {
+		<tr id={ LastStartedID } hidden></tr>
+	} else {
+		<tr id={ LastStartedID }>
+			@mediaRowCells(*m)
+		</tr>
+	}
+}
+
+// LastStartedRowOOB is LastStartedRow swapped out of band.
+templ LastStartedRowOOB(m *db.MediaWithStats) {
+	if m == nil {
+		<tr id={ LastStartedID } hidden hx-swap-oob="true"></tr>
+	} else {
+		<tr id={ LastStartedID } hx-swap-oob="true">
+			@mediaRowCells(*m)
+		</tr>
+	}
+}
+
 // Flash renders a short status message into the #flash region (templ auto-escapes msg).
 templ Flash(msg string) {
 	<span>{ msg }</span>
@@ -95,7 +120,7 @@ templ flagButton(id int64, route string, raised int64, title string, icon string
 	</form>
 }
 
-templ ListPage(media []db.MediaWithStats, f Filters, folders []string) {
+templ ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.MediaWithStats) {
 	<!DOCTYPE html>
 	<html lang="bg">
 		<head>
@@ -103,8 +128,9 @@ templ ListPage(media []db.MediaWithStats, f Filters, folders []string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>Movie Tracker</title>
 			<link rel="stylesheet" href="/static/pico.min.css"/>
-			// Bug 27: htmx parses partial responses in a <template>, so the 🎲 response
-			// (the OOB row first, then the flash) both swaps the row and fills #flash.
+			// Bug 27, Bug 32: htmx parses partial responses in a <template>, so a
+			// response made only of <tr> rows (a row and out-of-band rows) keeps its
+			// table context and every row is swapped.
 			<meta name="htmx-config" content='{"useTemplateFragments":true}'/>
 			<script src="/static/htmx.min.js"></script>
 			<script>
@@ -192,6 +218,19 @@ templ ListPage(media []db.MediaWithStats, f Filters, folders []string) {
 					background: var(--pico-primary); color: var(--pico-primary-inverse, #fff);
 					border-color: var(--pico-primary);
 				}
+				/* Bug 32: the row above the list with the last started media is about 1.35×
+				   a list row — the font, the buttons and the size/status/actions columns.
+				   Scoped to table.last-started, so the list below stays as it is. */
+				table.last-started { margin-bottom: 0.5rem; }
+				table.last-started td { font-size: 1.15rem; line-height: 2.2rem; }
+				table.last-started button.filename-link,
+				table.last-started a.folder-link { font-size: 1.15rem; height: 2.2rem; line-height: 2.2rem; }
+				table.last-started .start-info { font-size: 0.95rem; }
+				table.last-started td.size { width: 6rem; }
+				table.last-started td.status { width: 5.4rem; }
+				/* Five 1.85rem buttons with 0.1rem gaps, plus the cell padding. */
+				table.last-started td.actions { width: 10.5rem; }
+				table.last-started button.icon-btn { width: 1.85rem; height: 1.85rem; font-size: 1.1rem; }
 				@media (max-width: 768px) {
 					th.size, td.size, th.folder, td.folder { display: none; }
 				}
@@ -305,6 +344,14 @@ templ ListPage(media []db.MediaWithStats, f Filters, folders []string) {
 					</form>
 				</nav>
 				<div id="flash" class="flash"></div>
+				// Bug 32: the last started media, outside #media-list, so the live search
+				// (hx-select="#media-list") leaves it alone. Its own table keeps the row a
+				// <tr>, which every HTMX row response must be.
+				<table class="last-started">
+					<tbody>
+						@LastStartedRow(last)
+					</tbody>
+				</table>
 				<div id="media-list">
 					if len(media) == 0 {
 						<p>Няма намерени медии.</p>

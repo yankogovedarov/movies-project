@@ -21,6 +21,17 @@ func (q *Queries) CountOnDisk(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const getLastStartedMediaID = `-- name: GetLastStartedMediaID :one
+SELECT media_id FROM start_events ORDER BY id DESC LIMIT 1
+`
+
+func (q *Queries) GetLastStartedMediaID(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getLastStartedMediaID)
+	var media_id int64
+	err := row.Scan(&media_id)
+	return media_id, err
+}
+
 const getMediaByID = `-- name: GetMediaByID :one
 SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_disk, created_at, file_created_at, for_deletion, for_dnd, wrong_subs
 FROM media WHERE id = ?

@@ -46,3 +46,39 @@ func TestMediaStats_StartCountIgnoresStatusChanges(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), single.StartCount, "FetchSingleMediaStats")
 }
+
+// Bug 32: the row above the list shows the media of the newest start event.
+// started_at only has whole seconds, so two quick starts tie on it; the start
+// event id still tells them apart.
+func TestGetLastStartedMediaID(t *testing.T) {
+	d := openTestDB(t)
+	require.NoError(t, db.SyncScanResults(d, []scanner.VideoFile{
+		{Filename: "First.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Second.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	}))
+	ctx := context.Background()
+	q := db.New(d)
+
+	_, err := q.GetLastStartedMediaID(ctx)
+	assert.ErrorIs(t, err, sql.ErrNoRows, "nothing started yet")
+
+	ids := map[string]int64{}
+	media, err := q.ListOnDiskMedia(ctx)
+	require.NoError(t, err)
+	for _, m := range media {
+		ids[m.Filename] = m.ID
+	}
+	require.Len(t, ids, 2)
+
+	// Second.mkv first, then First.mkv in the same second: the answer must be
+	// the later start, not the higher media id.
+	const sameSecond = "2026-11-03 20:15:00"
+	for _, name := range []string{"Second.mkv", "First.mkv"} {
+		_, err = d.Exec("INSERT INTO start_events (media_id, started_at) VALUES (?, ?)", ids[name], sameSecond)
+		require.NoError(t, err)
+	}
+
+	got, err := q.GetLastStartedMediaID(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, ids["First.mkv"], got, "the newest start event wins a tie on started_at")
+}

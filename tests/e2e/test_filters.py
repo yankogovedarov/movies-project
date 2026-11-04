@@ -225,7 +225,7 @@ def test_folder_select_filters_list(page: Page):
     expect(page.locator(FOLDER_SELECT)).to_have_value(chosen)
     # Менюто предлага само папки с медии, така че списъкът не бива да е празен.
     expect(page.locator("#media-list")).not_to_contain_text("Няма намерени медии.")
-    paths = page.locator("td.folder a.folder-link").evaluate_all(
+    paths = page.locator("#media-list td.folder a.folder-link").evaluate_all(
         "els => els.map(e => e.getAttribute('title'))"
     )
     assert paths, f"expected rows under {chosen!r}"

@@ -90,14 +90,14 @@ def test_nondate_sort_first_click_is_ascending(page: Page):
 
 def test_sort_by_name_page_loads(page: Page):
     page.goto(f"{BASE_URL}/?sort=name")
-    expect(page.locator("table")).to_be_visible()
+    expect(page.locator("#media-list table")).to_be_visible()
 
 
 def test_sort_by_last_started_page_loads(page: Page):
     page.goto(f"{BASE_URL}/?sort=last_started")
-    expect(page.locator("table")).to_be_visible()
+    expect(page.locator("#media-list table")).to_be_visible()
 
 
 def test_sort_by_added_page_loads(page: Page):
     page.goto(f"{BASE_URL}/?sort=added")
-    expect(page.locator("table")).to_be_visible()
+    expect(page.locator("#media-list table")).to_be_visible()

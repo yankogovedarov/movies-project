@@ -26,6 +26,9 @@ FROM media WHERE id = ?;
 -- name: InsertStartEvent :exec
 INSERT INTO start_events (media_id) VALUES (?);
 
+-- name: GetLastStartedMediaID :one
+SELECT media_id FROM start_events ORDER BY id DESC LIMIT 1;
+
 -- name: UpdateMediaStatus :exec
 UPDATE media SET current_status = ? WHERE id = ?;
 

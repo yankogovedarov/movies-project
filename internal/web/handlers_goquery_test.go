@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -37,7 +38,7 @@ func TestIndex_TableRowCount(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	rows := doc.Find("tbody tr")
+	rows := doc.Find("#media-list tbody tr")
 	assert.Equal(t, 3, rows.Length(), "expected 3 table rows")
 }
 
@@ -52,7 +53,7 @@ func TestIndex_FilenameCell_IsLinkButton(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	btn := doc.Find("td.filename form button.filename-link")
+	btn := doc.Find("#media-list td.filename form button.filename-link")
 	require.Equal(t, 1, btn.Length(), "expected filename-link button")
 	assert.Equal(t, "Inception.mkv", strings.TrimSpace(btn.Text()))
 }
@@ -68,7 +69,7 @@ func TestIndex_FilenameForm_HasHxPost(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	form := doc.Find("td.filename form")
+	form := doc.Find("#media-list td.filename form")
 	hxPost, exists := form.Attr("hx-post")
 	require.True(t, exists, "expected hx-post on filename form")
 	assert.Contains(t, hxPost, "/start")
@@ -87,7 +88,7 @@ func TestIndex_ActionForms_HaveHxPost(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	forms := doc.Find("td.actions form")
+	forms := doc.Find("#media-list td.actions form")
 	require.Equal(t, 5, forms.Length(), "expected 5 action forms (2 status + 3 flags)")
 	posts := map[string]int{}
 	forms.Each(func(_ int, s *goquery.Selection) {
@@ -123,7 +124,7 @@ func TestIndex_FolderCell_ShowsPath(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	folder := doc.Find("td.folder")
+	folder := doc.Find("#media-list td.folder")
 	require.Equal(t, 1, folder.Length(), "expected folder cell")
 	assert.Equal(t, "Films/Action", strings.TrimSpace(folder.Text()))
 }
@@ -139,7 +140,7 @@ func TestIndex_StartFormAction(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	action, exists := doc.Find("td.filename form").Attr("action")
+	action, exists := doc.Find("#media-list td.filename form").Attr("action")
 	require.True(t, exists, "expected form in filename cell")
 	assert.Contains(t, action, "/start", "start form action should contain /start")
 }
@@ -155,7 +156,7 @@ func TestIndex_StatusFormAction(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	action, exists := doc.Find("td.actions form").First().Attr("action")
+	action, exists := doc.Find("#media-list td.actions form").First().Attr("action")
 	require.True(t, exists, "expected form in actions cell")
 	assert.Contains(t, action, "/status", "status form action should contain /status")
 }
@@ -173,7 +174,7 @@ func TestIndex_Actions_HasTwoStatusAndThreeFlagForms(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	statusForms := doc.Find("td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
+	statusForms := doc.Find("#media-list td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
 		return s.Find("input[name=status]").Length() == 1
 	})
 	assert.Equal(t, 2, statusForms.Length(), "expected 2 status forms in actions column")
@@ -185,7 +186,7 @@ func TestIndex_Actions_HasTwoStatusAndThreeFlagForms(t *testing.T) {
 	})
 	assert.Equal(t, []string{"new", "started"}, statusValues)
 
-	flagForms := doc.Find("td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
+	flagForms := doc.Find("#media-list td.actions form").FilterFunction(func(_ int, s *goquery.Selection) bool {
 		return s.Find("input[name=value]").Length() == 1
 	})
 	assert.Equal(t, 3, flagForms.Length(), "expected 3 flag forms in actions column")
@@ -273,7 +274,7 @@ func TestIndex_Row_ShowsStartCount_WhenStarted(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	startInfo := doc.Find(".start-info")
+	startInfo := doc.Find("#media-list .start-info")
 	require.Equal(t, 1, startInfo.Length(), "expected .start-info element for started media")
 	assert.Contains(t, startInfo.Text(), "1")
 }
@@ -289,7 +290,7 @@ func TestIndex_Row_NoStartInfo_WhenNeverStarted(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	startInfo := doc.Find(".start-info")
+	startInfo := doc.Find("#media-list .start-info")
 	assert.Equal(t, 0, startInfo.Length(), "expected no .start-info for never-started media")
 }
 
@@ -516,11 +517,11 @@ func TestIndex_RowHasForDeletionButton(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	btns := doc.Find("td.actions button.icon-btn[title='За изтриване']")
+	btns := doc.Find("#media-list td.actions button.icon-btn[title='За изтриване']")
 	require.Equal(t, 2, btns.Length(), "expected one 👎 button per row")
 
 	byFile := map[string]*goquery.Selection{}
-	doc.Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
+	doc.Find("#media-list tbody tr").Each(func(_ int, row *goquery.Selection) {
 		name := strings.TrimSpace(row.Find("td.filename button.filename-link").Text())
 		byFile[name] = row
 	})
@@ -832,8 +833,9 @@ func TestTree_StatusOptions_AreNewStarted(t *testing.T) {
 // Bug 27: 🎲 изписва филма + без „Детайли"
 // ---------------------------------------------------------------------------
 
-// The 🎲 response (OOB row, then the flash) only works when htmx parses partial
-// responses in a <template>. htmx reads its config from a JSON meta tag.
+// The row responses (a row plus out-of-band rows, Bug 32) only keep their table
+// context when htmx parses partial responses in a <template>. htmx reads its
+// config from a JSON meta tag.
 func TestIndex_HtmxConfigUsesTemplateFragments(t *testing.T) {
 	d := openTestDB(t)
 	w := httptest.NewRecorder()
@@ -857,7 +859,7 @@ func TestIndex_NoDetailsButton(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	doc := parseBody(t, w.Body.String())
-	require.Equal(t, 1, doc.Find("tbody tr").Length(), "expected the seeded media row")
+	require.Equal(t, 1, doc.Find("#media-list tbody tr").Length(), "expected the seeded media row")
 	assert.Equal(t, 0, doc.Find("[title='Детайли']").Length(), "the ℹ „Детайли\" button must be gone")
 	assert.Equal(t, 0, doc.Find(fmt.Sprintf("[href='/media/%d']", id)).Length(),
 		"no link may lead to the removed details view")
@@ -880,7 +882,7 @@ func TestIndex_NoTranslationUI(t *testing.T) {
 
 	body := w.Body.String()
 	doc := parseBody(t, body)
-	require.Equal(t, 1, doc.Find("tbody tr").Length(), "expected the seeded media row")
+	require.Equal(t, 1, doc.Find("#media-list tbody tr").Length(), "expected the seeded media row")
 	assert.Equal(t, 0, doc.Find("th.translation, td.translation").Length(), "the „Пр\" column must be gone")
 	assert.NotContains(t, body, "превод:", "the „превод:\" label must be gone")
 	assert.Equal(t, 0, doc.Find(".trans-btns").Length(), "the translation filter group must be gone")
@@ -913,7 +915,7 @@ func TestIndex_RowFlagButtons(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	rows := map[string]*goquery.Selection{}
-	parseBody(t, w.Body.String()).Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
+	parseBody(t, w.Body.String()).Find("#media-list tbody tr").Each(func(_ int, row *goquery.Selection) {
 		rows[strings.TrimSpace(row.Find("td.filename button.filename-link").Text())] = row
 	})
 	require.Len(t, rows, 2, "expected both seeded rows")
@@ -1063,11 +1065,133 @@ func TestIndex_StatusColumn_NewOrStarted(t *testing.T) {
 	body := w.Body.String()
 	doc := parseBody(t, body)
 	statuses := map[string]string{}
-	doc.Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
+	doc.Find("#media-list tbody tr").Each(func(_ int, row *goquery.Selection) {
 		name := strings.TrimSpace(row.Find("td.filename button.filename-link").Text())
 		statuses[name] = strings.TrimSpace(row.Find("td.status").Text())
 	})
 	assert.Equal(t, map[string]string{"DnDNew.mkv": "Нова", "DnDStarted.mkv": "Старт"}, statuses)
 	assert.Equal(t, 0, doc.Find("span.status-dnd").Length(), "the DnD status label must be gone")
 	assert.NotContains(t, body, ".status-dnd", "no CSS may be left for the removed label")
+}
+
+// ---------------------------------------------------------------------------
+// Bug 32: последно стартираният филм над таблицата
+// ---------------------------------------------------------------------------
+
+// getPage renders target and parses it. Every request remembers its filters, so
+// a test that needs a clean state uses its own database.
+func getPage(t *testing.T, d *sql.DB, target string) *goquery.Document {
+	t.Helper()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	return parseBody(t, w.Body.String())
+}
+
+// The row above the list is a copy of the last started media's list row: the
+// name starts it again, the folder opens Explorer, then size, status and the
+// ○ ▶ 👍 👎 ⚠ forms.
+func TestIndex_LastStartedRow_ShowsLastStarted(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Alpha.mkv", FolderRelativePath: `Films\Alpha`, SizeBytes: 1_000_000_000},
+		{Filename: "Beta.mkv", FolderRelativePath: `Films\Beta`, SizeBytes: 2_500_000_000},
+	})
+	beta := mediaIDByName(t, d, "Beta.mkv")
+	startViaRoute(t, d, mediaIDByName(t, d, "Alpha.mkv"))
+	startViaRoute(t, d, beta)
+
+	row := getPage(t, d, "/").Find("table.last-started tr#last-started")
+	require.Equal(t, 1, row.Length(), "expected the last started row in its own table")
+	_, hidden := row.Attr("hidden")
+	assert.False(t, hidden, "a started media makes the row visible")
+
+	start := fmt.Sprintf("/media/%d/start", beta)
+	form := row.Find("td.filename form")
+	assert.Equal(t, start, form.AttrOr("action", ""), "the name starts the media again")
+	assert.Equal(t, start, form.AttrOr("hx-post", ""))
+	assert.Equal(t, "closest tr", form.AttrOr("hx-target", ""))
+	assert.Equal(t, "Beta.mkv", strings.TrimSpace(form.Find("button.filename-link").Text()))
+	assert.Contains(t, row.Find("td.filename .start-info").Text(), "Стартирана 1 пъти")
+
+	folder := row.Find("td.folder a.folder-link")
+	assert.Equal(t, fmt.Sprintf("/media/%d/open-folder", beta), folder.AttrOr("hx-get", ""), "the folder opens Explorer")
+	assert.Equal(t, `Films\Beta`, strings.TrimSpace(folder.Text()))
+
+	assert.Equal(t, "2.3 GB", strings.TrimSpace(row.Find("td.size").Text()))
+	assert.Equal(t, "Старт", strings.TrimSpace(row.Find("td.status").Text()))
+
+	forms := row.Find("td.actions form")
+	require.Equal(t, 5, forms.Length(), "expected the ○ ▶ 👍 👎 ⚠ forms")
+	var icons []string
+	forms.Each(func(_ int, f *goquery.Selection) {
+		assert.Contains(t, f.AttrOr("hx-post", ""), fmt.Sprintf("/media/%d/", beta))
+		assert.Equal(t, "closest tr", f.AttrOr("hx-target", ""))
+		icons = append(icons, strings.TrimSpace(f.Find("button.icon-btn").Text()))
+	})
+	assert.Equal(t, []string{"○", "▶", "👍", "👎", "⚠️"}, icons)
+}
+
+// With nothing started the row is still there — empty and hidden — so the first
+// start has an element to swap out of band.
+func TestIndex_LastStartedRow_HiddenWhenNothingStarted(t *testing.T) {
+	d := openTestDB(t)
+	seedOne(t, d)
+
+	row := getPage(t, d, "/").Find("table.last-started tr#last-started")
+	require.Equal(t, 1, row.Length(), "expected the empty last started row")
+	_, hidden := row.Attr("hidden")
+	assert.True(t, hidden, "the row must be hidden while nothing was started")
+	assert.Equal(t, 0, row.Find("td").Length(), "the empty row has no cells")
+}
+
+// The row shows the last started media whatever the list shows: a status
+// filter, a search text or ↕ (the media is no longer on the disk) may hide it
+// from the list, but not from the row above.
+func TestIndex_LastStartedRow_IgnoresFilters(t *testing.T) {
+	for _, tc := range []struct {
+		name, target string
+		offDisk      bool
+	}{
+		{"status", "/?status=new", false},
+		{"search", "/?q=beta", false},
+		{"off disk", "/", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := openTestDB(t)
+			seedMedia(t, d, []scanner.VideoFile{
+				{Filename: "Alpha.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+				{Filename: "Beta.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+			})
+			startViaRoute(t, d, mediaIDByName(t, d, "Alpha.mkv"))
+			if tc.offDisk {
+				_, err := d.Exec("UPDATE media SET on_disk = 0 WHERE filename = 'Alpha.mkv'")
+				require.NoError(t, err)
+			}
+
+			doc := getPage(t, d, tc.target)
+			require.Contains(t, doc.Find("#media-list").Text(), "Beta.mkv", "the list must still show the other media")
+			assert.NotContains(t, doc.Find("#media-list").Text(), "Alpha.mkv", "the filter must hide the media from the list")
+			assert.Equal(t, "Alpha.mkv",
+				strings.TrimSpace(doc.Find("tr#last-started td.filename button.filename-link").Text()),
+				"the row above the list must still show the last started media")
+		})
+	}
+}
+
+// The row sits between the flash and the list, outside #media-list: the live
+// search swaps only #media-list (hx-select), so it never touches the row.
+func TestIndex_LastStartedRow_AboveListOutsideMediaList(t *testing.T) {
+	d := openTestDB(t)
+	startViaRoute(t, d, seedOne(t, d))
+
+	doc := getPage(t, d, "/")
+	assert.Equal(t, 0, doc.Find("#media-list #last-started").Length(), "the row must not be inside #media-list")
+	assert.Equal(t, 0, doc.Find("nav #last-started").Length(), "the row must not be inside the nav bar")
+	var order []string
+	doc.Find("#flash, #last-started, #media-list").Each(func(_ int, s *goquery.Selection) {
+		order = append(order, s.AttrOr("id", ""))
+	})
+	assert.Equal(t, []string{"flash", "last-started", "media-list"}, order)
 }

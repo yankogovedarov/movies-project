@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand"
@@ -200,6 +201,62 @@ func (h *Handlers) loadPrefs(c *gin.Context) db.GetUIPrefsRow {
 	return prefs
 }
 
+// lastStarted returns the most recently started media for the row above the
+// list (Bug 32): the media of the newest start event, whatever the filters
+// show. It is nil when nothing was ever started. The row must never break the
+// page, so a database problem is logged and also yields nil (like loadPrefs).
+func (h *Handlers) lastStarted(ctx context.Context) *db.MediaWithStats {
+	q := db.New(h.DB)
+	id, err := q.GetLastStartedMediaID(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		h.log().Error("get last started media failed", "err", err)
+		return nil
+	}
+	m, err := q.GetMediaByID(ctx, id)
+	if err != nil {
+		h.log().Error("get media of last start failed", "id", id, "err", err)
+		return nil
+	}
+	s, err := db.FetchSingleMediaStats(ctx, h.DB, id)
+	if err != nil {
+		h.log().Error("fetch last started media stats failed", "id", id, "err", err)
+		return nil
+	}
+	return &db.MediaWithStats{Medium: m, MediaStats: s}
+}
+
+// writeMediaRows writes the HTMX response of an action on a media's row (Bug
+// 32). htmx sends the id of the row the form sits in as HX-Target: from the row
+// above the list that row is the main swap and the media's list row follows out
+// of band; from anywhere else (a list row, as before Bug 32) it is the other way
+// round. The row above the list is always re-read from the database, so it
+// stays right whichever media the action changed. Every part is a <tr>, so htmx
+// parses the response in one table context (see ListPage).
+func (h *Handlers) writeMediaRows(c *gin.Context, m db.Medium) {
+	ctx := c.Request.Context()
+	s, _ := db.FetchSingleMediaStats(ctx, h.DB, m.ID)
+	row := db.MediaWithStats{Medium: m, MediaStats: s}
+	last := h.lastStarted(ctx)
+
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if c.GetHeader("HX-Target") == templates.LastStartedID {
+		if last == nil {
+			// The last start could not be read back. The row above the list is
+			// the one the user just clicked, so it keeps that media instead of
+			// disappearing.
+			last = &row
+		}
+		_ = templates.LastStartedRow(last).Render(ctx, c.Writer)
+		_ = templates.MediaRowOOB(row).Render(ctx, c.Writer)
+		return
+	}
+	_ = templates.MediaRow(row).Render(ctx, c.Writer)
+	_ = templates.LastStartedRowOOB(last).Render(ctx, c.Writer)
+}
+
 func (h *Handlers) Index(c *gin.Context) {
 	// The remembered state acts as the per-parameter default, so an explicit
 	// query parameter always wins and a bare "/" restores the previous run.
@@ -336,7 +393,7 @@ func (h *Handlers) Index(c *gin.Context) {
 		Dnd:    dndFilter,
 		Subs:   subsFilter,
 		Folder: folderFilter,
-	}, folders).Render(ctx, c.Writer)
+	}, folders, h.lastStarted(ctx)).Render(ctx, c.Writer)
 }
 
 func (h *Handlers) RandomNew(c *gin.Context) {
@@ -432,19 +489,19 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 			updated = chosen
 		}
 		s, _ := db.FetchSingleMediaStats(ctx, h.DB, chosen.ID)
+		started := db.MediaWithStats{Medium: updated, MediaStats: s}
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		// Bug 27: the flash names the started film again. HTMX swaps the OOB row
-		// by id and puts the rest into the hx-target (#flash), but only with the
-		// row first and useTemplateFragments on (see ListPage): the response is
-		// then parsed in a <template>, where a leading <tr> keeps its table
-		// context and the <span> after it stays a sibling. With the flash first
-		// the parser drops the <tr>/<td> tags: the row's content leaks into
-		// #flash and the row is never swapped. Without useTemplateFragments a
-		// leading <tr> is wrapped in <table><tbody>, the <span> is foster-parented
-		// in front of the table and htmx descends into the wrong node, so the OOB
-		// lookup fails and neither the row nor the flash is swapped.
-		_ = templates.MediaRowOOB(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
-		_ = templates.Flash("🎲 Стартирах: "+chosen.Filename).Render(ctx, c.Writer)
+		// Bug 32: the started film shows in the row above the list; the
+		// „🎲 Стартирах: …" flash of Bug 27 is gone. Both rows of the media are
+		// swapped out of band and nothing else is sent, so the hx-target (#flash)
+		// is emptied, which also clears an old „Няма филми за избор". Every part
+		// is a <tr>: with useTemplateFragments (see ListPage) htmx parses the
+		// response in a <template>, where a leading <tr> keeps the whole response
+		// in one table context. Anything else in it would break: a <div>, <table>
+		// or <form> after the <tr> falls apart, and a <tr> after a <div> is
+		// dropped.
+		_ = templates.MediaRowOOB(started).Render(ctx, c.Writer)
+		_ = templates.LastStartedRowOOB(&started).Render(ctx, c.Writer)
 		return
 	}
 
@@ -499,9 +556,7 @@ func (h *Handlers) setFlag(c *gin.Context, update func(ctx context.Context, q *d
 			c.Status(http.StatusNotFound)
 			return
 		}
-		s, _ := db.FetchSingleMediaStats(ctx, h.DB, id)
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		templates.MediaRow(db.MediaWithStats{Medium: media, MediaStats: s}).Render(ctx, c.Writer)
+		h.writeMediaRows(c, media)
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")
@@ -554,9 +609,7 @@ func (h *Handlers) StartMedia(c *gin.Context) {
 		if err != nil {
 			updated = media
 		}
-		s, _ := db.FetchSingleMediaStats(ctx, h.DB, id)
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		templates.MediaRow(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
+		h.writeMediaRows(c, updated)
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")
@@ -610,9 +663,7 @@ func (h *Handlers) ChangeStatus(c *gin.Context) {
 			updated = media
 			updated.CurrentStatus = newStatus
 		}
-		s, _ := db.FetchSingleMediaStats(ctx, h.DB, id)
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		templates.MediaRow(db.MediaWithStats{Medium: updated, MediaStats: s}).Render(ctx, c.Writer)
+		h.writeMediaRows(c, updated)
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")

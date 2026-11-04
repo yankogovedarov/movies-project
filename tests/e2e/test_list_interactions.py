@@ -9,12 +9,16 @@ from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8080"
 
+# Bug 32: the row with the last started media above the list. List checks scope
+# their selectors to #media-list, so this row is never counted as a list row.
+LAST_STARTED = "table.last-started tr#last-started"
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _has_media(page: Page) -> bool:
-    return page.locator("td.filename button.filename-link").count() > 0
+    return page.locator("#media-list td.filename button.filename-link").count() > 0
 
 
 # ---------------------------------------------------------------------------
@@ -23,7 +27,7 @@ def _has_media(page: Page) -> bool:
 
 def test_list_shows_table_or_empty_state(page: Page):
     page.goto(BASE_URL)
-    has_table = page.locator("table").count() > 0
+    has_table = page.locator("#media-list table").count() > 0
     has_empty = page.locator("text=Няма намерени медии").count() > 0
     assert has_table or has_empty, "Expected table or empty-state message"
 
@@ -46,7 +50,7 @@ def test_actions_has_status_and_flag_buttons(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    row = page.locator("tbody tr").first
+    row = page.locator("#media-list tbody tr").first
     assert row.locator("td.actions button.icon-btn").count() == 5
     for title in ("За DnD", "За изтриване", "Грешни субтитри"):
         assert row.locator(f"td.actions button.icon-btn[title='{title}']").count() == 1, (
@@ -58,7 +62,7 @@ def test_filename_cell_is_button_styled_as_link(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    btn = page.locator("td.filename button.filename-link").first
+    btn = page.locator("#media-list td.filename button.filename-link").first
     expect(btn).to_be_visible()
     assert btn.text_content().strip() != "", "Filename button should have text"
 
@@ -67,7 +71,7 @@ def test_folder_column_is_visible(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    expect(page.locator("td.folder").first).to_be_visible()
+    expect(page.locator("#media-list td.folder").first).to_be_visible()
 
 
 def test_list_has_no_details_button(page: Page):
@@ -98,7 +102,7 @@ def test_clicking_filename_redirects_back_to_list(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    page.locator("td.filename button.filename-link").first.click()
+    page.locator("#media-list td.filename button.filename-link").first.click()
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
     assert "/media/" not in page.url
 
@@ -107,7 +111,7 @@ def test_start_media_does_not_show_error(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    page.locator("td.filename button.filename-link").first.click()
+    page.locator("#media-list td.filename button.filename-link").first.click()
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
 
 
@@ -119,7 +123,7 @@ def test_status_change_started_redirects_to_list(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    page.locator("button.icon-btn[title='Стартирана']").first.click()
+    page.locator("#media-list button.icon-btn[title='Стартирана']").first.click()
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
 
 
@@ -127,7 +131,7 @@ def test_status_change_to_new_redirects_to_list(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    page.locator("button.icon-btn[title='Нова']").first.click()
+    page.locator("#media-list button.icon-btn[title='Нова']").first.click()
     expect(page.locator("h1")).to_contain_text("Movie Tracker")
 
 
@@ -145,7 +149,7 @@ def test_dnd_flag_toggles_row_in_place(page: Page):
         pytest.skip("No media available")
     # Реалните данни може вече да имат вдигнат 👍 (бившите „За DnD" медии),
     # затова се взима първият ред със свален флаг.
-    lowered = page.locator("tbody tr").filter(
+    lowered = page.locator("#media-list tbody tr").filter(
         has=page.locator("td.actions button.icon-btn[title='За DnD']:not(.filter-active)")
     )
     if lowered.count() == 0:
@@ -185,40 +189,165 @@ def test_dnd_flag_toggles_row_in_place(page: Page):
 # Случаен филм (🎲)
 # ---------------------------------------------------------------------------
 
-def test_random_shows_film_and_updates_row(page: Page):
-    # Bug 27: 🎲 names the started film under the nav bar and updates its row in
-    # place (out-of-band swap). The server runs with MOVIETRACKER_NO_LAUNCH=1, so
-    # no VLC window opens.
+def test_random_shows_film_in_last_started_row(page: Page):
+    # Bug 32: 🎲 no longer writes „🎲 Стартирах: …" — the started film shows in
+    # the large row above the list, without a reload, and its list row is
+    # updated in place (both out-of-band swaps). The server runs with
+    # MOVIETRACKER_NO_LAUNCH=1, so no VLC window opens.
     # Until Bug #28 is fixed this test must run before any test that triggers
     # /scan: a rescan in flight can empty the random pool or drop the row.
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
 
+    # A stale message (e.g. „Няма филми за избор") must be cleared by the pick.
+    page.evaluate("document.getElementById('flash').textContent = 'stale'")
+    # A marker on window: a full page reload would wipe it.
+    page.evaluate("window.__noReload = 1")
     with page.expect_response(lambda r: "/media/random-new/start" in r.url) as response:
         page.locator("button[title='Стартирай случаен от филтрираните']").click()
     # The pick is random and a filename is not unique (a media is identified by
-    # name + size), so the row is found by the id of the OOB row in the response.
-    match = re.search(r'<tr id="(media-\d+)"', response.value.text())
+    # name + size), so the media is found by the id of the OOB row in the response.
+    match = re.search(r'<tr id="media-(\d+)"', response.value.text())
     assert match, "expected the chosen media's row in the 🎲 response"
-    row_id = match.group(1)
-    row = page.locator(f"tr#{row_id}")
+    media_id = match.group(1)
+    start_path = f"/media/{media_id}/start"
+
+    last = page.locator(LAST_STARTED)
+    expect(last.locator("td.filename form")).to_have_attribute("hx-post", start_path)
+    expect(last).to_be_visible()
+    expect(page.locator("#flash")).to_have_text("")
+    assert page.evaluate("window.__noReload") == 1, (
+        "🎲 reloaded the page instead of swapping the rows in place"
+    )
+
+    # htmx swaps both rows in one step. If the OOB swap of the list row happened,
+    # it already shows the new start count — the same text as after a reload.
+    row = page.locator(f"#media-list tr#media-{media_id}")
     expect(row).to_have_count(1)
-    name = row.locator("button.filename-link").get_attribute("title")
-
-    # Only the film's name — none of the row's content may leak into #flash.
-    expect(page.locator("#flash")).to_have_text(f"🎲 Стартирах: {name}")
-
-    # htmx swaps the row and #flash in one step. If the OOB swap happened, the row
-    # already shows the new start count — the same text as after a reload.
     start_info = row.locator(".start-info")
     swapped = start_info.inner_text() if start_info.count() else ""
+    expect(last.locator(".start-info")).to_have_text(swapped)
+
     page.reload()
     expect(row).to_have_count(1)
     expect(
         row.locator(".start-info"),
-        f"row {row_id} was not updated in place by 🎲 (out-of-band swap)",
+        f"row media-{media_id} was not updated in place by 🎲 (out-of-band swap)",
     ).to_have_text(swapped)
+    expect(
+        last.locator("td.filename form"),
+        "after a reload the row above the list must still show the picked film",
+    ).to_have_attribute("hx-post", start_path)
+
+
+# ---------------------------------------------------------------------------
+# Последно стартираният филм над таблицата (Бъг 32)
+# ---------------------------------------------------------------------------
+
+def _last_started_media_id(page: Page) -> str | None:
+    """The media id of the row above the list, None while it is empty."""
+    last = page.locator(LAST_STARTED)
+    if last.locator("td").count() == 0:
+        return None
+    # The name's form posts to /media/<id>/start.
+    return last.locator("td.filename form").get_attribute("hx-post").split("/")[2]
+
+
+def test_start_from_table_updates_last_started_row(page: Page):
+    # Bug 32: clicking a name in the list shows that film in the row above the
+    # list, without a reload.
+    page.goto(BASE_URL)
+    if not _has_media(page):
+        pytest.skip("No media available")
+    current = _last_started_media_id(page)
+    # A list row of another media, so that the change is visible. A started one
+    # is preferred: starting a new media also moves it to „Старт" for good in the
+    # shared dev database, and undoing that via /status would add a
+    # status_changes row. Any other row is only the fallback.
+    rows = page.locator("#media-list tbody tr").evaluate_all(
+        "rows => rows.map(r => [r.id.replace('media-', ''),"
+        " r.querySelector('td.status').textContent.trim()])"
+    )
+    others = [(row_id, status) for row_id, status in rows if row_id != current]
+    if not others:
+        pytest.skip("No other media in the list")
+    started = [row_id for row_id, status in others if status == "Старт"]
+    target_id = started[0] if started else others[0][0]
+
+    page.evaluate("window.__noReload = 1")
+    page.locator(f"#media-list tr#media-{target_id} button.filename-link").click()
+
+    last = page.locator(LAST_STARTED)
+    expect(last.locator("td.filename form")).to_have_attribute(
+        "hx-post", f"/media/{target_id}/start"
+    )
+    expect(last).to_be_visible()
+    assert page.evaluate("window.__noReload") == 1, (
+        "clicking a name reloaded the page instead of swapping the rows in place"
+    )
+
+
+def test_last_started_row_flag_updates_both_rows(page: Page):
+    # Bug 32: 👍 in the row above the list toggles the flag there and in the
+    # media's list row, without a reload.
+    page.goto(BASE_URL)
+    media_id = _last_started_media_id(page)
+    if media_id is None:
+        pytest.skip("Nothing was started yet")
+    row = page.locator(f"#media-list tr#media-{media_id}")
+    if row.count() == 0:
+        pytest.skip("The last started media is not in the list")
+    selector = "td.actions button.icon-btn[title='За DnD']"
+    top_button = page.locator(LAST_STARTED).locator(selector)
+    row_button = row.locator(selector)
+    active = re.compile(r"\bfilter-active\b")
+    was_raised = bool(active.search(top_button.get_attribute("class") or ""))
+
+    try:
+        page.evaluate("window.__noReload = 1")
+        top_button.click()
+        if was_raised:
+            expect(top_button).not_to_have_class(active)
+            expect(row_button).not_to_have_class(active)
+        else:
+            expect(top_button).to_have_class(active)
+            expect(row_button).to_have_class(active)
+        assert page.evaluate("window.__noReload") == 1, (
+            "clicking 👍 reloaded the page instead of swapping the rows in place"
+        )
+    finally:
+        # The flag is put back also when the test fails half-way (lesson from
+        # Iteration 44): the server and its dev database are shared by the
+        # whole e2e session and by later runs.
+        page.request.post(
+            f"{BASE_URL}/media/{media_id}/for-dnd",
+            form={"value": "1" if was_raised else "0"},
+        )
+
+
+def test_last_started_row_is_larger(page: Page):
+    # Bug 32: the name and the buttons of the row above the list are larger than
+    # those of a list row.
+    page.goto(BASE_URL)
+    if _last_started_media_id(page) is None or not _has_media(page):
+        pytest.skip("Nothing was started yet or no media in the list")
+    last = page.locator(LAST_STARTED)
+
+    font_size = "el => parseFloat(getComputedStyle(el).fontSize)"
+    top_font = last.locator("button.filename-link").evaluate(font_size)
+    list_font = page.locator("#media-list button.filename-link").first.evaluate(font_size)
+    assert top_font >= 1.2 * list_font, (
+        f"name font {top_font}px above the list should be larger than {list_font}px"
+    )
+
+    top_box = last.locator("button.icon-btn").first.bounding_box()
+    list_box = page.locator("#media-list button.icon-btn").first.bounding_box()
+    assert top_box is not None and list_box is not None
+    assert top_box["height"] >= 1.2 * list_box["height"], (
+        f"icon button height {top_box['height']} above the list should be larger "
+        f"than {list_box['height']}"
+    )
 
 
 # ---------------------------------------------------------------------------

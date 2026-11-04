@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -564,9 +566,12 @@ func TestIndex_SortByLastStarted_StartedMediaFirst(t *testing.T) {
 	newRouter(t, d).ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	body := w.Body.String()
-	startedIdx := strings.Index(body, "Started.mkv")
-	notStartedIdx := strings.Index(body, "NotStarted.mkv")
+	// Bug 32: the row above the list shows Started.mkv too, so the order is
+	// read from the list alone.
+	list, err := parseBody(t, w.Body.String()).Find("#media-list").Html()
+	require.NoError(t, err)
+	startedIdx := strings.Index(list, "Started.mkv")
+	notStartedIdx := strings.Index(list, "NotStarted.mkv")
 	assert.Less(t, startedIdx, notStartedIdx, "Started.mkv should appear before NotStarted.mkv when sorting by last_started")
 }
 
@@ -682,27 +687,6 @@ func TestRandomNew_NewBecomesStarted(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "started", updated.CurrentStatus)
 	assert.GreaterOrEqual(t, startEventCount(t, d, id), 1)
-}
-
-func TestRandomNew_HTMX_ReturnsOOBRow(t *testing.T) {
-	d := openTestDB(t)
-	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "OobMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("HX-Request", "true")
-	newRouter(t, d).ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
-	body := w.Body.String()
-	assert.Contains(t, body, `hx-swap-oob="true"`)
-	assert.Contains(t, body, `id="media-`)
-	assert.Contains(t, body, "OobMovie.mkv")
-	assert.Contains(t, body, "🎲 Стартирах: OobMovie.mkv", "Bug 27: the flash names the started film again")
 }
 
 func TestRandomNew_HTMX_DoesNotRedirect(t *testing.T) {
@@ -1502,28 +1486,38 @@ func postRandomHTMX(t *testing.T, d *sql.DB) *httptest.ResponseRecorder {
 	return w
 }
 
-// htmx parses a partial response by its first tag: only with the OOB row first
-// (and useTemplateFragments, see ListPage) does the browser swap the row and
-// keep the flash. With the flash first the <tr> tags are dropped and the row's
-// text lands in #flash.
-func TestRandomNew_HTMX_RowComesBeforeFlash(t *testing.T) {
+// Bug 32: 🎲 shows the started film in the row above the list instead of the
+// „🎲 Стартирах: …" flash. Both rows of the media come out of band and nothing
+// else, so the hx-target (#flash) is emptied. Every part is a <tr>, so htmx
+// parses the response in one table context.
+func TestRandomNew_HTMX_BothRowsOOB_NoFlash(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "OrderMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "OobMovie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
 	})
+	id := mediaIDByName(t, d, "OobMovie.mkv")
 
-	body := postRandomHTMX(t, d).Body.String()
+	w := postRandomHTMX(t, d)
 
-	flashAt := strings.Index(body, "🎲 Стартирах: OrderMovie.mkv")
-	require.NotEqual(t, -1, flashAt, "expected the flash in the HTMX response")
-	assert.True(t, strings.HasPrefix(strings.TrimSpace(body), `<tr id="media-`),
-		"the response must start with the OOB row, got %.80q", body)
-	rowAt := strings.Index(body, `hx-swap-oob="true"`)
-	require.NotEqual(t, -1, rowAt, "expected the OOB row in the HTMX response")
-	assert.Less(t, rowAt, flashAt, "the OOB row must come before the flash")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+	body := w.Body.String()
+	assert.NotContains(t, body, "Стартирах", "the 🎲 flash is gone")
+
+	var ids []string
+	rowParts(t, body).Each(func(_ int, row *goquery.Selection) {
+		rowID := row.AttrOr("id", "")
+		ids = append(ids, rowID)
+		assert.Equal(t, "true", row.AttrOr("hx-swap-oob", ""), "row %s must be swapped out of band", rowID)
+		assert.Equal(t, "OobMovie.mkv", strings.TrimSpace(row.Find("td.filename button.filename-link").Text()), rowID)
+		assert.Contains(t, row.Find(".start-info").Text(), "Стартирана 1 пъти", rowID)
+		assert.Equal(t, "Старт", strings.TrimSpace(row.Find("td.status").Text()), rowID)
+	})
+	assert.ElementsMatch(t, []string{fmt.Sprintf("media-%d", id), "last-started"}, ids,
+		"expected exactly the media's list row and the row above the list")
 }
 
-func TestRandomNew_HTMX_FlashEscapesFilename(t *testing.T) {
+func TestRandomNew_HTMX_EscapesFilename(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
 		{Filename: "Evil<b>Bold</b>.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
@@ -1531,7 +1525,7 @@ func TestRandomNew_HTMX_FlashEscapesFilename(t *testing.T) {
 
 	body := postRandomHTMX(t, d).Body.String()
 
-	assert.Contains(t, body, "🎲 Стартирах: Evil&lt;b&gt;Bold&lt;/b&gt;.mkv", "the filename must be HTML-escaped in the flash")
+	assert.Contains(t, body, "Evil&lt;b&gt;Bold&lt;/b&gt;.mkv", "the filename must be HTML-escaped in the rows")
 	assert.NotContains(t, body, "<b>", "no markup from the filename may reach the page")
 }
 
@@ -1587,7 +1581,7 @@ func TestRandomNew_IgnoresTransParam(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	r.ServeHTTP(w, req)
-	assert.Contains(t, w.Body.String(), "🎲 Стартирах: Pick.mkv", "trans=bg must not empty the pool")
+	assert.Contains(t, w.Body.String(), "Pick.mkv", "trans=bg must not empty the pool")
 
 	w = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPost, "/media/random-new/start", strings.NewReader("status=all&disk=on&trans=bg"))
@@ -1705,8 +1699,8 @@ func TestIndex_FlagsAreIndependent(t *testing.T) {
 }
 
 // The three flags share one handler: value=1 raises the flag, value=0 clears
-// it; with HTMX only the updated row comes back, with the button highlighted;
-// a bad id is a 404.
+// it; with HTMX the updated row comes back first (the row above the list
+// follows out of band, Bug 32), with the button highlighted; a bad id is a 404.
 func TestSetFlag_TogglesAndReturnsRow(t *testing.T) {
 	for _, tc := range []struct{ route, column, title string }{
 		{"for-dnd", "for_dnd", "За DnD"},
@@ -1743,6 +1737,8 @@ func TestSetFlag_TogglesAndReturnsRow(t *testing.T) {
 			assert.True(t, strings.HasPrefix(strings.TrimSpace(body), fmt.Sprintf(`<tr id="media-%d"`, id)),
 				"the HTMX response must be the media's row, got %.80q", body)
 			assert.NotContains(t, body, "<html", "HTMX response must be the row only")
+			assert.Contains(t, body, `<tr id="last-started" hidden hx-swap-oob="true"></tr>`,
+				"with nothing ever started the row above the list comes back as the empty hidden placeholder")
 			assert.Equal(t, int64(1), flagValue(t, d, tc.column, id))
 			// The HTML parser drops a bare <tr> outside a table, hence the wrapper.
 			class := parseBody(t, "<table>"+body+"</table>").
@@ -1833,4 +1829,185 @@ func TestRandomNew_RespectsFlagFilters(t *testing.T) {
 				"the redirect must lead back to the same flag filter")
 		})
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Bug 32: последно стартираният филм над таблицата
+// ---------------------------------------------------------------------------
+
+// startViaRoute starts a media the way the list does without HTMX, so its start
+// event, status and stats are real.
+func startViaRoute(t *testing.T, d *sql.DB, id int64) {
+	t.Helper()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/start", id), nil)
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusSeeOther, w.Code)
+}
+
+// rowParts parses an HTMX row response in a table context, as htmx does, and
+// returns its parts. Every part must be a <tr>: the HTML parser moves anything
+// else (an element or text) out of the table, in front of it.
+func rowParts(t *testing.T, body string) *goquery.Selection {
+	t.Helper()
+	doc := parseBody(t, "<table><tbody>"+body+"</tbody></table>")
+	require.Equal(t, 1, doc.Find("body").Contents().Length(),
+		"every part of the response must be a <tr>, got %.200q", body)
+	parts := doc.Find("tbody").Children()
+	require.Equal(t, 0, parts.Not("tr").Length(), "every part of the response must be a <tr>, got %.200q", body)
+	return parts
+}
+
+// mediaActions are the HTMX actions of a media row — the name, a status form
+// and the three flags — with a check that a row shows the action's result. The
+// media was started once before, so it is the last started one, "started", and
+// every flag is lowered.
+var mediaActions = []struct {
+	check       func(t *testing.T, row *goquery.Selection)
+	route, form string
+}{
+	{route: "start", check: func(t *testing.T, row *goquery.Selection) {
+		assert.Contains(t, row.Find(".start-info").Text(), "Стартирана 2 пъти")
+	}},
+	{route: "status", form: "status=new", check: func(t *testing.T, row *goquery.Selection) {
+		assert.Equal(t, "Нова", strings.TrimSpace(row.Find("td.status").Text()))
+	}},
+	{route: "for-dnd", form: "value=1", check: flagRaisedIn("За DnD")},
+	{route: "for-deletion", form: "value=1", check: flagRaisedIn("За изтриване")},
+	{route: "wrong-subs", form: "value=1", check: flagRaisedIn("Грешни субтитри")},
+}
+
+func flagRaisedIn(title string) func(t *testing.T, row *goquery.Selection) {
+	return func(t *testing.T, row *goquery.Selection) {
+		btn := row.Find(fmt.Sprintf("td.actions button.icon-btn[title='%s']", title))
+		require.Equal(t, 1, btn.Length(), "expected the %s button", title)
+		assert.Contains(t, btn.AttrOr("class", ""), "filter-active", "the %s flag must show raised", title)
+	}
+}
+
+// postMediaAction sends a row action the way htmx does. hxTarget is the id of
+// the row the form sits in ("" leaves the header out).
+func postMediaAction(t *testing.T, d *sql.DB, id int64, route, form, hxTarget string) string {
+	t.Helper()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/%s", id, route), strings.NewReader(form))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	if hxTarget != "" {
+		req.Header.Set("HX-Target", hxTarget)
+	}
+	newRouter(t, d).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	return w.Body.String()
+}
+
+// From a list row (htmx sends HX-Target: media-N; no header keeps the old
+// default) the list row comes first and replaces the row the form sits in; the
+// row above the list follows out of band, re-read with the fresh data.
+func TestMediaActions_FromTable_LastStartedIsOOB(t *testing.T) {
+	for _, action := range mediaActions {
+		for _, header := range []string{"", "media-N"} {
+			t.Run(action.route+"/"+cmp.Or(header, "no HX-Target"), func(t *testing.T) {
+				d := openTestDB(t)
+				id := seedOne(t, d)
+				startViaRoute(t, d, id)
+				rowID := fmt.Sprintf("media-%d", id)
+				hxTarget := strings.Replace(header, "media-N", rowID, 1)
+
+				body := postMediaAction(t, d, id, action.route, action.form, hxTarget)
+
+				assert.True(t, strings.HasPrefix(strings.TrimSpace(body), `<tr id="`+rowID+`">`),
+					"the list row must come first and not out of band, got %.80q", body)
+				parts := rowParts(t, body)
+				require.Equal(t, 2, parts.Length(), "expected the list row and the row above the list")
+
+				row := parts.Filter("#" + rowID)
+				require.Equal(t, 1, row.Length())
+				_, oob := row.Attr("hx-swap-oob")
+				assert.False(t, oob, "the list row is the main swap")
+				action.check(t, row)
+
+				last := parts.Filter("#last-started")
+				require.Equal(t, 1, last.Length())
+				assert.Equal(t, "true", last.AttrOr("hx-swap-oob", ""), "the row above the list is swapped out of band")
+				assert.Equal(t, "Movie.mkv", strings.TrimSpace(last.Find("td.filename button.filename-link").Text()))
+				action.check(t, last)
+			})
+		}
+	}
+}
+
+// From the row above the list (htmx sends HX-Target: last-started) that row
+// comes first and the media's list row follows out of band.
+func TestMediaActions_FromLastStartedRow_IsPrimary(t *testing.T) {
+	for _, action := range mediaActions {
+		t.Run(action.route, func(t *testing.T) {
+			d := openTestDB(t)
+			id := seedOne(t, d)
+			startViaRoute(t, d, id)
+			rowID := fmt.Sprintf("media-%d", id)
+
+			body := postMediaAction(t, d, id, action.route, action.form, "last-started")
+
+			assert.True(t, strings.HasPrefix(strings.TrimSpace(body), `<tr id="last-started">`),
+				"the row above the list must come first and not out of band, got %.80q", body)
+			parts := rowParts(t, body)
+			require.Equal(t, 2, parts.Length(), "expected the row above the list and the list row")
+
+			last := parts.Filter("#last-started")
+			require.Equal(t, 1, last.Length())
+			_, oob := last.Attr("hx-swap-oob")
+			assert.False(t, oob, "the row above the list is the main swap")
+			action.check(t, last)
+
+			row := parts.Filter("#" + rowID)
+			require.Equal(t, 1, row.Length())
+			assert.Equal(t, "true", row.AttrOr("hx-swap-oob", ""), "the list row is swapped out of band")
+			action.check(t, row)
+		})
+	}
+}
+
+// When the last start cannot be read back (forced here with a start event of a
+// media that does not exist), an action from the row above the list must not
+// hide that row: it keeps the media the user just clicked.
+func TestMediaActions_FromLastStartedRow_KeepsRowWhenLastUnreadable(t *testing.T) {
+	d := openTestDB(t)
+	id := seedOne(t, d)
+	startViaRoute(t, d, id)
+	_, err := d.Exec("INSERT INTO start_events (media_id) VALUES (999999)")
+	require.NoError(t, err)
+
+	body := postMediaAction(t, d, id, "for-dnd", "value=1", "last-started")
+
+	assert.True(t, strings.HasPrefix(strings.TrimSpace(body), `<tr id="last-started">`),
+		"the row above the list must stay the main swap and visible, got %.80q", body)
+	last := rowParts(t, body).Filter("#last-started")
+	require.Equal(t, 1, last.Length())
+	_, hidden := last.Attr("hidden")
+	assert.False(t, hidden, "the clicked row must not disappear")
+	assert.Equal(t, "Movie.mkv", strings.TrimSpace(last.Find("td.filename button.filename-link").Text()))
+	flagRaisedIn("За DnD")(t, last)
+}
+
+// Starting another media from the list moves the row above the list to it; a
+// flag raised on a media that is not the last started leaves that row as it is.
+func TestMediaActions_FromTable_LastStartedFollowsNewestStart(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Old.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "New.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+	})
+	oldID, newID := mediaIDByName(t, d, "Old.mkv"), mediaIDByName(t, d, "New.mkv")
+	startViaRoute(t, d, oldID)
+
+	lastName := func(body string) string {
+		return strings.TrimSpace(rowParts(t, body).Filter("#last-started").Find("td.filename button.filename-link").Text())
+	}
+
+	body := postMediaAction(t, d, newID, "for-dnd", "value=1", fmt.Sprintf("media-%d", newID))
+	assert.Equal(t, "Old.mkv", lastName(body), "a flag does not change which media was started last")
+
+	body = postMediaAction(t, d, newID, "start", "", fmt.Sprintf("media-%d", newID))
+	assert.Equal(t, "New.mkv", lastName(body), "the newest start moves the row above the list")
 }

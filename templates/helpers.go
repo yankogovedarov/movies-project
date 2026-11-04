@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+// LastStartedID is the id of the row above the list with the most recently
+// started media (Bug 32). The template renders it and the handlers compare the
+// HX-Target header with it, so the value lives in one place.
+const LastStartedID = "last-started"
+
 func formatDate(t time.Time) string {
 	return t.Format("02.01.2006")
 }
