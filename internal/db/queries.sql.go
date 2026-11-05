@@ -10,6 +10,24 @@ import (
 	"database/sql"
 )
 
+const clearForDeletion = `-- name: ClearForDeletion :exec
+UPDATE media SET for_deletion = 0 WHERE id = ?
+`
+
+func (q *Queries) ClearForDeletion(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, clearForDeletion, id)
+	return err
+}
+
+const clearForDnd = `-- name: ClearForDnd :exec
+UPDATE media SET for_dnd = 0 WHERE id = ?
+`
+
+func (q *Queries) ClearForDnd(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, clearForDnd, id)
+	return err
+}
+
 const countOnDisk = `-- name: CountOnDisk :one
 SELECT COUNT(*) FROM media WHERE on_disk = 1
 `
@@ -206,6 +224,24 @@ func (q *Queries) MarkAllOffDisk(ctx context.Context) error {
 	return err
 }
 
+const raiseForDeletion = `-- name: RaiseForDeletion :exec
+UPDATE media SET for_deletion = 1, for_dnd = 0 WHERE id = ?
+`
+
+func (q *Queries) RaiseForDeletion(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, raiseForDeletion, id)
+	return err
+}
+
+const raiseForDnd = `-- name: RaiseForDnd :exec
+UPDATE media SET for_dnd = 1, for_deletion = 0 WHERE id = ?
+`
+
+func (q *Queries) RaiseForDnd(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, raiseForDnd, id)
+	return err
+}
+
 const saveUIPrefs = `-- name: SaveUIPrefs :exec
 INSERT INTO ui_prefs (id, status_filter, disk_filter, sort_filter, dir_filter, q_filter, del_filter, dnd_filter, subs_filter, folder_filter, updated_at)
 VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -246,34 +282,6 @@ func (q *Queries) SaveUIPrefs(ctx context.Context, arg SaveUIPrefsParams) error 
 		arg.SubsFilter,
 		arg.FolderFilter,
 	)
-	return err
-}
-
-const updateForDeletion = `-- name: UpdateForDeletion :exec
-UPDATE media SET for_deletion = ? WHERE id = ?
-`
-
-type UpdateForDeletionParams struct {
-	ForDeletion int64
-	ID          int64
-}
-
-func (q *Queries) UpdateForDeletion(ctx context.Context, arg UpdateForDeletionParams) error {
-	_, err := q.db.ExecContext(ctx, updateForDeletion, arg.ForDeletion, arg.ID)
-	return err
-}
-
-const updateForDnd = `-- name: UpdateForDnd :exec
-UPDATE media SET for_dnd = ? WHERE id = ?
-`
-
-type UpdateForDndParams struct {
-	ForDnd int64
-	ID     int64
-}
-
-func (q *Queries) UpdateForDnd(ctx context.Context, arg UpdateForDndParams) error {
-	_, err := q.db.ExecContext(ctx, updateForDnd, arg.ForDnd, arg.ID)
 	return err
 }
 

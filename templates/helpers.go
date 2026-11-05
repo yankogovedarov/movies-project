@@ -91,15 +91,23 @@ func (f Filters) WithSort(sort, dir string) Filters {
 	return f
 }
 
-// WithDel returns a copy of f with the 👎 „За изтриване" filter set to del.
+// WithDel returns a copy of f with the 👎 „За изтриване" filter set to del. 👍 and
+// 👎 exclude each other (Bug 33), so narrowing to 👎 also clears the 👍 filter.
 func (f Filters) WithDel(del string) Filters {
 	f.Del = del
+	if del == "yes" {
+		f.Dnd = "all"
+	}
 	return f
 }
 
-// WithDnd returns a copy of f with the 👍 „За DnD" filter set to dnd.
+// WithDnd returns a copy of f with the 👍 „За DnD" filter set to dnd. 👍 and 👎
+// exclude each other (Bug 33), so narrowing to 👍 also clears the 👎 filter.
 func (f Filters) WithDnd(dnd string) Filters {
 	f.Dnd = dnd
+	if dnd == "yes" {
+		f.Del = "all"
+	}
 	return f
 }
 

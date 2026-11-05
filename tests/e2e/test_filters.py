@@ -126,8 +126,8 @@ def test_for_deletion_filter_survives_status_click(page: Page):
 
 
 def test_flag_filter_buttons_present(page: Page):
-    # Бъг 30: трите независими флага 👍 👎 ⚠ са в групата .filter-btns и всеки
-    # стеснява списъка чрез своя параметър.
+    # Bug 30: the three flags 👍 👎 ⚠ are in the .filter-btns group and each one
+    # narrows the list through its own parameter.
     page.goto(BASE_URL)
     for title, icon, param in (
         ("За DnD", "👍", "dnd"),
@@ -146,7 +146,7 @@ def test_flag_filter_buttons_present(page: Page):
 def test_filters_persist_after_reopen(page: Page):
     # Бъг 23: избраните филтри и сорт се пазят в базата, така че ново отваряне на
     # голо "/" (както след рестарт на .exe-то) ги възстановява.
-    page.goto(f"{BASE_URL}/?status=started&sort=size&dir=desc&del=yes&dnd=yes")
+    page.goto(f"{BASE_URL}/?status=started&sort=size&dir=desc&del=yes&subs=yes")
 
     page.goto(BASE_URL)
     expect(page.locator("a.filter-btn[title='Стартирана']")).to_have_class(
@@ -155,13 +155,83 @@ def test_filters_persist_after_reopen(page: Page):
     expect(page.locator(".filter-btns a.filter-btn[title='За изтриване']")).to_have_class(
         re.compile(r"\bfilter-active\b")
     )
-    # Бъг 30: флагът 👍 се помни като 👎.
-    expect(page.locator(".filter-btns a.filter-btn[title='За DnD']")).to_have_class(
+    # Bug 30: the ⚠ flag is remembered like 👎.
+    expect(page.locator(".filter-btns a.filter-btn[title='Грешни субтитри']")).to_have_class(
         re.compile(r"\bfilter-active\b")
     )
     sort_btn = page.locator("a.sort-btn[title='По размер']")
     expect(sort_btn).to_have_class(re.compile(r"\bfilter-active\b"))
     assert sort_btn.inner_text().strip() == "Рз↓"
+
+
+def _flag_filter(page: Page, title: str):
+    return page.locator(f".filter-btns a.filter-btn[title='{title}']")
+
+
+def test_flag_icons_yellow_only_when_selected(page: Page):
+    # Bug 33: 👍 👎 ⚠ are colour emoji, so they look yellow unless the CSS turns
+    # them grey. The computed style proves the rule applies: grayscale without a
+    # selection, no filter with one. How that looks is the user's manual check.
+    page.goto(f"{BASE_URL}/?dnd=all&del=all&subs=all")
+    for title in ("За DnD", "За изтриване", "Грешни субтитри"):
+        expect(_flag_filter(page, title).locator(".flag-icon")).to_have_css(
+            "filter", "grayscale(1)"
+        )
+
+    page.goto(f"{BASE_URL}/?dnd=yes&del=all&subs=yes")
+    expect(_flag_filter(page, "За DnD").locator(".flag-icon")).to_have_css("filter", "none")
+    expect(_flag_filter(page, "За изтриване").locator(".flag-icon")).to_have_css(
+        "filter", "grayscale(1)"
+    )
+    expect(_flag_filter(page, "Грешни субтитри").locator(".flag-icon")).to_have_css(
+        "filter", "none"
+    )
+
+    # Whatever the list and the row above it show right now (real data), a flag's
+    # icon has no filter exactly when its button is highlighted. The move from one
+    # to the other is in test_like_dislike_exclude_in_row.
+    page.goto(f"{BASE_URL}/?dnd=all&del=all&subs=all")
+    icons = page.locator("td.actions button.icon-btn .flag-icon").evaluate_all(
+        "els => els.map(e => [e.closest('button').classList.contains('filter-active'),"
+        " getComputedStyle(e).filter])"
+    )
+    if not icons:
+        pytest.skip("No media available: the nav bar passed, the rows were not checked")
+    for raised, css_filter in icons:
+        assert css_filter == ("none" if raised else "grayscale(1)"), (
+            f"a {'raised' if raised else 'lowered'} flag has filter {css_filter!r}"
+        )
+
+
+def test_like_dislike_filters_exclude(page: Page):
+    # Bug 33: 👍 and 👎 exclude each other in the nav bar, too.
+    active = re.compile(r"\bfilter-active\b")
+    like = _flag_filter(page, "За DnD")
+    dislike = _flag_filter(page, "За изтриване")
+
+    page.goto(f"{BASE_URL}/?dnd=yes&del=all")
+    expect(like).to_have_class(active)
+
+    dislike.click()
+    expect(page).to_have_url(re.compile(r"del=yes"))
+    assert "dnd=all" in page.url, f"the 👎 link must clear 👍, got {page.url}"
+    expect(dislike).to_have_class(active)
+    expect(like).not_to_have_class(active)
+
+    like.click()
+    expect(page).to_have_url(re.compile(r"dnd=yes"))
+    assert "del=all" in page.url, f"the 👍 link must clear 👎, got {page.url}"
+    expect(like).to_have_class(active)
+    expect(dislike).not_to_have_class(active)
+
+    # An old address with both keeps 👍, and that repaired state is what is
+    # remembered for a bare "/".
+    page.goto(f"{BASE_URL}/?dnd=yes&del=yes")
+    expect(like).to_have_class(active)
+    expect(dislike).not_to_have_class(active)
+    page.goto(BASE_URL)
+    expect(like).to_have_class(active)
+    expect(dislike).not_to_have_class(active)
 
 
 def test_search_text_persists_after_reopen(page: Page):

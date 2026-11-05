@@ -405,3 +405,43 @@ func TestMigrate_HasFlagColumns(t *testing.T) {
 	assert.Equal(t, "all", dnd, "dnd_filter must default to all")
 	assert.Equal(t, "all", subs, "subs_filter must default to all")
 }
+
+// Bug 33: 👍 and 👎 exclude each other from now on. Migration 000010 leaves a
+// media that carries both with 👍 only (the user's decision); a media with just
+// one of them stays as it is, and ⚠ takes no part.
+func TestMigrate_LikeWinsOverDislike(t *testing.T) {
+	// The database as the previous version left it (schema version 9).
+	d := openAtSchemaVersion(t, 9)
+
+	_, err := d.Exec(`INSERT INTO media (filename, folder_relative_path, file_size_bytes,
+		for_dnd, for_deletion, wrong_subs) VALUES
+		('Both.mkv', 'Films', 100, 1, 1, 0),
+		('BothAndSubs.mkv', 'Films', 200, 1, 1, 1),
+		('OnlyLike.mkv', 'Films', 300, 1, 0, 0),
+		('OnlyDislike.mkv', 'Films', 400, 0, 1, 0),
+		('OnlySubs.mkv', 'Films', 500, 0, 0, 1),
+		('Plain.mkv', 'Films', 600, 0, 0, 0)`)
+	require.NoError(t, err)
+
+	require.NoError(t, db.Migrate(d))
+
+	flags := map[string][3]int64{}
+	rows, err := d.Query("SELECT filename, for_dnd, for_deletion, wrong_subs FROM media")
+	require.NoError(t, err)
+	for rows.Next() {
+		var name string
+		var f [3]int64
+		require.NoError(t, rows.Scan(&name, &f[0], &f[1], &f[2]))
+		flags[name] = f
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
+	assert.Equal(t, map[string][3]int64{
+		"Both.mkv":        {1, 0, 0},
+		"BothAndSubs.mkv": {1, 0, 1},
+		"OnlyLike.mkv":    {1, 0, 0},
+		"OnlyDislike.mkv": {0, 1, 0},
+		"OnlySubs.mkv":    {0, 0, 1},
+		"Plain.mkv":       {0, 0, 0},
+	}, flags, "only a media with both 👍 and 👎 changes: it keeps 👍")
+}

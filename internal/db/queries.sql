@@ -40,14 +40,20 @@ SELECT id, filename, folder_relative_path, file_size_bytes, current_status, on_d
 FROM media
 ORDER BY folder_relative_path, filename;
 
--- name: UpdateForDeletion :exec
-UPDATE media SET for_deletion = ? WHERE id = ?;
-
--- name: UpdateForDnd :exec
-UPDATE media SET for_dnd = ? WHERE id = ?;
-
 -- name: UpdateWrongSubs :exec
 UPDATE media SET wrong_subs = ? WHERE id = ?;
+
+-- name: RaiseForDnd :exec
+UPDATE media SET for_dnd = 1, for_deletion = 0 WHERE id = ?;
+
+-- name: RaiseForDeletion :exec
+UPDATE media SET for_deletion = 1, for_dnd = 0 WHERE id = ?;
+
+-- name: ClearForDnd :exec
+UPDATE media SET for_dnd = 0 WHERE id = ?;
+
+-- name: ClearForDeletion :exec
+UPDATE media SET for_deletion = 0 WHERE id = ?;
 
 -- name: GetUIPrefs :one
 SELECT status_filter, disk_filter, sort_filter, dir_filter, q_filter, del_filter, dnd_filter, subs_filter, folder_filter

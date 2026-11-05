@@ -87,7 +87,36 @@ func TestFilters_Href_CarriesEveryField(t *testing.T) {
 	}, u.Query())
 }
 
-// Bug 30: each With method returns a copy with exactly one filter changed.
+// Bug 33: 👍 and 👎 exclude each other, so a link that narrows to one of them
+// clears the other's filter. A link that clears one leaves the other alone, and
+// ⚠ takes no part.
+func TestFilters_WithDndAndDel_Exclude(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		base             Filters
+		with             func(Filters) Filters
+		wantDnd, wantDel string
+	}{
+		{"👍 yes clears 👎", Filters{Dnd: "all", Del: "yes", Subs: "yes"},
+			func(f Filters) Filters { return f.WithDnd("yes") }, "yes", "all"},
+		{"👎 yes clears 👍", Filters{Dnd: "yes", Del: "all", Subs: "yes"},
+			func(f Filters) Filters { return f.WithDel("yes") }, "all", "yes"},
+		{"👍 all leaves 👎", Filters{Dnd: "yes", Del: "yes", Subs: "yes"},
+			func(f Filters) Filters { return f.WithDnd("all") }, "all", "yes"},
+		{"👎 all leaves 👍", Filters{Dnd: "yes", Del: "yes", Subs: "yes"},
+			func(f Filters) Filters { return f.WithDel("all") }, "yes", "all"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.with(tc.base)
+			assert.Equal(t, tc.wantDnd, got.Dnd, "👍 filter")
+			assert.Equal(t, tc.wantDel, got.Del, "👎 filter")
+			assert.Equal(t, "yes", got.Subs, "⚠ takes no part")
+		})
+	}
+}
+
+// Bug 30: each With method returns a copy with exactly one filter changed (in
+// base 👍 and 👎 are "all", so the Bug 33 rule above changes nothing here).
 func TestFilters_With_ChangesOneField(t *testing.T) {
 	base := Filters{Status: "new", Disk: "on", Sort: "name", Dir: "asc", Q: "dune",
 		Del: "all", Dnd: "all", Subs: "all", Folder: "Movies"}

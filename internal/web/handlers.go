@@ -118,8 +118,8 @@ func folderOptions(raw []db.Medium, current string) []string {
 
 // keepFlagged narrows media to those with a raised flag when the flag's filter
 // is "yes". The three flags (👍 За DnD, 👎 за изтриване, ⚠ грешни субтитри) are
-// independent of the status and of each other, so each one narrows whatever
-// the other filters already selected.
+// independent of the status, and ⚠ of the other two, so each one narrows whatever
+// the other filters already selected. 👍 and 👎 exclude each other (Bug 33).
 func keepFlagged(media []db.Medium, filter string, flag func(db.Medium) int64) []db.Medium {
 	if filter != "yes" {
 		return media
@@ -187,6 +187,24 @@ func defaultPrefs() db.GetUIPrefsRow {
 		SubsFilter:   "all",
 		FolderFilter: "all",
 	}
+}
+
+// exclusiveLikeFilters returns the 👍 and 👎 filter values (dnd, del) with at most
+// one of them narrowing the list: the flags exclude each other (Bug 33), so both
+// together would always show nothing. The nav bar links never send both, but an
+// old address or the state remembered before this rule can. A parameter in the
+// address beats a remembered one; in every other case 👍 stays, as in migration
+// 000010.
+func exclusiveLikeFilters(c *gin.Context, dnd, del string) (string, string) {
+	if dnd != "yes" || del != "yes" {
+		return dnd, del
+	}
+	_, dndInAddress := c.GetQuery("dnd")
+	_, delInAddress := c.GetQuery("del")
+	if delInAddress && !dndInAddress {
+		return "all", del
+	}
+	return dnd, "all"
 }
 
 // loadPrefs returns the filter/sort state remembered from the previous run
@@ -275,6 +293,8 @@ func (h *Handlers) Index(c *gin.Context) {
 		// the disk root".
 		folderFilter = "all"
 	}
+	// Before SaveUIPrefs, so a remembered pair gets repaired too.
+	dndFilter, delFilter = exclusiveLikeFilters(c, dndFilter, delFilter)
 
 	ctx := c.Request.Context()
 	q := db.New(h.DB)
@@ -508,17 +528,25 @@ func (h *Handlers) RandomNew(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, listURL)
 }
 
-// SetForDnd toggles the 👍 „За DnD" flag (Bug 30).
+// SetForDnd toggles the 👍 „За DnD" flag (Bug 30). Raising it also clears 👎 in
+// the same statement (Bug 33); clearing it leaves 👎 alone.
 func (h *Handlers) SetForDnd(c *gin.Context) {
 	h.setFlag(c, func(ctx context.Context, q *db.Queries, id, value int64) error {
-		return q.UpdateForDnd(ctx, db.UpdateForDndParams{ForDnd: value, ID: id})
+		if value == 1 {
+			return q.RaiseForDnd(ctx, id)
+		}
+		return q.ClearForDnd(ctx, id)
 	})
 }
 
-// SetForDeletion toggles the 👎 „за изтриване" flag (Bug 22).
+// SetForDeletion toggles the 👎 „за изтриване" flag (Bug 22). Raising it also
+// clears 👍 in the same statement (Bug 33); clearing it leaves 👍 alone.
 func (h *Handlers) SetForDeletion(c *gin.Context) {
 	h.setFlag(c, func(ctx context.Context, q *db.Queries, id, value int64) error {
-		return q.UpdateForDeletion(ctx, db.UpdateForDeletionParams{ForDeletion: value, ID: id})
+		if value == 1 {
+			return q.RaiseForDeletion(ctx, id)
+		}
+		return q.ClearForDeletion(ctx, id)
 	})
 }
 
@@ -529,9 +557,10 @@ func (h *Handlers) SetWrongSubs(c *gin.Context) {
 	})
 }
 
-// setFlag raises or clears one of the three independent flags of a media
-// through update. The submitted value is "1" to raise it and "0" to clear it;
-// the template decides which one to send.
+// setFlag raises or clears one of the three flags of a media through update. The
+// submitted value is "1" to raise it and "0" to clear it; the template decides
+// which one to send. The HTMX response is the whole row, so 👍 and 👎 both show
+// what raising one of them did to the other (Bug 33).
 func (h *Handlers) setFlag(c *gin.Context, update func(ctx context.Context, q *db.Queries, id, value int64) error) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

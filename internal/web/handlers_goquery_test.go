@@ -488,11 +488,15 @@ func TestIndex_ForDeletionFilter_PreservedByOtherFilters(t *testing.T) {
 	doc.Find(".filter-btns a.filter-btn, .sort-btns a.sort-btn").
 		Each(func(_ int, sel *goquery.Selection) {
 			title, _ := sel.Attr("title")
-			if title == "За изтриване" {
-				return // this one intentionally toggles back to del=all
-			}
 			href, _ := sel.Attr("href")
-			assert.Contains(t, href, "del=yes", "link %q must preserve the за-изтриване filter", title)
+			switch title {
+			case "За изтриване":
+				// This one intentionally toggles back to del=all.
+			case "За DnD":
+				assert.Contains(t, href, "del=all", "Bug 33: 👍 and 👎 exclude each other, so the 👍 link clears 👎")
+			default:
+				assert.Contains(t, href, "del=yes", "link %q must preserve the за-изтриване filter", title)
+			}
 		})
 
 	// The search and 🎲 forms re-send the filter (hx-include / hidden inputs).
@@ -894,12 +898,14 @@ func TestIndex_NoTranslationUI(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Bug 30: три независими флага 👍 👎 ⚠
+// Bug 30: the three flags 👍 👎 ⚠ (👍 and 👎 exclude each other since Bug 33, see below)
 // ---------------------------------------------------------------------------
 
-// Next to ○ ▶ the row offers the three independent flags 👍 👎 ⚠, each a form
-// that posts to its own route and swaps the row in place. A raised flag is
-// highlighted and its button clears it (value 0); a lowered one raises it.
+// Next to ○ ▶ the row offers the three flags 👍 👎 ⚠, each a form that posts to
+// its own route and swaps the row in place. A raised flag is highlighted and its
+// button clears it (value 0); a lowered one raises it. Each button renders its
+// own column, so the seed writes all three straight into the DB, although the
+// routes never leave 👍 and 👎 raised together (Bug 33).
 func TestIndex_RowFlagButtons(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
@@ -1024,8 +1030,13 @@ func TestIndex_FlagFilters_PreservedByOtherFilters(t *testing.T) {
 			links.Each(func(_ int, sel *goquery.Selection) {
 				title, _ := sel.Attr("title")
 				href, _ := sel.Attr("href")
-				// A flag's own button intentionally toggles back to all.
-				if title != "За DnD" {
+				// A flag's own button intentionally toggles back to all, and the 👎
+				// link intentionally clears 👍 (Bug 33: they exclude each other).
+				switch title {
+				case "За DnD":
+				case "За изтриване":
+					assert.Contains(t, href, "dnd=all", "Bug 33: the 👎 link must clear the 👍 filter")
+				default:
 					assert.Contains(t, href, "dnd=yes", "link %q must preserve the 👍 filter", title)
 				}
 				if title != "Грешни субтитри" {
@@ -1194,4 +1205,102 @@ func TestIndex_LastStartedRow_AboveListOutsideMediaList(t *testing.T) {
 		order = append(order, s.AttrOr("id", ""))
 	})
 	assert.Equal(t, []string{"flash", "last-started", "media-list"}, order)
+}
+
+// ---------------------------------------------------------------------------
+// Bug 33: 👍 👎 ⚠ are grey until selected; 👍 and 👎 exclude each other
+// ---------------------------------------------------------------------------
+
+// Clicking 👎 while 👍 narrows the list leads to 👎 alone, and the other way
+// round: the link itself clears the other filter. ⚠ takes no part: its link keeps
+// 👍 and 👎, and their links keep ⚠.
+func TestIndex_FlagFilterLinks_Exclude(t *testing.T) {
+	for _, tc := range []struct {
+		name, target string
+		// The {dnd, del} values each flag's link must carry.
+		wantLike, wantDislike, wantSubs [2]string
+	}{
+		{
+			name: "👍 active", target: "/?dnd=yes&del=all&subs=yes",
+			wantLike:    [2]string{"all", "all"}, // 👍 toggles back
+			wantDislike: [2]string{"all", "yes"}, // 👎 takes over
+			wantSubs:    [2]string{"yes", "all"}, // ⚠ keeps 👍
+		},
+		{
+			name: "👎 active", target: "/?dnd=all&del=yes&subs=yes",
+			wantLike:    [2]string{"yes", "all"}, // 👍 takes over
+			wantDislike: [2]string{"all", "all"}, // 👎 toggles back
+			wantSubs:    [2]string{"all", "yes"}, // ⚠ keeps 👎
+		},
+		{
+			name: "neither active", target: "/?dnd=all&del=all&subs=yes",
+			wantLike:    [2]string{"yes", "all"},
+			wantDislike: [2]string{"all", "yes"},
+			wantSubs:    [2]string{"all", "all"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := getPage(t, openTestDB(t), tc.target)
+
+			for _, link := range []struct {
+				title    string
+				want     [2]string
+				wantSubs string
+			}{
+				{"За DnD", tc.wantLike, "yes"},
+				{"За изтриване", tc.wantDislike, "yes"},
+				{"Грешни субтитри", tc.wantSubs, "all"}, // its own button toggles back
+			} {
+				btn := doc.Find(fmt.Sprintf(".filter-btns a.filter-btn[title='%s']", link.title))
+				require.Equal(t, 1, btn.Length(), "expected one %s filter button", link.title)
+				u, err := url.Parse(btn.AttrOr("href", ""))
+				require.NoError(t, err)
+				assert.Equal(t, link.want[0], u.Query().Get("dnd"), "link %q: 👍 filter", link.title)
+				assert.Equal(t, link.want[1], u.Query().Get("del"), "link %q: 👎 filter", link.title)
+				assert.Equal(t, link.wantSubs, u.Query().Get("subs"), "link %q: ⚠ filter", link.title)
+			}
+		})
+	}
+}
+
+// The 👍 👎 ⚠ icons are colour emoji, so each sits in a span.flag-icon the CSS
+// turns grey until it is selected — in the list row, in the row above the list
+// and in the nav bar. The other icons (○ ▶ ◎ ↕) are plain text and have no span.
+func TestIndex_FlagIcons_HaveFlagIconSpan(t *testing.T) {
+	d := openTestDB(t)
+	startViaRoute(t, d, seedOne(t, d))
+	doc := getPage(t, d, "/")
+
+	for _, scope := range []struct{ name, selector string }{
+		{"list row", "#media-list td.actions button.icon-btn[title='%s']"},
+		{"row above the list", "table.last-started td.actions button.icon-btn[title='%s']"},
+		{"nav bar", ".filter-btns a.filter-btn[title='%s']"},
+	} {
+		for _, flag := range []struct{ title, icon string }{
+			{"За DnD", "👍"},
+			{"За изтриване", "👎"},
+			{"Грешни субтитри", "⚠️"},
+		} {
+			btn := doc.Find(fmt.Sprintf(scope.selector, flag.title))
+			require.Equal(t, 1, btn.Length(), "%s: expected one %s button", scope.name, flag.title)
+			icon := btn.Find("span.flag-icon")
+			require.Equal(t, 1, icon.Length(), "%s: the %s icon must sit in span.flag-icon", scope.name, flag.title)
+			assert.Equal(t, flag.icon, strings.TrimSpace(icon.Text()), "%s: %s", scope.name, flag.title)
+		}
+
+		for _, title := range []string{"Нова", "Стартирана"} {
+			btn := doc.Find(fmt.Sprintf(scope.selector, title))
+			require.Equal(t, 1, btn.Length(), "%s: expected one %s button", scope.name, title)
+			assert.Equal(t, 0, btn.Find("span.flag-icon").Length(), "%s: %s is no flag", scope.name, title)
+		}
+	}
+
+	allStatuses := doc.Find(".filter-btns a.filter-btn[title='Всички статуси']")
+	require.Equal(t, 1, allStatuses.Length(), "expected the ◎ filter button")
+	assert.Equal(t, 0, allStatuses.Find("span.flag-icon").Length(), "◎ is no flag")
+	disk := doc.Find(".filter-btns a.filter-btn[title*='кликни']")
+	require.Equal(t, 1, disk.Length(), "expected the ↕ filter button")
+	assert.Equal(t, 0, disk.Find("span.flag-icon").Length(), "↕ is no flag")
+
+	assert.Equal(t, 9, doc.Find("span.flag-icon").Length(), "only the three flags of the two rows and the nav bar have it")
 }

@@ -923,7 +923,7 @@ func TestIndex_SavesFiltersToDB(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet,
-		"/?status=new&disk=all&sort=size&dir=desc&q=alp&del=yes&dnd=yes&subs=yes", nil)
+		"/?status=new&disk=all&sort=size&dir=desc&q=alp&del=yes&dnd=all&subs=yes", nil)
 	newRouter(t, d).ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
 
@@ -936,7 +936,7 @@ func TestIndex_SavesFiltersToDB(t *testing.T) {
 	assert.Equal(t, "yes", del)
 
 	dnd, subs := readFlagPrefs(t, d)
-	assert.Equal(t, "yes", dnd)
+	assert.Equal(t, "all", dnd)
 	assert.Equal(t, "yes", subs)
 }
 
@@ -1594,11 +1594,11 @@ func TestRandomNew_IgnoresTransParam(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Bug 30: три независими флага 👍 👎 ⚠
+// Bug 30: the three flags 👍 👎 ⚠ (👍 and 👎 exclude each other since Bug 33, see below)
 // ---------------------------------------------------------------------------
 
-// raiseFlag raises one of the three independent flags (for_dnd, for_deletion,
-// wrong_subs) directly in the DB, like markForDeletion.
+// raiseFlag raises one of the three flags (for_dnd, for_deletion, wrong_subs)
+// directly in the DB, like markForDeletion.
 func raiseFlag(t *testing.T, d *sql.DB, column, filename string) {
 	t.Helper()
 	_, err := d.Exec("UPDATE media SET "+column+" = 1 WHERE filename = ?", filename)
@@ -1656,31 +1656,41 @@ func TestIndex_FlagFilters(t *testing.T) {
 	}
 }
 
-// The flags are independent: a media can carry 👍 and 👎 at once and shows up
-// under either filter; flag filters combine with each other and with the status.
-func TestIndex_FlagsAreIndependent(t *testing.T) {
+// ⚠ is independent of 👍 and 👎 (Bug 33: those two exclude each other, see
+// TestIndex_LikeAndDislikeFiltersExclude): its filter combines with either of
+// them and with the status.
+func TestIndex_WrongSubsFilter_CombinesWithOthers(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, []scanner.VideoFile{
-		{Filename: "Both.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-		{Filename: "OnlyDnd.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
-		{Filename: "OnlyDel.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+		{Filename: "LikeSubs.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "DislikeSubs.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+		{Filename: "OnlyLike.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+		{Filename: "OnlyDislike.mkv", FolderRelativePath: "Films", SizeBytes: 4_000_000_000},
+		{Filename: "OnlySubs.mkv", FolderRelativePath: "Films", SizeBytes: 5_000_000_000},
 	})
-	raiseFlag(t, d, "for_dnd", "Both.mkv")
-	raiseFlag(t, d, "for_deletion", "Both.mkv")
-	raiseFlag(t, d, "for_dnd", "OnlyDnd.mkv")
-	raiseFlag(t, d, "for_deletion", "OnlyDel.mkv")
-	setStatus(t, d, "OnlyDnd.mkv", "started")
+	raiseFlag(t, d, "for_dnd", "LikeSubs.mkv")
+	raiseFlag(t, d, "wrong_subs", "LikeSubs.mkv")
+	raiseFlag(t, d, "for_deletion", "DislikeSubs.mkv")
+	raiseFlag(t, d, "wrong_subs", "DislikeSubs.mkv")
+	raiseFlag(t, d, "for_dnd", "OnlyLike.mkv")
+	raiseFlag(t, d, "for_deletion", "OnlyDislike.mkv")
+	raiseFlag(t, d, "wrong_subs", "OnlySubs.mkv")
+	setStatus(t, d, "OnlyLike.mkv", "started")
+	setStatus(t, d, "OnlySubs.mkv", "started")
 
-	// Every request names status, dnd and del: a missing one would fall back to
-	// the value the previous request remembered.
+	// Every request names status, dnd, del and subs: a missing one would fall back
+	// to the value the previous request remembered.
 	for _, tc := range []struct {
 		target string
 		want   []string
 	}{
-		{"/?status=all&dnd=yes&del=all", []string{"Both.mkv", "OnlyDnd.mkv"}},
-		{"/?status=all&dnd=all&del=yes", []string{"Both.mkv", "OnlyDel.mkv"}},
-		{"/?status=all&dnd=yes&del=yes", []string{"Both.mkv"}},
-		{"/?status=started&dnd=yes&del=all", []string{"OnlyDnd.mkv"}},
+		{"/?status=all&dnd=yes&del=all&subs=all", []string{"LikeSubs.mkv", "OnlyLike.mkv"}},
+		{"/?status=all&dnd=all&del=yes&subs=all", []string{"DislikeSubs.mkv", "OnlyDislike.mkv"}},
+		{"/?status=all&dnd=all&del=all&subs=yes", []string{"LikeSubs.mkv", "DislikeSubs.mkv", "OnlySubs.mkv"}},
+		{"/?status=all&dnd=yes&del=all&subs=yes", []string{"LikeSubs.mkv"}},
+		{"/?status=all&dnd=all&del=yes&subs=yes", []string{"DislikeSubs.mkv"}},
+		{"/?status=started&dnd=yes&del=all&subs=all", []string{"OnlyLike.mkv"}},
+		{"/?status=started&dnd=all&del=all&subs=yes", []string{"OnlySubs.mkv"}},
 	} {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, tc.target, nil)
@@ -1688,7 +1698,7 @@ func TestIndex_FlagsAreIndependent(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		body := w.Body.String()
-		for _, name := range []string{"Both.mkv", "OnlyDnd.mkv", "OnlyDel.mkv"} {
+		for _, name := range []string{"LikeSubs.mkv", "DislikeSubs.mkv", "OnlyLike.mkv", "OnlyDislike.mkv", "OnlySubs.mkv"} {
 			if slices.Contains(tc.want, name) {
 				assert.Contains(t, body, name, "GET %s", tc.target)
 			} else {
@@ -2010,4 +2020,275 @@ func TestMediaActions_FromTable_LastStartedFollowsNewestStart(t *testing.T) {
 
 	body = postMediaAction(t, d, newID, "start", "", fmt.Sprintf("media-%d", newID))
 	assert.Equal(t, "New.mkv", lastName(body), "the newest start moves the row above the list")
+}
+
+// ---------------------------------------------------------------------------
+// Bug 33: 👍 and 👎 exclude each other; ⚠ stays independent
+// ---------------------------------------------------------------------------
+
+// postFlag posts one flag toggle. htmx=true swaps the row like the row's form
+// does, otherwise the browser is redirected back to the list.
+func postFlag(t *testing.T, d *sql.DB, id int64, route, value string, htmx bool) *httptest.ResponseRecorder {
+	t.Helper()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/media/%d/%s", id, route), strings.NewReader("value="+value))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if htmx {
+		req.Header.Set("HX-Request", "true")
+	}
+	newRouter(t, d).ServeHTTP(w, req)
+	return w
+}
+
+// Raising 👍 clears 👎 and the other way round, in one step; the HTMX row shows
+// only the new flag highlighted, and its other button raises again. Clearing a
+// flag (value=0) touches only that flag. ⚠ stays raised all along.
+func TestSetFlag_LikeAndDislikeExclude(t *testing.T) {
+	for _, tc := range []struct {
+		name, route, column, title          string
+		otherRoute, otherColumn, otherTitle string
+	}{
+		{"👍 clears 👎", "for-dnd", "for_dnd", "За DnD", "for-deletion", "for_deletion", "За изтриване"},
+		{"👎 clears 👍", "for-deletion", "for_deletion", "За изтриване", "for-dnd", "for_dnd", "За DnD"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := openTestDB(t)
+			id := seedOne(t, d)
+			raiseFlag(t, d, "wrong_subs", "Movie.mkv")
+
+			// The other flag is raised; raising this one clears it.
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.otherRoute, "1", false).Code)
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.route, "1", false).Code)
+			assert.Equal(t, int64(1), flagValue(t, d, tc.column, id), "value=1 must raise the flag")
+			assert.Equal(t, int64(0), flagValue(t, d, tc.otherColumn, id), "raising the flag must clear the other one")
+			assert.Equal(t, int64(1), flagValue(t, d, "wrong_subs", id), "⚠ must stay raised")
+
+			// Clearing a lowered flag leaves the raised other one alone.
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.otherRoute, "0", false).Code)
+			assert.Equal(t, int64(1), flagValue(t, d, tc.column, id), "value=0 must not touch the other flag")
+			assert.Equal(t, int64(0), flagValue(t, d, tc.otherColumn, id))
+			assert.Equal(t, int64(1), flagValue(t, d, "wrong_subs", id), "⚠ must stay raised")
+
+			// Clearing the raised flag does not bring the other one back.
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.route, "0", false).Code)
+			assert.Equal(t, int64(0), flagValue(t, d, tc.column, id), "value=0 must clear the flag")
+			assert.Equal(t, int64(0), flagValue(t, d, tc.otherColumn, id), "value=0 must not raise the other flag")
+
+			// From a row with the other flag raised, the swapped row shows the change.
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.otherRoute, "1", false).Code)
+			w := postFlag(t, d, id, tc.route, "1", true)
+			require.Equal(t, http.StatusOK, w.Code)
+			row := rowParts(t, w.Body.String()).Filter(fmt.Sprintf("#media-%d", id))
+			require.Equal(t, 1, row.Length(), "expected the media's row")
+
+			raised := row.Find(fmt.Sprintf("td.actions button.icon-btn[title='%s']", tc.title))
+			assert.Contains(t, raised.AttrOr("class", ""), "filter-active", "the new flag must show raised")
+			assert.Equal(t, "0", raised.Closest("form").Find("input[name=value]").AttrOr("value", ""),
+				"the raised flag's button clears it")
+
+			lowered := row.Find(fmt.Sprintf("td.actions button.icon-btn[title='%s']", tc.otherTitle))
+			assert.NotContains(t, lowered.AttrOr("class", ""), "filter-active", "the other flag must show lowered")
+			assert.Equal(t, "1", lowered.Closest("form").Find("input[name=value]").AttrOr("value", ""),
+				"the lowered flag's button raises it")
+
+			assert.Contains(t, row.Find("td.actions button.icon-btn[title='Грешни субтитри']").AttrOr("class", ""),
+				"filter-active", "⚠ must still show raised")
+
+			// From the row above the list (HX-Target: last-started) the response is
+			// that row plus the list row out of band; both must show the change.
+			t.Run("from the row above the list", func(t *testing.T) {
+				d := openTestDB(t)
+				id := seedOne(t, d)
+				startViaRoute(t, d, id)
+				require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.otherRoute, "1", false).Code)
+
+				parts := rowParts(t, postMediaAction(t, d, id, tc.route, "value=1", "last-started"))
+				require.Equal(t, 2, parts.Length(), "expected the row above the list and the list row")
+
+				last := parts.Filter("#last-started")
+				require.Equal(t, 1, last.Length(), "expected the row above the list")
+				_, oob := last.Attr("hx-swap-oob")
+				assert.False(t, oob, "the row above the list is the main swap")
+
+				listRow := parts.Filter(fmt.Sprintf("#media-%d", id))
+				require.Equal(t, 1, listRow.Length(), "expected the list row")
+				assert.Equal(t, "true", listRow.AttrOr("hx-swap-oob", ""), "the list row is swapped out of band")
+
+				for name, row := range map[string]*goquery.Selection{
+					"row above the list": last,
+					"list row":           listRow,
+				} {
+					flagRaisedIn(tc.title)(t, row)
+					other := row.Find(fmt.Sprintf("td.actions button.icon-btn[title='%s']", tc.otherTitle))
+					require.Equal(t, 1, other.Length(), "%s: expected the %s button", name, tc.otherTitle)
+					assert.NotContains(t, other.AttrOr("class", ""), "filter-active", "%s: the other flag must show lowered", name)
+					assert.Equal(t, "1", other.Closest("form").Find("input[name=value]").AttrOr("value", ""),
+						"%s: the lowered flag's button raises it", name)
+				}
+			})
+		})
+	}
+}
+
+// ⚠ takes no part in the rule: raising or clearing it leaves 👍 and 👎 alone, and
+// 👍 or 👎 being raised or cleared leaves it alone.
+func TestSetFlag_WrongSubsStaysIndependent(t *testing.T) {
+	for _, tc := range []struct{ route, column string }{
+		{"for-dnd", "for_dnd"},
+		{"for-deletion", "for_deletion"},
+	} {
+		t.Run(tc.route, func(t *testing.T) {
+			d := openTestDB(t)
+			id := seedOne(t, d)
+
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.route, "1", false).Code)
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, "wrong-subs", "1", false).Code)
+			assert.Equal(t, int64(1), flagValue(t, d, tc.column, id), "raising ⚠ must keep the flag")
+			assert.Equal(t, int64(1), flagValue(t, d, "wrong_subs", id))
+
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, "wrong-subs", "0", false).Code)
+			assert.Equal(t, int64(1), flagValue(t, d, tc.column, id), "clearing ⚠ must keep the flag")
+			assert.Equal(t, int64(0), flagValue(t, d, "wrong_subs", id))
+
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, "wrong-subs", "1", false).Code)
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.route, "0", false).Code)
+			assert.Equal(t, int64(0), flagValue(t, d, tc.column, id))
+			assert.Equal(t, int64(1), flagValue(t, d, "wrong_subs", id), "clearing the flag must keep ⚠")
+
+			require.Equal(t, http.StatusSeeOther, postFlag(t, d, id, tc.route, "1", false).Code)
+			assert.Equal(t, int64(1), flagValue(t, d, "wrong_subs", id), "raising the flag must keep ⚠")
+		})
+	}
+}
+
+// 🎲 does not repair dnd=yes with del=yes: its hidden fields come from the list's
+// already repaired filters, so only a hand-made POST can send both. No media can
+// match both, so nothing is started. With HTMX the flash says so; without it the
+// browser goes back to the list, which repairs the pair to 👍 only.
+func TestRandomNew_LikeAndDislikeTogether_StartsNothing(t *testing.T) {
+	d := openTestDB(t)
+	seedMedia(t, d, []scanner.VideoFile{
+		{Filename: "Liked.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+		{Filename: "Disliked.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+		{Filename: "Plain.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+	})
+	raiseFlag(t, d, "for_dnd", "Liked.mkv")
+	raiseFlag(t, d, "for_deletion", "Disliked.mkv")
+	r := newRouter(t, d)
+	post := func(htmx bool) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/media/random-new/start",
+			strings.NewReader("status=all&disk=on&dnd=yes&del=yes"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if htmx {
+			req.Header.Set("HX-Request", "true")
+		}
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	w := post(true)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "Няма филми за избор")
+
+	w = post(false)
+	require.Equal(t, http.StatusSeeOther, w.Code)
+
+	for _, name := range []string{"Liked.mkv", "Disliked.mkv", "Plain.mkv"} {
+		assert.Equal(t, 0, startEventCount(t, d, mediaIDByName(t, d, name)), "%s must not be started", name)
+	}
+
+	location := w.Header().Get("Location")
+	u, err := url.Parse(location)
+	require.NoError(t, err)
+	assert.Equal(t, "/", u.Path, "the redirect must lead to the list")
+	assert.Equal(t, "yes", u.Query().Get("dnd"), "🎲 passes the pair on unrepaired")
+	assert.Equal(t, "yes", u.Query().Get("del"), "🎲 passes the pair on unrepaired")
+
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, location, nil))
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var files []string
+	parseBody(t, w.Body.String()).Find("#media-list td.filename button.filename-link").Each(func(_ int, s *goquery.Selection) {
+		files = append(files, strings.TrimSpace(s.Text()))
+	})
+	assert.Equal(t, []string{"Liked.mkv"}, files, "the list repairs the pair to 👍 only")
+
+	dnd, _ := readFlagPrefs(t, d)
+	_, _, _, _, _, del := readPrefs(t, d)
+	assert.Equal(t, "yes", dnd, "the remembered 👍 filter")
+	assert.Equal(t, "all", del, "the remembered 👎 filter must be repaired")
+}
+
+// dnd=yes with del=yes can still come from an old address or from the state
+// remembered before Bug 33. A parameter in the address beats a remembered one;
+// in every other case 👍 stays, like in migration 000010. The repaired pair is
+// what the list, the nav bar and ui_prefs get.
+func TestIndex_LikeAndDislikeFiltersExclude(t *testing.T) {
+	for _, tc := range []struct {
+		name, rememberedDnd, rememberedDel, target string
+		wantDnd, wantDel                           string
+		wantFile                                   string
+	}{
+		{"both in the address", "all", "all", "/?dnd=yes&del=yes", "yes", "all", "Liked.mkv"},
+		{"both in the address, both remembered", "yes", "yes", "/?del=yes&dnd=yes", "yes", "all", "Liked.mkv"},
+		{"remembered 👎, 👍 in the address", "all", "yes", "/?dnd=yes", "yes", "all", "Liked.mkv"},
+		{"remembered 👍, 👎 in the address", "yes", "all", "/?del=yes", "all", "yes", "Disliked.mkv"},
+		{"both remembered", "yes", "yes", "/", "yes", "all", "Liked.mkv"},
+		{"both remembered, other parameters in the address", "yes", "yes", "/?subs=all", "yes", "all", "Liked.mkv"},
+		// The link of 👎 while 👍 is active: nothing to repair.
+		{"remembered 👍, link of 👎", "yes", "all", "/?del=yes&dnd=all", "all", "yes", "Disliked.mkv"},
+		// An address that turns a filter off leaves no pair to repair, whatever was
+		// remembered: the other filter stays as it was remembered.
+		{"both remembered, 👍 off in the address", "yes", "yes", "/?dnd=all", "all", "yes", "Disliked.mkv"},
+		{"both remembered, 👎 off in the address", "yes", "yes", "/?del=all", "yes", "all", "Liked.mkv"},
+		{"remembered 👎, 👍 off in the address", "all", "yes", "/?dnd=all", "all", "yes", "Disliked.mkv"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := openTestDB(t)
+			seedMedia(t, d, []scanner.VideoFile{
+				{Filename: "Liked.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
+				{Filename: "Disliked.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
+				{Filename: "Plain.mkv", FolderRelativePath: "Films", SizeBytes: 3_000_000_000},
+			})
+			raiseFlag(t, d, "for_dnd", "Liked.mkv")
+			raiseFlag(t, d, "for_deletion", "Disliked.mkv")
+			_, err := d.Exec("UPDATE ui_prefs SET dnd_filter = ?, del_filter = ? WHERE id = 1", tc.rememberedDnd, tc.rememberedDel)
+			require.NoError(t, err)
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+			newRouter(t, d).ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Code)
+
+			doc := parseBody(t, w.Body.String())
+			var files []string
+			doc.Find("#media-list td.filename button.filename-link").Each(func(_ int, s *goquery.Selection) {
+				files = append(files, strings.TrimSpace(s.Text()))
+			})
+			assert.Equal(t, []string{tc.wantFile}, files, "the list must be narrowed by the one filter that stays")
+
+			for _, f := range []struct{ title, want string }{
+				{"За DnD", tc.wantDnd},
+				{"За изтриване", tc.wantDel},
+			} {
+				class := doc.Find(fmt.Sprintf(".filter-btns a.filter-btn[title='%s']", f.title)).AttrOr("class", "")
+				if f.want == "yes" {
+					assert.Contains(t, class, "filter-active", "the %s filter must show active", f.title)
+				} else {
+					assert.NotContains(t, class, "filter-active", "the %s filter must show inactive", f.title)
+				}
+			}
+			assert.Equal(t, tc.wantDnd, doc.Find("form#search-form input[name=dnd]").AttrOr("value", ""),
+				"the search form must re-send the repaired 👍 filter")
+			assert.Equal(t, tc.wantDel, doc.Find("form#search-form input[name=del]").AttrOr("value", ""),
+				"the search form must re-send the repaired 👎 filter")
+
+			dnd, _ := readFlagPrefs(t, d)
+			_, _, _, _, _, del := readPrefs(t, d)
+			assert.Equal(t, tc.wantDnd, dnd, "the remembered 👍 filter must be repaired")
+			assert.Equal(t, tc.wantDel, del, "the remembered 👎 filter must be repaired")
+		})
+	}
 }

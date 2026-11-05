@@ -46,7 +46,7 @@ def test_list_has_scan_button_in_navbar(page: Page):
 
 
 def test_actions_has_status_and_flag_buttons(page: Page):
-    # 2 статус бутона (○ ▶) + 3 независими флага 👍 👎 ⚠ (Бъг 30).
+    # 2 status buttons (○ ▶) + 3 flags 👍 👎 ⚠ (Bug 30).
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
@@ -147,13 +147,16 @@ def test_dnd_flag_toggles_row_in_place(page: Page):
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
-    # Реалните данни може вече да имат вдигнат 👍 (бившите „За DnD" медии),
-    # затова се взима първият ред със свален флаг.
+    # The real data may already have 👍 raised (the former „За DnD" media), so the
+    # first row with the flag lowered is taken. A raised 👎 rules a row out too: 👍
+    # would clear it (Bug 33) and this test puts back only 👍.
     lowered = page.locator("#media-list tbody tr").filter(
         has=page.locator("td.actions button.icon-btn[title='За DnD']:not(.filter-active)")
+    ).filter(
+        has=page.locator("td.actions button.icon-btn[title='За изтриване']:not(.filter-active)")
     )
     if lowered.count() == 0:
-        pytest.skip("No media without the 👍 flag")
+        pytest.skip("No media without the 👍 and 👎 flags")
     row_id = lowered.first.get_attribute("id")
     row = page.locator(f"tr#{row_id}")
     button = row.locator("td.actions button.icon-btn[title='За DnD']")
@@ -183,6 +186,58 @@ def test_dnd_flag_toggles_row_in_place(page: Page):
             f"{BASE_URL}/media/{row_id.removeprefix('media-')}/for-dnd",
             form={"value": "0"},
         )
+
+
+def test_like_dislike_exclude_in_row(page: Page):
+    # Bug 33: raising 👎 clears 👍 in the same row, without a reload; the lowered
+    # flag turns grey and the raised one yellow (computed style).
+    page.goto(BASE_URL)
+    if not _has_media(page):
+        pytest.skip("No media available")
+    like_selector = "td.actions button.icon-btn[title='За DnD']"
+    dislike_selector = "td.actions button.icon-btn[title='За изтриване']"
+    # A row with both lowered: clicking would clear a raised flag of the real data,
+    # and the cleanup below lowers both.
+    lowered = page.locator("#media-list tbody tr").filter(
+        has=page.locator(f"{like_selector}:not(.filter-active)")
+    ).filter(
+        has=page.locator(f"{dislike_selector}:not(.filter-active)")
+    )
+    if lowered.count() == 0:
+        pytest.skip("No media without the 👍 and 👎 flags")
+    row_id = lowered.first.get_attribute("id")
+    row = page.locator(f"#media-list tr#{row_id}")
+    like = row.locator(like_selector)
+    dislike = row.locator(dislike_selector)
+    active = re.compile(r"\bfilter-active\b")
+
+    try:
+        # A marker on window: a full page reload would wipe it.
+        page.evaluate("window.__noReload = 1")
+
+        like.click()
+        expect(like).to_have_class(active)
+        expect(like.locator(".flag-icon")).to_have_css("filter", "none")
+        expect(dislike.locator(".flag-icon")).to_have_css("filter", "grayscale(1)")
+
+        dislike.click()
+        expect(dislike).to_have_class(active)
+        expect(like).not_to_have_class(active)
+        expect(dislike.locator(".flag-icon")).to_have_css("filter", "none")
+        expect(like.locator(".flag-icon")).to_have_css("filter", "grayscale(1)")
+
+        assert page.evaluate("window.__noReload") == 1, (
+            "clicking 👍 or 👎 reloaded the page instead of swapping the row in place"
+        )
+    finally:
+        # Both are lowered also when the test fails half-way (lesson from Iteration
+        # 44): the server and its dev database are shared by the whole e2e session
+        # and by later runs. value=0 always lowers, so doing it twice is safe.
+        for route in ("for-dnd", "for-deletion"):
+            page.request.post(
+                f"{BASE_URL}/media/{row_id.removeprefix('media-')}/{route}",
+                form={"value": "0"},
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -303,6 +358,8 @@ def test_last_started_row_flag_updates_both_rows(page: Page):
     row_button = row.locator(selector)
     active = re.compile(r"\bfilter-active\b")
     was_raised = bool(active.search(top_button.get_attribute("class") or ""))
+    dislike = page.locator(LAST_STARTED).locator("td.actions button.icon-btn[title='За изтриване']")
+    dislike_was_raised = bool(active.search(dislike.get_attribute("class") or ""))
 
     try:
         page.evaluate("window.__noReload = 1")
@@ -324,6 +381,12 @@ def test_last_started_row_flag_updates_both_rows(page: Page):
             f"{BASE_URL}/media/{media_id}/for-dnd",
             form={"value": "1" if was_raised else "0"},
         )
+        # Bug 33: raising 👍 cleared a raised 👎, so that one is put back as well.
+        if dislike_was_raised:
+            page.request.post(
+                f"{BASE_URL}/media/{media_id}/for-deletion",
+                form={"value": "1"},
+            )
 
 
 def test_last_started_row_is_larger(page: Page):

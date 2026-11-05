@@ -104,9 +104,10 @@ templ mediaRowCells(m db.MediaWithStats) {
 		</td>
 }
 
-// flagButton renders a row's toggle for one of the three independent flags
-// (Bug 30): a form that posts value 1 (raise) or 0 (clear) to the flag's route
-// and swaps the row in place. A raised flag is highlighted.
+// flagButton renders a row's toggle for one of the three flags (Bug 30): a form
+// that posts value 1 (raise) or 0 (clear) to the flag's route and swaps the row
+// in place. A raised flag is highlighted and its icon is yellow, a lowered one
+// is grey (Bug 33, see .flag-icon).
 templ flagButton(id int64, route string, raised int64, title string, icon string) {
 	<form
 		action={ templ.SafeURL("/media/" + strconv.FormatInt(id, 10) + "/" + route) }
@@ -116,7 +117,7 @@ templ flagButton(id int64, route string, raised int64, title string, icon string
 		hx-swap="outerHTML"
 	>
 		<input type="hidden" name="value" value={ toggleFlag(raised) }/>
-		<button type="submit" class={ "icon-btn", templ.KV("filter-active", raised == 1) } title={ title }>{ icon }</button>
+		<button type="submit" class={ "icon-btn", templ.KV("filter-active", raised == 1) } title={ title }><span class="flag-icon">{ icon }</span></button>
 	</form>
 }
 
@@ -218,6 +219,11 @@ templ ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.
 					background: var(--pico-primary); color: var(--pico-primary-inverse, #fff);
 					border-color: var(--pico-primary);
 				}
+				/* Bug 33: 👍 👎 ⚠ are colour emoji, so they always look yellow on their own.
+				   The filter sits on the icon, not on the button, so the button's background
+				   and border stay like its neighbours'. Applies to the rows and the nav bar. */
+				.flag-icon { filter: grayscale(1); }
+				.filter-active .flag-icon { filter: none; }
 				/* Bug 32: the row above the list with the last started media is about 1.35×
 				   a list row — the font, the buttons and the size/status/actions columns.
 				   Scoped to table.last-started, so the list below stays as it is. */
@@ -314,9 +320,9 @@ templ ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.
 						} else {
 							<a href={ templ.SafeURL(f.WithDisk("all").Href()) } class="filter-btn" title="Само на диска — кликни за всички">↕</a>
 						}
-						<a href={ templ.SafeURL(f.WithDnd(toggleFilter(f.Dnd)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Dnd == "yes") } title="За DnD">👍</a>
-						<a href={ templ.SafeURL(f.WithDel(toggleFilter(f.Del)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Del == "yes") } title="За изтриване">👎</a>
-						<a href={ templ.SafeURL(f.WithSubs(toggleFilter(f.Subs)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Subs == "yes") } title="Грешни субтитри">⚠️</a>
+						<a href={ templ.SafeURL(f.WithDnd(toggleFilter(f.Dnd)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Dnd == "yes") } title="За DnD"><span class="flag-icon">👍</span></a>
+						<a href={ templ.SafeURL(f.WithDel(toggleFilter(f.Del)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Del == "yes") } title="За изтриване"><span class="flag-icon">👎</span></a>
+						<a href={ templ.SafeURL(f.WithSubs(toggleFilter(f.Subs)).Href()) } class={ "filter-btn", templ.KV("filter-active", f.Subs == "yes") } title="Грешни субтитри"><span class="flag-icon">⚠️</span></a>
 					</div>
 					<span class="nav-label">сорт:</span>
 					<div class="sort-btns">

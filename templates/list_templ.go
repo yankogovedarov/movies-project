@@ -587,9 +587,10 @@ func mediaRowCells(m db.MediaWithStats) templ.Component {
 	})
 }
 
-// flagButton renders a row's toggle for one of the three independent flags
-// (Bug 30): a form that posts value 1 (raise) or 0 (clear) to the flag's route
-// and swaps the row in place. A raised flag is highlighted.
+// flagButton renders a row's toggle for one of the three flags (Bug 30): a form
+// that posts value 1 (raise) or 0 (clear) to the flag's route and swaps the row
+// in place. A raised flag is highlighted and its icon is yellow, a lowered one
+// is grey (Bug 33, see .flag-icon).
 func flagButton(id int64, route string, raised int64, title string, icon string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -618,7 +619,7 @@ func flagButton(id int64, route string, raised int64, title string, icon string)
 		var templ_7745c5c3_Var33 templ.SafeURL
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/media/" + strconv.FormatInt(id, 10) + "/" + route))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 112, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 113, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -631,7 +632,7 @@ func flagButton(id int64, route string, raised int64, title string, icon string)
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs("/media/" + strconv.FormatInt(id, 10) + "/" + route)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 114, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 115, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
@@ -644,7 +645,7 @@ func flagButton(id int64, route string, raised int64, title string, icon string)
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(toggleFlag(raised))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 118, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 119, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
@@ -679,26 +680,26 @@ func flagButton(id int64, route string, raised int64, title string, icon string)
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 119, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 120, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\"><span class=\"flag-icon\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 119, Col: 107}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 120, Col: 131}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</button></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</span></button></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -727,14 +728,14 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 			templ_7745c5c3_Var40 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"/static/pico.min.css\"><meta name=\"htmx-config\" content='{\"useTemplateFragments\":true}'><script src=\"/static/htmx.min.js\"></script><script>\r\n\t\t\t\t/* Bug 26: picking a folder changes the dropdown before form.submit() leaves the\r\n\t\t\t\t   page, so a back/forward-cache restore would show the new folder over the old\r\n\t\t\t\t   list. Resetting the dropdown to the server-rendered option makes them match\r\n\t\t\t\t   again. No reload: reloading a bare \"/\" would render the newer remembered state\r\n\t\t\t\t   and break Back for every filter. ui_prefs keeps the newer folder until the\r\n\t\t\t\t   next click, like every other filter since Bug 23. */\r\n\t\t\t\taddEventListener(\"pageshow\", function (e) {\r\n\t\t\t\t\tif (!e.persisted) { return; }\r\n\t\t\t\t\tvar s = document.querySelector(\"select[name=folder]\");\r\n\t\t\t\t\tvar rendered = s && s.querySelector(\"option[selected]\");\r\n\t\t\t\t\tif (rendered) { s.value = rendered.value; }\r\n\t\t\t\t});\r\n\t\t\t</script><style>\r\n\t\t\t\t.top-nav { display: flex; align-items: center; gap: 0.6rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; position: sticky; top: 0; z-index: 20; background: var(--pico-background-color, #fff); }\r\n\t\t\t\t.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }\r\n\t\t\t\t.top-nav form { margin: 0; }\r\n\t\t\t\t.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }\r\n\t\t\t\t.top-nav form button[type=\"submit\"] {\r\n\t\t\t\t\tbackground: none !important; border: 1px solid transparent !important; box-shadow: none !important;\r\n\t\t\t\t\tcolor: var(--pico-color, inherit) !important; cursor: pointer; font-family: inherit; width: auto;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav form button[type=\"submit\"]:hover {\r\n\t\t\t\t\tbackground: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;\r\n\t\t\t\t}\r\n\t\t\t\tbutton, [type=submit], [type=button], [type=reset], [role=button],\r\n\t\t\t\tinput, select, textarea { margin-bottom: 0; }\r\n\t\t\t\tfigure { margin-bottom: 0; }\r\n\t\t\t\t.filter-btns, .sort-btns { display: inline-flex; align-items: center; gap: 0.2rem; }\r\n\t\t\t\t.filter-btn, .sort-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t}\r\n\t\t\t\t.filter-btn:hover, .sort-btn:hover { border-color: var(--pico-primary); color: var(--pico-primary); }\r\n\t\t\t\t.filter-btn.filter-active, .sort-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary);\r\n\t\t\t\t}\r\n\t\t\t\t.sort-btn.filter-active { width: auto; min-width: 1.35rem; padding: 0 0.2rem; }\r\n\t\t\t\t.start-info { display: block; font-size: 0.7rem; color: var(--pico-muted-color); line-height: 1.2; }\r\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\r\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\r\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\r\n\t\t\t\ttd, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }\r\n\t\t\t\tth.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\ttd.filename { overflow: hidden; }\r\n\t\t\t\tth.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\tth.size,     td.size     { width: 4.5rem; white-space: nowrap; }\r\n\t\t\t\tth.status,   td.status   { width: 4rem; white-space: nowrap; }\r\n\t\t\t\t/* Bug 30: room for the five row buttons ○ ▶ 👍 👎 ⚠ (1.35rem each, 0.1rem gaps). */\r\n\t\t\t\tth.actions,  td.actions  { width: 7.8rem; white-space: nowrap; }\r\n\t\t\t\tform { display: inline; margin: 0; }\r\n\t\t\t\tbutton.filename-link {\r\n\t\t\t\t\tbackground: none; border: none; padding: 0;\r\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\r\n\t\t\t\t\ttext-decoration: underline; font: inherit; font-size: 0.85rem;\r\n\t\t\t\t\ttext-align: left; white-space: nowrap;\r\n\t\t\t\t\toverflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t}\r\n\t\t\t\ta.folder-link {\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t\twhite-space: nowrap; overflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tfont-size: 0.85rem;\r\n\t\t\t\t}\r\n\t\t\t\t.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }\r\n\t\t\t\t.actions-grid form { display: contents; }\r\n\t\t\t\tbutton.icon-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t}\r\n\t\t\t\t\t/* Bug 22, Bug 30: a raised flag (👍 👎 ⚠) is highlighted, so a flagged\r\n\t\t\t\t\t   row is spottable at a glance. */\r\n\t\t\t\ttd.actions .icon-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary);\r\n\t\t\t\t}\r\n\t\t\t\t/* Bug 32: the row above the list with the last started media is about 1.35×\r\n\t\t\t\t   a list row — the font, the buttons and the size/status/actions columns.\r\n\t\t\t\t   Scoped to table.last-started, so the list below stays as it is. */\r\n\t\t\t\ttable.last-started { margin-bottom: 0.5rem; }\r\n\t\t\t\ttable.last-started td { font-size: 1.15rem; line-height: 2.2rem; }\r\n\t\t\t\ttable.last-started button.filename-link,\r\n\t\t\t\ttable.last-started a.folder-link { font-size: 1.15rem; height: 2.2rem; line-height: 2.2rem; }\r\n\t\t\t\ttable.last-started .start-info { font-size: 0.95rem; }\r\n\t\t\t\ttable.last-started td.size { width: 6rem; }\r\n\t\t\t\ttable.last-started td.status { width: 5.4rem; }\r\n\t\t\t\t/* Five 1.85rem buttons with 0.1rem gaps, plus the cell padding. */\r\n\t\t\t\ttable.last-started td.actions { width: 10.5rem; }\r\n\t\t\t\ttable.last-started button.icon-btn { width: 1.85rem; height: 1.85rem; font-size: 1.1rem; }\r\n\t\t\t\t@media (max-width: 768px) {\r\n\t\t\t\t\tth.size, td.size, th.folder, td.folder { display: none; }\r\n\t\t\t\t}\r\n\t\t\t\t.nav-label { font-size: 0.7rem; color: var(--pico-muted-color); align-self: center; }\r\n\t\t\t\t/* Bug 18 part 1: plain search field — same height as the rest of the nav bar\r\n\t\t\t\t   and no icons (no native search look / clear ✕ button).\r\n\t\t\t\t   Scoped as `.top-nav input.search-input` (specificity 0,2,1) so it wins over\r\n\t\t\t\t   Pico's tall `input:not([type=checkbox],...)` rule (0,1,1) which otherwise\r\n\t\t\t\t   forces a large height/padding. */\r\n\t\t\t\t.top-nav input.search-input {\r\n\t\t\t\t\tbox-sizing: border-box; height: 1.35rem; min-height: 0; line-height: 1.35rem;\r\n\t\t\t\t\tmargin: 0; padding: 0 0.4rem; padding-inline-start: 0.4rem;\r\n\t\t\t\t\tfont-size: 0.8rem; width: 10rem;\r\n\t\t\t\t\tborder-radius: 4px; --pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t\tbackground-image: none;\r\n\t\t\t\t\t-webkit-appearance: none; appearance: none;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-cancel-button,\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }\r\n\t\t\t\t/* Bug 26: the main-folder dropdown sits among the 1.35rem filter buttons, so it\r\n\t\t\t\t   is shrunk like the search field. `.top-nav select.folder-select` (specificity\r\n\t\t\t\t   0,2,1) wins over Pico's select rules (0,1,1), which otherwise make it a tall,\r\n\t\t\t\t   full-width form control with a large chevron. max-width keeps one long folder\r\n\t\t\t\t   name from wrapping the nav (it still fits \"всички папки\"). */\r\n\t\t\t\t.top-nav select.folder-select {\r\n\t\t\t\t\tbox-sizing: border-box; width: auto; max-width: 7.5rem; height: 1.35rem; min-height: 0;\r\n\t\t\t\t\tmargin: 0; padding: 0 1.2rem 0 0.4rem; padding-inline-start: 0.4rem; padding-inline-end: 1.2rem;\r\n\t\t\t\t\tfont-size: 0.8rem; line-height: 1; border-radius: 4px;\r\n\t\t\t\t\tbackground-position: center right 0.3rem; background-size: 0.7rem auto;\r\n\t\t\t\t\t--pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav select.folder-select.filter-active {\r\n\t\t\t\t\tborder-color: var(--pico-primary); color: var(--pico-primary); font-weight: 600;\r\n\t\t\t\t}\r\n\t\t\t\t.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }\r\n\t\t\t</style></head><body><main class=\"container\"><nav class=\"top-nav\"><h1>Movie Tracker</h1><form method=\"POST\" action=\"/scan\"><button type=\"submit\" class=\"icon-btn\" title=\"Сканирай диска\">↺</button></form><form id=\"search-form\" method=\"GET\" action=\"/\"><input type=\"hidden\" name=\"status\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<!doctype html><html lang=\"bg\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Movie Tracker</title><link rel=\"stylesheet\" href=\"/static/pico.min.css\"><meta name=\"htmx-config\" content='{\"useTemplateFragments\":true}'><script src=\"/static/htmx.min.js\"></script><script>\r\n\t\t\t\t/* Bug 26: picking a folder changes the dropdown before form.submit() leaves the\r\n\t\t\t\t   page, so a back/forward-cache restore would show the new folder over the old\r\n\t\t\t\t   list. Resetting the dropdown to the server-rendered option makes them match\r\n\t\t\t\t   again. No reload: reloading a bare \"/\" would render the newer remembered state\r\n\t\t\t\t   and break Back for every filter. ui_prefs keeps the newer folder until the\r\n\t\t\t\t   next click, like every other filter since Bug 23. */\r\n\t\t\t\taddEventListener(\"pageshow\", function (e) {\r\n\t\t\t\t\tif (!e.persisted) { return; }\r\n\t\t\t\t\tvar s = document.querySelector(\"select[name=folder]\");\r\n\t\t\t\t\tvar rendered = s && s.querySelector(\"option[selected]\");\r\n\t\t\t\t\tif (rendered) { s.value = rendered.value; }\r\n\t\t\t\t});\r\n\t\t\t</script><style>\r\n\t\t\t\t.top-nav { display: flex; align-items: center; gap: 0.6rem; padding: 0.05rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; position: sticky; top: 0; z-index: 20; background: var(--pico-background-color, #fff); }\r\n\t\t\t\t.top-nav h1 { margin: 0; font-size: 1rem; flex: 0 0 auto; }\r\n\t\t\t\t.top-nav form { margin: 0; }\r\n\t\t\t\t.top-nav a, .top-nav button { margin: 0; padding: 0.1rem 0.5rem; font-size: 0.85rem; }\r\n\t\t\t\t.top-nav form button[type=\"submit\"] {\r\n\t\t\t\t\tbackground: none !important; border: 1px solid transparent !important; box-shadow: none !important;\r\n\t\t\t\t\tcolor: var(--pico-color, inherit) !important; cursor: pointer; font-family: inherit; width: auto;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav form button[type=\"submit\"]:hover {\r\n\t\t\t\t\tbackground: none !important; border-color: var(--pico-primary, currentColor) !important; box-shadow: none !important;\r\n\t\t\t\t}\r\n\t\t\t\tbutton, [type=submit], [type=button], [type=reset], [role=button],\r\n\t\t\t\tinput, select, textarea { margin-bottom: 0; }\r\n\t\t\t\tfigure { margin-bottom: 0; }\r\n\t\t\t\t.filter-btns, .sort-btns { display: inline-flex; align-items: center; gap: 0.2rem; }\r\n\t\t\t\t.filter-btn, .sort-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t\tbackground: var(--pico-secondary-background, #f0f0f0);\r\n\t\t\t\t\tcolor: var(--pico-secondary-inverse, #333);\r\n\t\t\t\t\tborder: 1px solid var(--pico-muted-border-color, #ccc);\r\n\t\t\t\t}\r\n\t\t\t\t.filter-btn:hover, .sort-btn:hover { border-color: var(--pico-primary); color: var(--pico-primary); }\r\n\t\t\t\t.filter-btn.filter-active, .sort-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary);\r\n\t\t\t\t}\r\n\t\t\t\t.sort-btn.filter-active { width: auto; min-width: 1.35rem; padding: 0 0.2rem; }\r\n\t\t\t\t.start-info { display: block; font-size: 0.7rem; color: var(--pico-muted-color); line-height: 1.2; }\r\n\t\t\t\t.status-new { color: var(--pico-muted-color); }\r\n\t\t\t\t.status-started { color: var(--pico-color-amber-500, #f59e0b); }\r\n\t\t\t\ttable { width: 100%; table-layout: fixed; }\r\n\t\t\t\ttd, th { vertical-align: middle; padding: 0.05rem 0.3rem; font-size: 0.85rem; line-height: 1.6rem; }\r\n\t\t\t\tth.filename { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\ttd.filename { overflow: hidden; }\r\n\t\t\t\tth.folder,   td.folder   { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }\r\n\t\t\t\tth.size,     td.size     { width: 4.5rem; white-space: nowrap; }\r\n\t\t\t\tth.status,   td.status   { width: 4rem; white-space: nowrap; }\r\n\t\t\t\t/* Bug 30: room for the five row buttons ○ ▶ 👍 👎 ⚠ (1.35rem each, 0.1rem gaps). */\r\n\t\t\t\tth.actions,  td.actions  { width: 7.8rem; white-space: nowrap; }\r\n\t\t\t\tform { display: inline; margin: 0; }\r\n\t\t\t\tbutton.filename-link {\r\n\t\t\t\t\tbackground: none; border: none; padding: 0;\r\n\t\t\t\t\tcolor: var(--pico-primary); cursor: pointer;\r\n\t\t\t\t\ttext-decoration: underline; font: inherit; font-size: 0.85rem;\r\n\t\t\t\t\ttext-align: left; white-space: nowrap;\r\n\t\t\t\t\toverflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t}\r\n\t\t\t\ta.folder-link {\r\n\t\t\t\t\tdisplay: inline-block; height: 1.6rem; line-height: 1.6rem; width: 100%;\r\n\t\t\t\t\twhite-space: nowrap; overflow: hidden; text-overflow: ellipsis;\r\n\t\t\t\t\tfont-size: 0.85rem;\r\n\t\t\t\t}\r\n\t\t\t\t.actions-grid { display: inline-flex; flex-wrap: nowrap; gap: 0.1rem; align-items: center; }\r\n\t\t\t\t.actions-grid form { display: contents; }\r\n\t\t\t\tbutton.icon-btn {\r\n\t\t\t\t\tdisplay: inline-flex; align-items: center; justify-content: center;\r\n\t\t\t\t\twidth: 1.35rem; height: 1.35rem; padding: 0;\r\n\t\t\t\t\tfont-size: 0.8rem; border-radius: 3px; cursor: pointer;\r\n\t\t\t\t\ttext-decoration: none; line-height: 1; flex-shrink: 0;\r\n\t\t\t\t}\r\n\t\t\t\t\t/* Bug 22, Bug 30: a raised flag (👍 👎 ⚠) is highlighted, so a flagged\r\n\t\t\t\t\t   row is spottable at a glance. */\r\n\t\t\t\ttd.actions .icon-btn.filter-active {\r\n\t\t\t\t\tbackground: var(--pico-primary); color: var(--pico-primary-inverse, #fff);\r\n\t\t\t\t\tborder-color: var(--pico-primary);\r\n\t\t\t\t}\r\n\t\t\t\t/* Bug 33: 👍 👎 ⚠ are colour emoji, so they always look yellow on their own.\r\n\t\t\t\t   The filter sits on the icon, not on the button, so the button's background\r\n\t\t\t\t   and border stay like its neighbours'. Applies to the rows and the nav bar. */\r\n\t\t\t\t.flag-icon { filter: grayscale(1); }\r\n\t\t\t\t.filter-active .flag-icon { filter: none; }\r\n\t\t\t\t/* Bug 32: the row above the list with the last started media is about 1.35×\r\n\t\t\t\t   a list row — the font, the buttons and the size/status/actions columns.\r\n\t\t\t\t   Scoped to table.last-started, so the list below stays as it is. */\r\n\t\t\t\ttable.last-started { margin-bottom: 0.5rem; }\r\n\t\t\t\ttable.last-started td { font-size: 1.15rem; line-height: 2.2rem; }\r\n\t\t\t\ttable.last-started button.filename-link,\r\n\t\t\t\ttable.last-started a.folder-link { font-size: 1.15rem; height: 2.2rem; line-height: 2.2rem; }\r\n\t\t\t\ttable.last-started .start-info { font-size: 0.95rem; }\r\n\t\t\t\ttable.last-started td.size { width: 6rem; }\r\n\t\t\t\ttable.last-started td.status { width: 5.4rem; }\r\n\t\t\t\t/* Five 1.85rem buttons with 0.1rem gaps, plus the cell padding. */\r\n\t\t\t\ttable.last-started td.actions { width: 10.5rem; }\r\n\t\t\t\ttable.last-started button.icon-btn { width: 1.85rem; height: 1.85rem; font-size: 1.1rem; }\r\n\t\t\t\t@media (max-width: 768px) {\r\n\t\t\t\t\tth.size, td.size, th.folder, td.folder { display: none; }\r\n\t\t\t\t}\r\n\t\t\t\t.nav-label { font-size: 0.7rem; color: var(--pico-muted-color); align-self: center; }\r\n\t\t\t\t/* Bug 18 part 1: plain search field — same height as the rest of the nav bar\r\n\t\t\t\t   and no icons (no native search look / clear ✕ button).\r\n\t\t\t\t   Scoped as `.top-nav input.search-input` (specificity 0,2,1) so it wins over\r\n\t\t\t\t   Pico's tall `input:not([type=checkbox],...)` rule (0,1,1) which otherwise\r\n\t\t\t\t   forces a large height/padding. */\r\n\t\t\t\t.top-nav input.search-input {\r\n\t\t\t\t\tbox-sizing: border-box; height: 1.35rem; min-height: 0; line-height: 1.35rem;\r\n\t\t\t\t\tmargin: 0; padding: 0 0.4rem; padding-inline-start: 0.4rem;\r\n\t\t\t\t\tfont-size: 0.8rem; width: 10rem;\r\n\t\t\t\t\tborder-radius: 4px; --pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t\tbackground-image: none;\r\n\t\t\t\t\t-webkit-appearance: none; appearance: none;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-cancel-button,\r\n\t\t\t\t.top-nav input.search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }\r\n\t\t\t\t/* Bug 26: the main-folder dropdown sits among the 1.35rem filter buttons, so it\r\n\t\t\t\t   is shrunk like the search field. `.top-nav select.folder-select` (specificity\r\n\t\t\t\t   0,2,1) wins over Pico's select rules (0,1,1), which otherwise make it a tall,\r\n\t\t\t\t   full-width form control with a large chevron. max-width keeps one long folder\r\n\t\t\t\t   name from wrapping the nav (it still fits \"всички папки\"). */\r\n\t\t\t\t.top-nav select.folder-select {\r\n\t\t\t\t\tbox-sizing: border-box; width: auto; max-width: 7.5rem; height: 1.35rem; min-height: 0;\r\n\t\t\t\t\tmargin: 0; padding: 0 1.2rem 0 0.4rem; padding-inline-start: 0.4rem; padding-inline-end: 1.2rem;\r\n\t\t\t\t\tfont-size: 0.8rem; line-height: 1; border-radius: 4px;\r\n\t\t\t\t\tbackground-position: center right 0.3rem; background-size: 0.7rem auto;\r\n\t\t\t\t\t--pico-form-element-spacing-vertical: 0;\r\n\t\t\t\t}\r\n\t\t\t\t.top-nav select.folder-select.filter-active {\r\n\t\t\t\t\tborder-color: var(--pico-primary); color: var(--pico-primary); font-weight: 600;\r\n\t\t\t\t}\r\n\t\t\t\t.flash { font-size: 0.8rem; color: var(--pico-primary); min-height: 1rem; margin: 0.2rem 0; }\r\n\t\t\t</style></head><body><main class=\"container\"><nav class=\"top-nav\"><h1>Movie Tracker</h1><form method=\"POST\" action=\"/scan\"><button type=\"submit\" class=\"icon-btn\" title=\"Сканирай диска\">↺</button></form><form id=\"search-form\" method=\"GET\" action=\"/\"><input type=\"hidden\" name=\"status\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(f.Status)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 279, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 285, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -747,7 +748,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(f.Disk)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 280, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 286, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
@@ -760,7 +761,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(f.Sort)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 281, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 287, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -773,7 +774,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(f.Dir)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 282, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 288, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -786,7 +787,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(f.Del)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 283, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 289, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
@@ -799,7 +800,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(f.Dnd)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 284, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 290, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 		if templ_7745c5c3_Err != nil {
@@ -812,7 +813,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(f.Subs)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 285, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 291, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
@@ -825,7 +826,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(f.Q)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 289, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 295, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -875,7 +876,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(folder)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 306, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 312, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
@@ -898,7 +899,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(folder)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 306, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 312, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
@@ -925,7 +926,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var54 templ.SafeURL
 		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithStatus("all").Href()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 309, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 315, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 		if templ_7745c5c3_Err != nil {
@@ -960,7 +961,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var57 templ.SafeURL
 		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithStatus("new").Href()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 310, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 316, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 		if templ_7745c5c3_Err != nil {
@@ -995,7 +996,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var60 templ.SafeURL
 		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithStatus("started").Href()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 311, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 317, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
 		if templ_7745c5c3_Err != nil {
@@ -1026,7 +1027,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 			var templ_7745c5c3_Var62 templ.SafeURL
 			templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithDisk("on").Href()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 313, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 319, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
 			if templ_7745c5c3_Err != nil {
@@ -1044,7 +1045,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 			var templ_7745c5c3_Var63 templ.SafeURL
 			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithDisk("all").Href()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 315, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 321, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 			if templ_7745c5c3_Err != nil {
@@ -1067,7 +1068,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var65 templ.SafeURL
 		templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithDnd(toggleFilter(f.Dnd)).Href()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 317, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 323, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
 		if templ_7745c5c3_Err != nil {
@@ -1086,7 +1087,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "\" title=\"За DnD\">👍</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "\" title=\"За DnD\"><span class=\"flag-icon\">👍</span></a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1102,7 +1103,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var68 templ.SafeURL
 		templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithDel(toggleFilter(f.Del)).Href()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 318, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 324, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 		if templ_7745c5c3_Err != nil {
@@ -1121,7 +1122,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\" title=\"За изтриване\">👎</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\" title=\"За изтриване\"><span class=\"flag-icon\">👎</span></a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1137,7 +1138,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var71 templ.SafeURL
 		templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithSubs(toggleFilter(f.Subs)).Href()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 319, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 325, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 		if templ_7745c5c3_Err != nil {
@@ -1156,7 +1157,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" title=\"Грешни субтитри\">⚠️</a></div><span class=\"nav-label\">сорт:</span><div class=\"sort-btns\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" title=\"Грешни субтитри\"><span class=\"flag-icon\">⚠️</span></a></div><span class=\"nav-label\">сорт:</span><div class=\"sort-btns\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1172,7 +1173,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var74 templ.SafeURL
 		templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(f, "name")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 323, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 329, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 		if templ_7745c5c3_Err != nil {
@@ -1198,7 +1199,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var76 string
 		templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("АЯ", f.Sort, f.Dir, "name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 323, Col: 204}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 329, Col: 204}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 		if templ_7745c5c3_Err != nil {
@@ -1220,7 +1221,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var78 templ.SafeURL
 		templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(f, "path")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 324, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 330, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 		if templ_7745c5c3_Err != nil {
@@ -1246,7 +1247,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var80 string
 		templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("Пт", f.Sort, f.Dir, "path"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 324, Col: 200}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 330, Col: 200}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 		if templ_7745c5c3_Err != nil {
@@ -1268,7 +1269,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var82 templ.SafeURL
 		templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(f, "size")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 325, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 331, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 		if templ_7745c5c3_Err != nil {
@@ -1294,7 +1295,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var84 string
 		templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("Рз", f.Sort, f.Dir, "size"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 325, Col: 195}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 331, Col: 195}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
 		if templ_7745c5c3_Err != nil {
@@ -1316,7 +1317,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var86 templ.SafeURL
 		templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(f, "last_started")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 326, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 332, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 		if templ_7745c5c3_Err != nil {
@@ -1342,7 +1343,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var88 string
 		templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("▶", f.Sort, f.Dir, "last_started"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 326, Col: 243}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 332, Col: 243}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 		if templ_7745c5c3_Err != nil {
@@ -1364,7 +1365,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var90 templ.SafeURL
 		templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sortBtnHref(f, "added")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 327, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 333, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 		if templ_7745c5c3_Err != nil {
@@ -1390,7 +1391,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var92 string
 		templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(sortBtnContent("⊕", f.Sort, f.Dir, "added"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 327, Col: 210}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 333, Col: 210}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 		if templ_7745c5c3_Err != nil {
@@ -1403,7 +1404,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var93 string
 		templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(f.Status)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 336, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 342, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 		if templ_7745c5c3_Err != nil {
@@ -1416,7 +1417,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var94 string
 		templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(f.Disk)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 337, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 343, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
 		if templ_7745c5c3_Err != nil {
@@ -1429,7 +1430,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var95 string
 		templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(f.Q)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 338, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 344, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
 		if templ_7745c5c3_Err != nil {
@@ -1442,7 +1443,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var96 string
 		templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(f.Del)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 339, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 345, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
 		if templ_7745c5c3_Err != nil {
@@ -1455,7 +1456,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var97 string
 		templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.JoinStringErrs(f.Dnd)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 340, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 346, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var97))
 		if templ_7745c5c3_Err != nil {
@@ -1468,7 +1469,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var98 string
 		templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinStringErrs(f.Subs)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 341, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 347, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var98))
 		if templ_7745c5c3_Err != nil {
@@ -1481,7 +1482,7 @@ func ListPage(media []db.MediaWithStats, f Filters, folders []string, last *db.M
 		var templ_7745c5c3_Var99 string
 		templ_7745c5c3_Var99, templ_7745c5c3_Err = templ.JoinStringErrs(f.Folder)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 342, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/list.templ`, Line: 348, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var99))
 		if templ_7745c5c3_Err != nil {
