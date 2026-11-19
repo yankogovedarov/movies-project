@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -65,6 +66,21 @@ func main() {
 		slog.Error("config load failed", "err", err)
 		os.Exit(1)
 	}
+
+	// Bug 34: take the port before touching the database. A second instance
+	// started while the first one is still scanning or syncing exits here,
+	// before it rotates a backup or writes the same database, and a busy port
+	// stops the program with a log line instead of failing silently. Browser
+	// connections wait in the listen backlog until the server starts serving
+	// after the sync.
+	const addr, siteURL = ":8080", "http://localhost:8080"
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		slog.Error("http listen failed", "addr", addr, "err", err)
+		os.Exit(1)
+	}
+	slog.Info("http port acquired", "addr", addr)
+
 	vlcPath, err := vlc.DetectDefault(cfg.VLCPath)
 	if err != nil {
 		slog.Warn("VLC not found", "err", err)
@@ -74,28 +90,42 @@ func main() {
 
 	dbPath := filepath.Join(paths.AppFolder, "movietracker.db")
 
+	// Bug 34: checked before the backup, which copies only the .db file.
+	if size, found := db.LeftoverJournal(dbPath); found {
+		slog.Warn("leftover database journal found: the previous run was interrupted during a write, or another instance is writing",
+			"path", dbPath+"-journal", "size", size,
+			"note", "SQLite rolls the journal back when the database is opened; the backup of this start may be incomplete")
+	}
+
+	// Bug 34: every startup step logs how long it took, so a slow external
+	// disk shows up in the log instead of a silent hang.
+	start := time.Now()
 	backupPath, err := db.Backup(dbPath, time.Now(), db.BackupKeep)
 	if err != nil {
 		slog.Error("database backup failed", "err", err)
 		os.Exit(1)
 	}
 	if backupPath != "" {
-		slog.Info("database backup created", "path", backupPath)
+		slog.Info("database backup created", "path", backupPath, "took", time.Since(start))
 	} else {
 		slog.Info("no database to back up (first run)")
 	}
 
+	start = time.Now()
 	d, err := db.Open(dbPath)
 	if err != nil {
 		slog.Error("database open failed", "err", err)
 		os.Exit(1)
 	}
 	defer d.Close()
+	slog.Info("database opened", "path", dbPath, "took", time.Since(start))
 
+	start = time.Now()
 	if err := db.Migrate(d); err != nil {
 		slog.Error("database migrate failed", "err", err)
 		os.Exit(1)
 	}
+	slog.Info("database migrated", "took", time.Since(start))
 
 	excludedDirs := []string{
 		"$RECYCLE.BIN",
@@ -112,18 +142,18 @@ func main() {
 		"Temp",
 		"zzz",
 	}
+	start = time.Now()
 	files, err := scanner.Scan(paths.DiskRoot, excludedDirs)
 	if err != nil {
 		slog.Error("disk scan failed", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("scan complete", "files", len(files))
+	slog.Info("scan complete", "files", len(files), "took", time.Since(start))
 
-	if err := db.SyncScanResults(d, files); err != nil {
+	if err = db.SyncScanResults(d, files, logger); err != nil {
 		slog.Error("sync scan results failed", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("db synced", "files", len(files))
 
 	// Bug 24: MOVIETRACKER_NO_LAUNCH=1 keeps the binary from opening VLC,
 	// Explorer or the browser, so the e2e suite leaves no windows behind.
@@ -148,12 +178,21 @@ func main() {
 	r.POST("/scan", h.Scan)
 	r.GET("/static/*filepath", h.StaticFile)
 
+	// Bug 34: the browser opens only once the server is about to serve.
+	slog.Info("http server listening", "url", siteURL)
 	if !noLaunch {
-		go openBrowser("http://localhost:8080")
+		go openBrowser(siteURL)
 	}
-	r.Run(":8080")
+	if err := r.RunListener(ln); err != nil {
+		slog.Error("http server failed", "err", err)
+		os.Exit(1)
+	}
 }
 
 func openBrowser(url string) {
-	_ = exec.Command("cmd", "/c", "start", url).Start()
+	if err := exec.Command("cmd", "/c", "start", url).Start(); err != nil {
+		slog.Warn("browser open failed", "url", url, "err", err)
+		return
+	}
+	slog.Info("browser launch requested", "url", url)
 }

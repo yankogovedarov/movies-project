@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yankogovedarov/movie-tracker/internal/db"
@@ -750,16 +751,17 @@ func (h *Handlers) Scan(c *gin.Context) {
 	}
 
 	go func() {
+		start := time.Now()
 		files, err := scanner.Scan(h.DiskRoot, excludedDirs)
 		if err != nil {
 			h.log().Error("scan failed", "err", err)
 			return
 		}
-		if err := db.SyncScanResults(h.DB, files); err != nil {
+		if err := db.SyncScanResults(h.DB, files, h.log()); err != nil {
 			h.log().Error("sync scan results failed", "err", err)
 			return
 		}
-		h.log().Info("scan complete", "files", len(files))
+		h.log().Info("scan complete", "files", len(files), "took", time.Since(start))
 	}()
 
 	c.Redirect(http.StatusSeeOther, "/")

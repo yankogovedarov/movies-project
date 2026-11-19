@@ -1,8 +1,10 @@
 package db_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -20,6 +22,49 @@ func TestOpen(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, d)
 	d.Close()
+}
+
+// Bug 34: every connection of the pool waits up to 5 s for a lock instead of
+// failing at once with "database is locked" — e.g. a status change while a
+// rescan commits.
+func TestOpen_SetsBusyTimeout(t *testing.T) {
+	d, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = d.Close() })
+
+	// Two connections held at once, so the pool must open a second one.
+	ctx := context.Background()
+	for i := 0; i < 2; i++ {
+		conn, err := d.Conn(ctx)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = conn.Close() })
+
+		var timeout int
+		require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&timeout))
+		assert.Equal(t, 5000, timeout, "connection %d", i+1)
+	}
+}
+
+// Bug 34: a journal next to the database means the previous run was
+// interrupted in the middle of a write.
+func TestLeftoverJournal(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "movietracker.db")
+
+	size, found := db.LeftoverJournal(dbPath)
+	assert.False(t, found, "no journal file")
+	assert.Zero(t, size)
+
+	require.NoError(t, os.WriteFile(dbPath+"-journal", make([]byte, 1234), 0o644))
+	size, found = db.LeftoverJournal(dbPath)
+	assert.True(t, found, "the journal file is there")
+	assert.Equal(t, int64(1234), size)
+
+	// A directory with the journal's name is not a journal.
+	dirDBPath := filepath.Join(t.TempDir(), "movietracker.db")
+	require.NoError(t, os.Mkdir(dirDBPath+"-journal", 0o755))
+	size, found = db.LeftoverJournal(dirDBPath)
+	assert.False(t, found, "a directory is not a journal")
+	assert.Zero(t, size)
 }
 
 func TestMigrate(t *testing.T) {

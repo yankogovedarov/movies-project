@@ -58,7 +58,7 @@ func newRouter(t *testing.T, d *sql.DB) *gin.Engine {
 
 func seedMedia(t *testing.T, d *sql.DB, files []scanner.VideoFile) {
 	t.Helper()
-	require.NoError(t, db.SyncScanResults(d, files))
+	require.NoError(t, db.SyncScanResults(d, files, nil))
 }
 
 func TestIndexHandler_ReturnsHTML(t *testing.T) {

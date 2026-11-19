@@ -19,7 +19,7 @@ func TestMediaStats_StartCountIgnoresStatusChanges(t *testing.T) {
 	d := openTestDB(t)
 	require.NoError(t, db.SyncScanResults(d, []scanner.VideoFile{
 		{Filename: "Movie.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
-	}))
+	}, nil))
 	ctx := context.Background()
 	q := db.New(d)
 	media, err := q.ListOnDiskMedia(ctx)
@@ -55,7 +55,7 @@ func TestGetLastStartedMediaID(t *testing.T) {
 	require.NoError(t, db.SyncScanResults(d, []scanner.VideoFile{
 		{Filename: "First.mkv", FolderRelativePath: "Films", SizeBytes: 1_000_000_000},
 		{Filename: "Second.mkv", FolderRelativePath: "Films", SizeBytes: 2_000_000_000},
-	}))
+	}, nil))
 	ctx := context.Background()
 	q := db.New(d)
 

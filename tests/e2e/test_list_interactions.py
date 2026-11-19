@@ -249,8 +249,6 @@ def test_random_shows_film_in_last_started_row(page: Page):
     # the large row above the list, without a reload, and its list row is
     # updated in place (both out-of-band swaps). The server runs with
     # MOVIETRACKER_NO_LAUNCH=1, so no VLC window opens.
-    # Until Bug #28 is fixed this test must run before any test that triggers
-    # /scan: a rescan in flight can empty the random pool or drop the row.
     page.goto(BASE_URL)
     if not _has_media(page):
         pytest.skip("No media available")
